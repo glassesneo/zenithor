@@ -1,2 +1,4 @@
 const std = @import("std");
-const testing = std.testing;
+const application_module = @import("core/application.zig");
+
+pub const Application = application_module.Application;

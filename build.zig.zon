@@ -28,7 +28,7 @@
 
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.15.1",
 
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
@@ -37,8 +37,12 @@
     // internet connectivity.
     .dependencies = .{
         .sokol = .{
-            .url = "git+https://github.com/floooh/sokol-zig.git#2f4a22caa1799c4a9bf2b87d21dd2af91f452ca3",
-            .hash = "sokol-0.1.0-pb1HK42WLQCphk4zdd8fVfw5COyd95iN4-abmBhlt87J",
+            .url = "git+https://github.com/floooh/sokol-zig.git#3713675b6f80d485d66d3a8f13ce0c8b36f1847e",
+            .hash = "sokol-0.1.0-pb1HKwzULQCgDYLyHiIkb5cBPbMUbBGVBF34gHMRVvh5",
+        },
+        .sparze = .{
+            .url = "git+https://github.com/glassesneo/sparze.git#28de2fd1253403d47396262d448ef3cf9b55c991",
+            .hash = "sparze-0.0.0-IVywrdqxAADHOXzsTd8Wc0gW-6cp_4_CFWwlCgYGgHIe",
         },
     },
     .paths = .{

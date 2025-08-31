@@ -2,6 +2,7 @@ const std = @import("std");
 
 const examples = [_]Example{
     .{ .name = "basic" },
+    .{ .name = "window" },
 };
 
 const Example = struct {
@@ -18,12 +19,19 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const dep_sparze = b.dependency("sparze", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const sparze_mod = dep_sparze.module("sparze");
+
     const lib_mod = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
             .{ .name = "sokol", .module = dep_sokol.module("sokol") },
+            // .{ .name = "sparze", .module = dep_sparze.module("sparze") },
         },
     });
 
@@ -32,6 +40,8 @@ pub fn build(b: *std.Build) void {
         .name = "zenithor",
         .root_module = lib_mod,
     });
+
+    lib.root_module.addImport("sparze", sparze_mod);
 
     b.installArtifact(lib);
 
@@ -86,6 +96,12 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions, exampl
         .optimize = options.optimize,
     });
 
+    const dep_sparze = b.dependency("sparze", .{
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+    const sparze_mod = dep_sparze.module("sparze");
+
     const mod = b.createModule(.{
         .root_source_file = b.path(b.fmt("examples/{s}.zig", .{example.name})),
         .target = options.target,
@@ -100,6 +116,8 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions, exampl
         .name = example.name,
         .root_module = mod,
     });
+
+    example_step.root_module.addImport("sparze", sparze_mod);
 
     examples_step.dependOn(&b.addInstallArtifact(example_step, .{}).step);
 
