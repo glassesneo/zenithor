@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const examples = [_]Example{
-    .{ .name = "basic" },
     .{ .name = "window" },
 };
 
@@ -13,6 +12,9 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const mod_target = target.result;
     const optimize = b.standardOptimizeOption(.{});
+
+    const options = b.addOptions();
+    options.addOption([]const u8, "version", "0.1.0");
 
     const dep_sokol = b.dependency("sokol", .{
         .target = target,
@@ -42,6 +44,7 @@ pub fn build(b: *std.Build) void {
     });
 
     lib.root_module.addImport("sparze", sparze_mod);
+    lib.root_module.addOptions("config", options);
 
     b.installArtifact(lib);
 

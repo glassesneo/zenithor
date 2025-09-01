@@ -7,6 +7,9 @@ const sg = sokol.gfx;
 const sapp = sokol.app;
 const sglue = sokol.glue;
 
+const plugin_module = @import("plugin.zig");
+const AbstractPlugin = plugin_module.AbstractPlugin;
+
 const state = struct {
     var pass_action: sg.PassAction = .{};
 };
@@ -36,11 +39,41 @@ export fn appCleanup() void {
 }
 
 pub const Application = struct {
-    pub fn init() Application {
-        return .{};
+    allocator: std.mem.Allocator,
+    component_arena: std.heap.ArenaAllocator,
+    plugins: std.ArrayList(AbstractPlugin),
+    world: sparze.World,
+
+    pub fn init(allocator: std.mem.Allocator) Application {
+        return .{
+            .allocator = allocator,
+            .component_arena = .init(allocator),
+            .world = .init(allocator),
+            .plugins = .{},
+        };
     }
 
-    pub fn run(_: *Application) void {
+    pub fn deinit(self: *Application) void {
+        for (self.plugins.items) |plugin| {
+            plugin.deinit();
+        }
+        self.plugins.deinit(self.allocator);
+        self.world.deinit();
+        self.component_arena.deinit();
+    }
+
+    pub fn registerPlugin(self: *Application, comptime P: type) !void {
+        const arena_allocator = self.component_arena.allocator();
+        try self.plugins.append(self.allocator, try AbstractPlugin.init(P, arena_allocator));
+    }
+
+    pub fn buildPlugin(self: *Application) !void {
+        for (self.plugins.items) |plugin| {
+            try plugin.build(&self.world);
+        }
+    }
+
+    pub fn run(_: *Application) !void {
         sapp.run(.{
             .init_cb = appInit,
             .frame_cb = appFrame,
@@ -54,3 +87,29 @@ pub const Application = struct {
         });
     }
 };
+
+test "Register plugins" {
+    const Position = struct {
+        x: f32,
+        y: f32,
+    };
+
+    const Velocity = struct {
+        x: f32,
+        y: f32,
+    };
+
+    const ExamplePlugin = plugin_module.Plugin(.{ Position, Velocity });
+
+    const allocator = std.testing.allocator;
+
+    var app = Application.init(allocator);
+    defer app.deinit();
+
+    try app.registerPlugin(ExamplePlugin);
+    try app.buildPlugin();
+
+    const e1 = app.world.createEntity();
+    try app.world.addComponent(e1, Position, .{ .x = 1.0, .y = 2.0 });
+    std.debug.print("Position of e1: {any}\n", .{app.world.getComponent(e1, Position)});
+}
