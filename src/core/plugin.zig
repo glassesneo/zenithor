@@ -21,10 +21,11 @@ pub const AbstractPlugin = struct {
     }
 
     pub fn init(comptime P: type, allocator: std.mem.Allocator) !AbstractPlugin {
+        const PluginType = Plugin(P);
         const vtable = comptime VTable{
             .buildFn = struct {
                 fn build(ptr: *anyopaque, world: *sparze.World) anyerror!void {
-                    const self = castTo(P, ptr);
+                    const self = castTo(PluginType, ptr);
 
                     // Automatic component registration
                     const ComponentsType = @TypeOf(self.components);
@@ -35,11 +36,13 @@ pub const AbstractPlugin = struct {
                         const ComponentType = SetType.Component;
                         try world.registerComponent(ComponentType, component_set_ptr);
                     }
+
+                    try P.build(world);
                 }
             }.build,
             .deinitFn = struct {
                 fn deinit(ptr: *anyopaque) void {
-                    const self = castTo(P, ptr);
+                    const self = castTo(PluginType, ptr);
                     const ComponentsType = @TypeOf(self.components);
                     inline for (std.meta.fields(ComponentsType)) |field| {
                         // Get pointer to the actual field in the struct
@@ -51,7 +54,7 @@ pub const AbstractPlugin = struct {
             }.deinit,
         };
 
-        const instance = try allocator.create(P);
+        const instance = try allocator.create(PluginType);
         instance.*.allocator = allocator;
         const ComponentsType = @TypeOf(instance.components);
         inline for (std.meta.fields(ComponentsType)) |field| {
@@ -100,7 +103,7 @@ pub fn tupleToField(comptime types: anytype) [@typeInfo(@TypeOf(types)).@"struct
     return result_fields;
 }
 
-pub fn Plugin(types: anytype) type {
+fn Plugin(comptime P: type) type {
     const BaseType = struct {
         allocator: std.mem.Allocator,
     };
@@ -110,7 +113,11 @@ pub fn Plugin(types: anytype) type {
     var result_fields: [base_fields.len + 1]StructField = undefined;
     @memmove(result_fields[0..base_fields.len], base_fields);
 
-    const components_fields = tupleToField(types);
+    const Components = if (@hasDecl(P, "Components"))
+        P.Components
+    else
+        .{};
+    const components_fields = tupleToField(Components);
     const components_struct = Struct{
         .layout = .auto,
         .fields = &components_fields,
@@ -149,7 +156,13 @@ test "Create plugins" {
         y: f32,
     };
 
-    const ExamplePlugin = Plugin(.{ Position, Velocity });
+    const ExamplePlugin = struct {
+        pub const Components = .{ Position, Velocity };
+
+        pub fn build(world: *sparze.World) !void {
+            _ = world;
+        }
+    };
 
     const allocator = std.testing.allocator;
 
