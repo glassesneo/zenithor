@@ -1,13 +1,8 @@
 const zenithor = @import("zenithor");
+const RegisterFunc = zenithor.RegisterFunc;
 
 pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-    zenithor.init(allocator);
-    defer zenithor.deinit();
-    try zenithor.registerPlugin(zenithor.GraphicsPlugin);
-    try zenithor.run(Game);
+    zenithor.run(.{ zenithor.GraphicsPlugin, Game });
 }
 
 fn changeColor() !void {
@@ -16,11 +11,15 @@ fn changeColor() !void {
 }
 
 const Game = struct {
-    const Components = .{};
+    pub const Components = .{};
 
-    pub fn build(world: *zenithor.World) !void {
-        world.registerSystem(changeColor, .render);
+    pub fn build(
+        registerSystem: RegisterFunc,
+        registerStartupSystem: RegisterFunc,
+        registerTerminateSystem: RegisterFunc,
+    ) !void {
+        _ = registerStartupSystem;
+        _ = registerTerminateSystem;
+        registerSystem(changeColor, .render);
     }
 };
-
-const std = @import("std");

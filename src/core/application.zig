@@ -1,114 +1,137 @@
 const std = @import("std");
 const sparze = @import("sparze");
+// const World = sparze.World;
+
 const testing = std.testing;
 const sokol = @import("sokol");
 
-const plugin_module = @import("plugin.zig");
-const AbstractPlugin = plugin_module.AbstractPlugin;
+const system_module = @import("system.zig");
+const Stage = system_module.Stage;
 
-const Callbacks = struct {
-    export fn appInit() callconv(.c) void {
-        sokol.gfx.setup(.{
-            .environment = sokol.glue.environment(),
-            .logger = .{ .func = sokol.log.func },
-        });
-        std.debug.print("Backend: {}\n", .{sokol.gfx.queryBackend()});
-        Application.app.world.runStartupSystems() catch unreachable;
+fn containsType(comptime arr: anytype, comptime T: type, comptime n: usize) bool {
+    var i: usize = 0;
+    while (i < n) : (i += 1) {
+        if (arr[i] == T) return true;
     }
+    return false;
+}
 
-    fn appFrame() callconv(.c) void {
-        Application.app.world.runSystems() catch unreachable;
-    }
-
-    export fn appCleanup() callconv(.c) void {
-        Application.app.world.runTerminateSystems() catch unreachable;
-        sokol.gfx.shutdown();
-    }
-};
-
-pub const Application = struct {
-    allocator: std.mem.Allocator,
-    component_arena: std.heap.ArenaAllocator,
-    plugins: std.ArrayList(AbstractPlugin),
-    world: sparze.World,
-    pub var app: Application = undefined;
-
-    pub fn init(allocator: std.mem.Allocator) void {
-        app = .{
-            .allocator = allocator,
-            .component_arena = .init(allocator),
-            .world = .init(allocator),
-            .plugins = .{},
-        };
-    }
-
-    pub fn deinit() void {
-        for (app.plugins.items) |plugin| {
-            plugin.deinit();
-        }
-        app.plugins.deinit(app.allocator);
-        app.world.deinit();
-        app.component_arena.deinit();
-    }
-
-    pub fn registerPlugin(comptime P: type) !void {
-        const arena_allocator = app.component_arena.allocator();
-        try app.plugins.append(app.allocator, try AbstractPlugin.init(P, arena_allocator));
-    }
-
-    fn buildPlugins() !void {
-        for (app.plugins.items) |plugin| {
-            try plugin.build(&app.world);
+pub fn buildWorld(comptime plugins: anytype) type {
+    // compute max possible length
+    var total_len: usize = 0;
+    inline for (plugins) |P| {
+        inline for (P.Components) |_| {
+            total_len += 1;
         }
     }
 
-    pub fn run(comptime Game: type) !void {
-        try registerPlugin(Game);
-        try buildPlugins();
-        const desc: sokol.app.Desc = .{
-            .init_cb = Callbacks.appInit,
-            .frame_cb = Callbacks.appFrame,
-            .cleanup_cb = Callbacks.appCleanup,
-            .width = 640,
-            .height = 480,
-            .icon = .{ .sokol_default = true },
-            .window_title = "window",
-            .logger = .{ .func = sokol.log.func },
-            .win32_console_attach = true,
-        };
-
-        sokol.app.run(desc);
+    // dedup into temporary list
+    var tmp: [total_len]type = undefined;
+    var count: usize = 0;
+    inline for (plugins) |Plugin| {
+        inline for (Plugin.Components) |C| {
+            if (!containsType(tmp, C, count)) {
+                tmp[count] = C;
+                count += 1;
+            }
+        }
     }
-};
 
-test "Register plugins" {
-    const Position = struct {
-        x: f32,
-        y: f32,
-    };
+    // finalize exact-sized component list
+    var components: [count]type = undefined;
+    comptime {
+        var i: usize = 0;
+        while (i < count) : (i += 1) {
+            components[i] = tmp[i];
+        }
+    }
+    const Components = std.meta.Tuple(&components);
+    return sparze.FixedWorld(Components);
+}
 
-    const Velocity = struct {
-        x: f32,
-        y: f32,
-    };
+pub fn run(comptime plugins: anytype) void {
+    const World = buildWorld(plugins);
+    const SystemScheduler = system_module.SystemScheduler(World);
 
-    const ExamplePlugin = struct {
-        pub const Components = .{ Position, Velocity };
+    const App = struct {
+        var arena: std.heap.ArenaAllocator = undefined;
+        var world: World = undefined;
+        var system_scheduler: SystemScheduler = SystemScheduler.init();
+        var startup_system_scheduler: SystemScheduler = SystemScheduler.init();
+        var terminate_system_scheduler: SystemScheduler = SystemScheduler.init();
 
-        pub fn build(world: *sparze.World) !void {
-            _ = world;
+        pub fn registerSystem(comptime system_fn: anytype, stage: Stage) void {
+            const wrapper = struct {
+                fn run(w: *World) !void {
+                    try w.runSystem(system_fn);
+                }
+            }.run;
+            system_scheduler.register(wrapper, stage);
+        }
+
+        pub fn registerStartupSystem(comptime system_fn: anytype, stage: Stage) void {
+            const wrapper = struct {
+                fn run(w: *World) !void {
+                    try w.runSystem(system_fn);
+                }
+            }.run;
+            startup_system_scheduler.register(wrapper, stage);
+        }
+
+        pub fn registerTerminateSystem(comptime system_fn: anytype, stage: Stage) void {
+            const wrapper = struct {
+                fn run(w: *World) !void {
+                    try w.runSystem(system_fn);
+                }
+            }.run;
+            terminate_system_scheduler.register(wrapper, stage);
         }
     };
 
-    const allocator = std.testing.allocator;
+    const Callbacks = struct {
+        export fn appInit() callconv(.c) void {
+            App.arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+            const allocator = App.arena.allocator();
+            App.world = .init(allocator);
 
-    Application.init(allocator);
-    defer Application.deinit();
+            // Call plugin build functions
+            inline for (plugins) |Plugin| {
+                if (@hasDecl(Plugin, "build")) {
+                    Plugin.build(App.registerSystem, App.registerStartupSystem, App.registerTerminateSystem) catch unreachable;
+                }
+            }
 
-    try Application.registerPlugin(ExamplePlugin);
-    try Application.buildPlugins();
+            sokol.gfx.setup(.{
+                .environment = sokol.glue.environment(),
+                .logger = .{ .func = sokol.log.func },
+            });
+            std.debug.print("Backend: {}\n", .{sokol.gfx.queryBackend()});
+            App.startup_system_scheduler.run(&App.world) catch unreachable;
+        }
 
-    const e1 = Application.app.world.createEntity();
-    try Application.app.world.addComponent(e1, Position, .{ .x = 1.0, .y = 2.0 });
-    std.debug.print("Position of e1: {any}\n", .{Application.app.world.getComponent(e1, Position)});
+        fn appFrame() callconv(.c) void {
+            App.system_scheduler.run(&App.world) catch unreachable;
+        }
+
+        export fn appCleanup() callconv(.c) void {
+            App.terminate_system_scheduler.run(&App.world) catch unreachable;
+            App.world.deinit();
+            sokol.gfx.shutdown();
+            App.arena.deinit();
+        }
+    };
+
+    const desc: sokol.app.Desc = .{
+        .init_cb = Callbacks.appInit,
+        .frame_cb = Callbacks.appFrame,
+        .cleanup_cb = Callbacks.appCleanup,
+        .width = 640,
+        .height = 480,
+        .icon = .{ .sokol_default = true },
+        .window_title = "window",
+        .logger = .{ .func = sokol.log.func },
+        .win32_console_attach = true,
+    };
+
+    sokol.app.run(desc);
 }

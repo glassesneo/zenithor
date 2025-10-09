@@ -1,11 +1,10 @@
-const sparze = @import("sparze");
-pub const World = sparze.World;
-
 const application_module = @import("core/application.zig");
-pub const init = application_module.Application.init;
-pub const deinit = application_module.Application.deinit;
-pub const registerPlugin = application_module.Application.registerPlugin;
-pub const run = application_module.Application.run;
+pub const buildWorld = application_module.buildWorld;
+pub const run = application_module.run;
+
+const system_module = @import("core/system.zig");
+pub const Stage = system_module.Stage;
+pub const RegisterFunc = system_module.RegisterFunc;
 
 pub const GraphicsPlugin = @import("plugins/graphics/root.zig");
 
