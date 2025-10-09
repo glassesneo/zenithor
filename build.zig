@@ -4,7 +4,6 @@ const sokol = @import("sokol");
 const examples = [_]Example{
     .{ .name = "window" },
     .{ .name = "2d_shapes" },
-    .{ .name = "wasm_test" },
 };
 
 const Example = struct {
