@@ -3,7 +3,7 @@ const sokol = @import("sokol");
 
 const system_module = @import("../../core/system.zig");
 const Stage = system_module.Stage;
-const RegisterFunc = system_module.RegisterFunc;
+const SystemRegistry = system_module.SystemRegistry;
 
 pub const Components = .{};
 
@@ -22,14 +22,9 @@ fn mainPass() !void {
     sokol.gfx.commit();
 }
 
-pub fn build(
-    registerSystem: RegisterFunc,
-    registerStartupSystem: RegisterFunc,
-    registerTerminateSystem: RegisterFunc,
-) !void {
-    _ = registerTerminateSystem;
-    registerStartupSystem(init, .first);
-    registerSystem(mainPass, .post_render);
+pub fn build(registry: SystemRegistry) !void {
+    registry.registerStartupSystem(init, .first);
+    registry.registerSystem(mainPass, .post_render);
 }
 
 const std = @import("std");

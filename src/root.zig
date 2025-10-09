@@ -4,7 +4,7 @@ pub const run = application_module.run;
 
 const system_module = @import("core/system.zig");
 pub const Stage = system_module.Stage;
-pub const RegisterFunc = system_module.RegisterFunc;
+pub const SystemRegistry = system_module.SystemRegistry;
 
 pub const GraphicsPlugin = @import("plugins/graphics/root.zig");
 

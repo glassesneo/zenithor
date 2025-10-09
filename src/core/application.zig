@@ -95,9 +95,11 @@ pub fn run(comptime plugins: anytype) void {
             App.world = .init(allocator);
 
             // Call plugin build functions
+            const registry = system_module.SystemRegistry.init(App.registerSystem, App.registerStartupSystem, App.registerTerminateSystem);
+
             inline for (plugins) |Plugin| {
                 if (@hasDecl(Plugin, "build")) {
-                    Plugin.build(App.registerSystem, App.registerStartupSystem, App.registerTerminateSystem) catch unreachable;
+                    Plugin.build(registry) catch unreachable;
                 }
             }
 

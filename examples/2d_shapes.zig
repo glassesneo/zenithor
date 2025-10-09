@@ -1,5 +1,5 @@
 const zenithor = @import("zenithor");
-const RegisterFunc = zenithor.RegisterFunc;
+const SystemRegistry = zenithor.SystemRegistry;
 
 pub fn main() !void {
     zenithor.run(.{ zenithor.GraphicsPlugin, Game });
@@ -13,13 +13,7 @@ fn changeColor() !void {
 const Game = struct {
     pub const Components = .{};
 
-    pub fn build(
-        registerSystem: RegisterFunc,
-        registerStartupSystem: RegisterFunc,
-        registerTerminateSystem: RegisterFunc,
-    ) !void {
-        _ = registerStartupSystem;
-        _ = registerTerminateSystem;
-        registerSystem(changeColor, .render);
+    pub fn build(registry: SystemRegistry) !void {
+        registry.registerSystem(changeColor, .render);
     }
 };
