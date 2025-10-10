@@ -75,3 +75,120 @@ pub const SystemRegistry = struct {
         self._register_terminate_system_func(system_fn, stage);
     }
 };
+
+const testing = std.testing;
+
+test "SystemScheduler: registers and runs systems" {
+    const TestWorld = struct {
+        counter: u32 = 0,
+
+        pub const SystemPointerType = *const fn (*@This()) anyerror!void;
+
+        pub fn runSystem(self: *@This(), comptime system_fn: anytype) !void {
+            try system_fn(self);
+        }
+    };
+
+    const Scheduler = SystemScheduler(TestWorld);
+    var scheduler = Scheduler.init();
+
+    const incrementCounter = struct {
+        fn run(world: *TestWorld) !void {
+            world.counter += 1;
+        }
+    }.run;
+
+    scheduler.register(incrementCounter, .update);
+
+    var world = TestWorld{};
+    try scheduler.run(&world);
+
+    try testing.expectEqual(@as(u32, 1), world.counter);
+}
+
+test "SystemScheduler: runs multiple systems in order" {
+    const TestWorld = struct {
+        values: [3]u32 = .{ 0, 0, 0 },
+        index: usize = 0,
+
+        pub const SystemPointerType = *const fn (*@This()) anyerror!void;
+
+        pub fn runSystem(self: *@This(), comptime system_fn: anytype) !void {
+            try system_fn(self);
+        }
+    };
+
+    const Scheduler = SystemScheduler(TestWorld);
+    var scheduler = Scheduler.init();
+
+    const system1 = struct {
+        fn run(world: *TestWorld) !void {
+            world.values[world.index] = 10;
+            world.index += 1;
+        }
+    }.run;
+
+    const system2 = struct {
+        fn run(world: *TestWorld) !void {
+            world.values[world.index] = 20;
+            world.index += 1;
+        }
+    }.run;
+
+    scheduler.register(system1, .update);
+    scheduler.register(system2, .update);
+
+    var world = TestWorld{};
+    try scheduler.run(&world);
+
+    try testing.expectEqual(@as(u32, 10), world.values[0]);
+    try testing.expectEqual(@as(u32, 20), world.values[1]);
+}
+
+test "SystemRegistry: provides unified registration interface" {
+    const TestState = struct {
+        var system_called = false;
+        var startup_called = false;
+        var terminate_called = false;
+
+        fn reset() void {
+            system_called = false;
+            startup_called = false;
+            terminate_called = false;
+        }
+    };
+
+    TestState.reset();
+
+    const registerSystem = struct {
+        fn func(comptime _: anytype, _: Stage) void {
+            TestState.system_called = true;
+        }
+    }.func;
+
+    const registerStartup = struct {
+        fn func(comptime _: anytype, _: Stage) void {
+            TestState.startup_called = true;
+        }
+    }.func;
+
+    const registerTerminate = struct {
+        fn func(comptime _: anytype, _: Stage) void {
+            TestState.terminate_called = true;
+        }
+    }.func;
+
+    const registry = SystemRegistry.init(registerSystem, registerStartup, registerTerminate);
+
+    const dummySystem = struct {
+        fn run() !void {}
+    }.run;
+
+    registry.registerSystem(dummySystem, .update);
+    registry.registerStartupSystem(dummySystem, .first);
+    registry.registerTerminateSystem(dummySystem, .last);
+
+    try testing.expect(TestState.system_called);
+    try testing.expect(TestState.startup_called);
+    try testing.expect(TestState.terminate_called);
+}

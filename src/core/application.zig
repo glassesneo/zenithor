@@ -137,3 +137,35 @@ pub fn run(comptime plugins: anytype) void {
 
     sokol.app.run(desc);
 }
+
+test "buildWorld: deduplicates components across plugins" {
+    const Plugin1 = struct {
+        pub const Components = .{ u32, f32 };
+    };
+    const Plugin2 = struct {
+        pub const Components = .{ u32, i32 }; // u32 duplicated
+    };
+
+    const World = buildWorld(.{ Plugin1, Plugin2 });
+    var world = World.init(testing.allocator);
+    defer world.deinit();
+
+    // If we got here without compile errors, deduplication worked
+    // (duplicate components would cause FixedWorld to fail)
+}
+
+test "buildWorld: handles empty plugin list" {
+    const World = buildWorld(.{});
+    var world = World.init(testing.allocator);
+    defer world.deinit();
+}
+
+test "buildWorld: handles single plugin" {
+    const Plugin = struct {
+        pub const Components = .{u32};
+    };
+
+    const World = buildWorld(.{Plugin});
+    var world = World.init(testing.allocator);
+    defer world.deinit();
+}
