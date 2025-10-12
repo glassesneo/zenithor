@@ -2,10 +2,12 @@ const sparze = @import("sparze");
 const sokol = @import("sokol");
 
 const system_module = @import("../../core/system.zig");
-const Stage = system_module.Stage;
 const SystemRegistry = system_module.SystemRegistry;
 
-pub const Components = .{};
+const application_module = @import("../../core/application.zig");
+const Transform = application_module.Transform;
+
+pub const Components = .{Transform};
 
 pub var pass_action: sokol.gfx.PassAction = .{};
 

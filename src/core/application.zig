@@ -1,12 +1,17 @@
 const std = @import("std");
 const sparze = @import("sparze");
-// const World = sparze.World;
 
 const testing = std.testing;
 const sokol = @import("sokol");
+const builtin = @import("builtin");
 
 const system_module = @import("system.zig");
 const Stage = system_module.Stage;
+
+pub const Transform = struct {
+    x: f32,
+    y: f32,
+};
 
 fn containsType(comptime arr: anytype, comptime T: type, comptime n: usize) bool {
     var i: usize = 0;
@@ -46,7 +51,7 @@ pub fn buildWorld(comptime plugins: anytype) type {
         }
     }
     const Components = std.meta.Tuple(&components);
-    return sparze.FixedWorld(Components);
+    return sparze.World(Components);
 }
 
 pub fn run(comptime plugins: anytype) void {
@@ -90,7 +95,11 @@ pub fn run(comptime plugins: anytype) void {
 
     const Callbacks = struct {
         export fn appInit() callconv(.c) void {
-            App.arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+            const base_alloc: std.mem.Allocator = if (builtin.os.tag == .emscripten or builtin.cpu.arch.isWasm())
+                std.heap.c_allocator
+            else
+                std.heap.page_allocator;
+            App.arena = std.heap.ArenaAllocator.init(base_alloc);
             const allocator = App.arena.allocator();
             App.world = .init(allocator);
 
@@ -107,17 +116,25 @@ pub fn run(comptime plugins: anytype) void {
                 .environment = sokol.glue.environment(),
                 .logger = .{ .func = sokol.log.func },
             });
+            sokol.gl.setup(.{});
             std.debug.print("Backend: {}\n", .{sokol.gfx.queryBackend()});
+            App.world.beginFrame();
             App.startup_system_scheduler.run(&App.world) catch unreachable;
+            App.world.endFrame() catch unreachable;
         }
 
         fn appFrame() callconv(.c) void {
+            App.world.beginFrame();
             App.system_scheduler.run(&App.world) catch unreachable;
+            App.world.endFrame() catch unreachable;
         }
 
         export fn appCleanup() callconv(.c) void {
+            App.world.beginFrame();
             App.terminate_system_scheduler.run(&App.world) catch unreachable;
+            App.world.endFrame() catch unreachable;
             App.world.deinit();
+            sokol.gl.shutdown();
             sokol.gfx.shutdown();
             App.arena.deinit();
         }

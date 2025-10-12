@@ -1,5 +1,4 @@
 const application_module = @import("core/application.zig");
-pub const buildWorld = application_module.buildWorld;
 pub const run = application_module.run;
 
 const system_module = @import("core/system.zig");

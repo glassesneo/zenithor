@@ -76,13 +76,15 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
             .use_filesystem = false,
             .shell_file_path = dep_sokol.path("src/sokol/web/shell.html"),
             .extra_args = &.{
+                "-sSHARED_MEMORY=0",
                 "-sEXIT_RUNTIME=0",
                 "-sSTACK_SIZE=1MB",
-                "-sSTACK_OVERFLOW_CHECK=1",
+                "-sSTACK_OVERFLOW_CHECK=2",
                 "-sINITIAL_MEMORY=64MB",
                 "-sALLOW_MEMORY_GROWTH=1",
-                "-sASSERTIONS=1",
+                "-sASSERTIONS=2",
                 "-sSAFE_HEAP=1",
+                "-sUSE_PTHREADS=0",
                 "--bind",
             },
         });

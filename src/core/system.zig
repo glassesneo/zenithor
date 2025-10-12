@@ -4,20 +4,21 @@ const EnumArray = std.EnumArray;
 const max_systems_per_stage = 1024;
 
 pub fn SystemScheduler(comptime World: type) type {
+    const SystemPointerType = *const fn (*World) anyerror!void;
     return struct {
         const Self = @This();
 
-        systemsByStages: EnumArray(Stage, [max_systems_per_stage]World.SystemPointerType),
+        systemsByStages: EnumArray(Stage, [max_systems_per_stage]SystemPointerType),
         systemCounts: EnumArray(Stage, u16),
 
         pub fn init() Self {
             return .{
-                .systemsByStages = .initFill([_]World.SystemPointerType{undefined} ** max_systems_per_stage),
+                .systemsByStages = .initFill([_]SystemPointerType{undefined} ** max_systems_per_stage),
                 .systemCounts = .initFill(0),
             };
         }
 
-        pub fn register(self: *Self, system: World.SystemPointerType, stage: Stage) void {
+        pub fn register(self: *Self, system: SystemPointerType, stage: Stage) void {
             const count_ptr = self.systemCounts.getPtr(stage);
             self.systemsByStages.getPtr(stage)[count_ptr.*] = system;
             count_ptr.* += 1;
@@ -82,8 +83,6 @@ test "SystemScheduler: registers and runs systems" {
     const TestWorld = struct {
         counter: u32 = 0,
 
-        pub const SystemPointerType = *const fn (*@This()) anyerror!void;
-
         pub fn runSystem(self: *@This(), comptime system_fn: anytype) !void {
             try system_fn(self);
         }
@@ -110,8 +109,6 @@ test "SystemScheduler: runs multiple systems in order" {
     const TestWorld = struct {
         values: [3]u32 = .{ 0, 0, 0 },
         index: usize = 0,
-
-        pub const SystemPointerType = *const fn (*@This()) anyerror!void;
 
         pub fn runSystem(self: *@This(), comptime system_fn: anytype) !void {
             try system_fn(self);
