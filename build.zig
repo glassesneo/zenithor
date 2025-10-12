@@ -28,12 +28,12 @@ fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
     const examples_step = b.step("examples", "Build examples");
 
     for (examples) |example| {
-        const example_step = try buildExample(b, example, options);
-        examples_step.dependOn(&b.addInstallArtifact(example_step, .{}).step);
+        const build_step = try buildExample(b, example, options);
+        examples_step.dependOn(build_step);
     }
 }
 
-fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.Build.Step.Compile {
+fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.Build.Step {
     const dep_sokol = b.dependency("sokol", .{
         .target = options.target,
         .optimize = options.optimize,
@@ -57,7 +57,7 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
     });
     mod.addImport("zenithor", options.mod_zenithor);
 
-    const example_step, const run = if (options.target.result.cpu.arch.isWasm()) wasm: {
+    const build_step, const run = if (options.target.result.cpu.arch.isWasm()) wasm: {
         const wasm_example_step = try buildWeb(b, .{
             .name = example.name,
             .mod = mod,
@@ -93,7 +93,7 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
         // ...and a special run step to start the web build output via 'emrun'
         const run = sokol.emRunStep(b, .{ .name = example.name, .emsdk = emsdk });
         run.step.dependOn(&link_step.step);
-        break :wasm .{ wasm_example_step, run };
+        break :wasm .{ &link_step.step, run };
     } else native: {
         const example_step = buildNative(b, .{
             .name = example.name,
@@ -103,13 +103,13 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
         });
 
         const run = b.addRunArtifact(example_step);
-        break :native .{ example_step, run };
+        break :native .{ &example_step.step, run };
     };
 
-    b.step(b.fmt("{s}", .{example.name}), b.fmt("Build {s} example", .{example.name})).dependOn(&example_step.step);
+    b.step(b.fmt("{s}", .{example.name}), b.fmt("Build {s} example", .{example.name})).dependOn(build_step);
     b.step(b.fmt("run-{s}", .{example.name}), b.fmt("Run {s} example", .{example.name})).dependOn(&run.step);
 
-    return example_step;
+    return build_step;
 }
 
 pub fn build(b: *std.Build) !void {
