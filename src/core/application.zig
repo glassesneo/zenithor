@@ -8,10 +8,7 @@ const builtin = @import("builtin");
 const system_module = @import("system.zig");
 const Stage = system_module.Stage;
 
-pub const Transform = struct {
-    x: f32,
-    y: f32,
-};
+const BuiltinPlugin = @import("builtin.zig");
 
 fn containsType(comptime arr: anytype, comptime T: type, comptime n: usize) bool {
     var i: usize = 0;
@@ -55,7 +52,7 @@ pub fn buildWorld(comptime plugins: anytype) type {
 }
 
 pub fn run(comptime plugins: anytype) void {
-    const World = buildWorld(plugins);
+    const World = buildWorld(.{BuiltinPlugin} ++ plugins);
     const SystemScheduler = system_module.SystemScheduler(World);
 
     const App = struct {
