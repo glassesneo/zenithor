@@ -7,6 +7,12 @@ pub const SystemRegistry = system_module.SystemRegistry;
 
 pub const BuiltinPlugin = @import("core/builtin.zig");
 pub const GraphicsPlugin = @import("plugins/graphics/root.zig");
+pub const ImGuiPlugin = @import("plugins/imgui/root.zig");
+
+const sparze = @import("sparze");
+pub const SingleQuery = sparze.SingleQuery;
+pub const Query = sparze.Query;
+pub const Group = sparze.Group;
 
 test {
     std.testing.refAllDecls(@This());

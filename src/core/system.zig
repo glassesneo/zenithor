@@ -41,6 +41,7 @@ pub const Stage = enum {
     post_update,
     pre_render,
     render,
+    render_submit,
     post_render,
     last,
     post_process,

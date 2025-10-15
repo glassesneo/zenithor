@@ -1,14 +1,13 @@
 const std = @import("std");
-const sparze = @import("sparze");
-
 const testing = std.testing;
-const sokol = @import("sokol");
 const builtin = @import("builtin");
 
 const system_module = @import("system.zig");
 const Stage = system_module.Stage;
-
 const BuiltinPlugin = @import("builtin.zig");
+
+const sparze = @import("sparze");
+const sokol = @import("sokol");
 
 fn containsType(comptime arr: anytype, comptime T: type, comptime n: usize) bool {
     var i: usize = 0;
@@ -131,9 +130,13 @@ pub fn run(comptime plugins: anytype) void {
             App.terminate_system_scheduler.run(&App.world) catch unreachable;
             App.world.endFrame() catch unreachable;
             App.world.deinit();
+            App.arena.deinit();
+            sokol.imgui.shutdown();
             sokol.gl.shutdown();
             sokol.gfx.shutdown();
-            App.arena.deinit();
+        }
+        export fn appEvent(ev: [*c]const sokol.app.Event) void {
+            _ = sokol.imgui.handleEvent(ev.*);
         }
     };
 
@@ -141,6 +144,7 @@ pub fn run(comptime plugins: anytype) void {
         .init_cb = Callbacks.appInit,
         .frame_cb = Callbacks.appFrame,
         .cleanup_cb = Callbacks.appCleanup,
+        .event_cb = Callbacks.appEvent,
         .width = 640,
         .height = 480,
         .icon = .{ .sokol_default = true },

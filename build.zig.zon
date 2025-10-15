@@ -44,6 +44,10 @@
             .url = "git+https://github.com/glassesneo/sparze.git#517a08dcd6d2429e226ce1af44f8b2a17fe6c28d",
             .hash = "sparze-0.0.0-IVywrZTLAQCCBNjcM53rZVUJzVPx6KogWGiczL6Z9qpr",
         },
+        .cimgui = .{
+            .url = "git+https://github.com/floooh/dcimgui.git#c31779fdde33e52bfc1d54a0b8ff7bf38a17dbbf",
+            .hash = "cimgui-0.1.0-44ClkQRJlABdFMKRqIG8KDD6jy1eQbgPO335NziPYjmL",
+        },
     },
     .paths = .{
         "build.zig",

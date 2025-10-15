@@ -107,9 +107,12 @@ fn drawRectangle(rectangles: Query(struct { Rectangle, Transform })) !void {
     sokol.gl.end();
 }
 
-fn mainPass() !void {
+fn beginPass() !void {
     sokol.gfx.beginPass(.{ .action = pass_action, .swapchain = sokol.glue.swapchain() });
     sokol.gl.draw();
+}
+
+fn endPass() !void {
     sokol.gfx.endPass();
     sokol.gfx.commit();
 }
@@ -122,7 +125,8 @@ pub fn build(registry: SystemRegistry) !void {
     registry.registerSystem(drawLine, .render);
     registry.registerSystem(drawTriangle, .render);
     registry.registerSystem(drawRectangle, .render);
-    registry.registerSystem(mainPass, .post_render);
+    registry.registerSystem(beginPass, .render_submit);
+    registry.registerSystem(endPass, .post_render);
 }
 
 const std = @import("std");

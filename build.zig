@@ -1,9 +1,11 @@
 const std = @import("std");
 const sokol = @import("sokol");
+const cimgui = @import("cimgui");
 
 const examples = [_]Example{
     .{ .name = "window" },
     .{ .name = "2d_shapes" },
+    .{ .name = "imgui_demo" },
 };
 
 const Example = struct {
@@ -14,6 +16,8 @@ const ExampleOptions = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     gl: bool,
+    imgui_docking: bool,
+    dep_cimgui: *std.Build.Dependency,
     mod_zenithor: *std.Build.Module,
 };
 
@@ -21,6 +25,7 @@ const Options = struct {
     name: []const u8,
     mod: *std.Build.Module,
     dep_sokol: *std.Build.Dependency,
+    dep_cimgui: *std.Build.Dependency,
     sparze_mod: *std.Build.Module,
 };
 
@@ -37,8 +42,18 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
     const dep_sokol = b.dependency("sokol", .{
         .target = options.target,
         .optimize = options.optimize,
+        .with_sokol_imgui = true,
         .gl = options.gl,
     });
+
+    const cimgui_config = cimgui.getConfig(options.imgui_docking);
+
+    const dep_cimgui = b.dependency("cimgui", .{
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+
+    dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
 
     const dep_sparze = b.dependency("sparze", .{
         .target = options.target,
@@ -52,6 +67,7 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
         .optimize = options.optimize,
         .imports = &.{
             .{ .name = "sokol", .module = dep_sokol.module("sokol") },
+            .{ .name = cimgui_config.module_name, .module = dep_cimgui.module(cimgui_config.module_name) },
             // .{ .name = "shader", .module = try createShaderModule(b, dep_sokol) },
         },
     });
@@ -62,15 +78,19 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
             .name = example.name,
             .mod = mod,
             .dep_sokol = dep_sokol,
+            .dep_cimgui = dep_cimgui,
             .sparze_mod = sparze_mod,
         });
         // create a build step which invokes the Emscripten linker
-        const emsdk = dep_sokol.builder.dependency("emsdk", .{});
+        const dep_emsdk = dep_sokol.builder.dependency("emsdk", .{});
+        const emsdk_incl_path = dep_emsdk.path("upstream/emscripten/cache/sysroot/include");
+        options.dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(emsdk_incl_path);
+
         const link_step = try sokol.emLinkStep(b, .{
             .lib_main = wasm_example_step,
             .target = mod.resolved_target.?,
             .optimize = mod.optimize.?,
-            .emsdk = emsdk,
+            .emsdk = dep_emsdk,
             .use_webgl2 = true,
             .use_emmalloc = true,
             .use_filesystem = false,
@@ -91,7 +111,7 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
         // attach Emscripten linker output to default install step
         b.getInstallStep().dependOn(&link_step.step);
         // ...and a special run step to start the web build output via 'emrun'
-        const run = sokol.emRunStep(b, .{ .name = example.name, .emsdk = emsdk });
+        const run = sokol.emRunStep(b, .{ .name = example.name, .emsdk = dep_emsdk });
         run.step.dependOn(&link_step.step);
         break :wasm .{ &link_step.step, run };
     } else native: {
@@ -99,6 +119,7 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
             .name = example.name,
             .mod = mod,
             .dep_sokol = dep_sokol,
+            .dep_cimgui = dep_cimgui,
             .sparze_mod = sparze_mod,
         });
 
@@ -120,12 +141,23 @@ pub fn build(b: *std.Build) !void {
     const options = b.addOptions();
     options.addOption([]const u8, "version", "0.1.0");
     const gl = b.option(bool, "gl", "Whether to use OpenGL backend") orelse false;
+    const imgui_docking = b.option(bool, "imgui-docking", "Whether to build with imgui docking support") orelse false;
+
+    const cimgui_config = cimgui.getConfig(imgui_docking);
 
     const dep_sokol = b.dependency("sokol", .{
         .target = target,
         .optimize = optimize,
+        .with_sokol_imgui = true,
         .gl = gl,
     });
+
+    const dep_cimgui = b.dependency("cimgui", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
 
     const dep_sparze = b.dependency("sparze", .{
         .target = target,
@@ -139,8 +171,13 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .imports = &.{
             .{ .name = "sokol", .module = dep_sokol.module("sokol") },
+            .{ .name = cimgui_config.module_name, .module = dep_cimgui.module(cimgui_config.module_name) },
         },
     });
+
+    const mod_options = b.addOptions();
+    mod_options.addOption(bool, "docking", imgui_docking);
+    lib_mod.addOptions("build_options", mod_options);
 
     const lib = b.addLibrary(.{
         .linkage = .static,
@@ -170,6 +207,8 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
         .gl = gl,
+        .imgui_docking = imgui_docking,
+        .dep_cimgui = dep_cimgui,
         .mod_zenithor = lib_mod,
     });
 
