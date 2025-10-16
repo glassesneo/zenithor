@@ -42,34 +42,30 @@ fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
     const web_all = b.step("examples-web", "Build all web examples");
     const examples_alias = b.step("examples", "Build examples");
 
-    for (examples) |example| {
-        const deps = try loadExampleDependencies(b, options);
-        const build_desc = b.fmt("Build {s} example", .{example.name});
-        const run_desc = b.fmt("Run {s} example", .{example.name});
-        if (is_wasm) {
+    if (is_wasm) {
+        for (examples) |example| {
+            const deps = try loadExampleDependencies(b, options);
+            const build_desc = b.fmt("Build {s} example", .{example.name});
+            const run_desc = b.fmt("Run {s} example", .{example.name});
             const out = try buildWebExample(b, example, options, deps);
             web_all.dependOn(out.build);
 
-            const build_alias = b.step(example.name, build_desc);
-            build_alias.dependOn(out.build);
+            b.step(example.name, build_desc).dependOn(out.build);
+            b.step(b.fmt("run-{s}", .{example.name}), run_desc).dependOn(&out.run.step);
+        }
 
-            const run_alias = b.step(b.fmt("run-{s}", .{example.name}), run_desc);
-            run_alias.dependOn(&out.run.step);
-        } else {
+        examples_alias.dependOn(web_all);
+    } else {
+        for (examples) |example| {
+            const deps = try loadExampleDependencies(b, options);
+            const build_desc = b.fmt("Build {s} example", .{example.name});
+            const run_desc = b.fmt("Run {s} example", .{example.name});
             const out = buildNativeExample(b, example, options, deps);
             native_all.dependOn(out.build);
 
-            const build_alias = b.step(example.name, build_desc);
-            build_alias.dependOn(out.build);
-
-            const run_alias = b.step(b.fmt("run-{s}", .{example.name}), run_desc);
-            run_alias.dependOn(&out.run.step);
+            b.step(example.name, build_desc).dependOn(out.build);
+            b.step(b.fmt("run-{s}", .{example.name}), run_desc).dependOn(&out.run.step);
         }
-    }
-
-    if (is_wasm) {
-        examples_alias.dependOn(web_all);
-    } else {
         examples_alias.dependOn(native_all);
     }
 }

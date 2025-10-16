@@ -34,3 +34,6 @@ jobs:
       - name: Build Examples in wasm target
         run: |
           zig build examples -Dtarget=wasm32-emscripten
+      - name: Build Examples in wasm target with wgpu
+        run: |
+          zig build examples -Dtarget=wasm32-emscripten -Dwgpu
