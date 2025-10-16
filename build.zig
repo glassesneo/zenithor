@@ -93,12 +93,14 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
     else
         null;
 
-    // Add emscripten system include path for wasm targets
-    if (dep_emsdk) |emsdk| {
-        dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(emsdk.path("upstream/emscripten/cache/sysroot/include"));
-    }
-
     dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
+
+    // Add emscripten system include path for wasm targets to both sokol and cimgui
+    if (dep_emsdk) |emsdk| {
+        const sysroot_include = emsdk.path("upstream/emscripten/cache/sysroot/include");
+        dep_sokol.artifact("sokol_clib").addSystemIncludePath(sysroot_include);
+        dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(sysroot_include);
+    }
 
     const dep_sparze = b.dependency("sparze", .{
         .target = options.target,
