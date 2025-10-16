@@ -23,24 +23,58 @@ const ExampleOptions = struct {
     mod_zenithor: *std.Build.Module,
 };
 
-const Options = struct {
-    name: []const u8,
-    mod: *std.Build.Module,
-    dep_sokol: *std.Build.Dependency,
-    dep_cimgui: *std.Build.Dependency,
-    sparze_mod: *std.Build.Module,
+const DependencySet = struct {
+    sokol: *std.Build.Dependency,
+    cimgui: *std.Build.Dependency,
+    sparze: *std.Build.Dependency,
+    emsdk: ?*std.Build.Dependency = null,
+};
+
+const ExampleResult = struct {
+    build: *std.Build.Step,
+    run: *std.Build.Step.Run,
 };
 
 fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
-    const examples_step = b.step("examples", "Build examples");
+    const is_wasm = options.target.result.cpu.arch.isWasm();
+
+    const native_all = b.step("examples-native", "Build all native examples");
+    const web_all = b.step("examples-web", "Build all web examples");
+    const examples_alias = b.step("examples", "Build examples");
 
     for (examples) |example| {
-        const build_step = try buildExample(b, example, options);
-        examples_step.dependOn(build_step);
+        const deps = try loadExampleDependencies(b, options);
+        const build_desc = b.fmt("Build {s} example", .{example.name});
+        const run_desc = b.fmt("Run {s} example", .{example.name});
+        if (is_wasm) {
+            const out = try buildWebExample(b, example, options, deps);
+            web_all.dependOn(out.build);
+
+            const build_alias = b.step(example.name, build_desc);
+            build_alias.dependOn(out.build);
+
+            const run_alias = b.step(b.fmt("run-{s}", .{example.name}), run_desc);
+            run_alias.dependOn(&out.run.step);
+        } else {
+            const out = buildNativeExample(b, example, options, deps);
+            native_all.dependOn(out.build);
+
+            const build_alias = b.step(example.name, build_desc);
+            build_alias.dependOn(out.build);
+
+            const run_alias = b.step(b.fmt("run-{s}", .{example.name}), run_desc);
+            run_alias.dependOn(&out.run.step);
+        }
+    }
+
+    if (is_wasm) {
+        examples_alias.dependOn(web_all);
+    } else {
+        examples_alias.dependOn(native_all);
     }
 }
 
-fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.Build.Step {
+fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySet {
     const dep_sokol = b.dependency("sokol", .{
         .target = options.target,
         .optimize = options.optimize,
@@ -63,79 +97,100 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
         .target = options.target,
         .optimize = options.optimize,
     });
-    const sparze_mod = dep_sparze.module("sparze");
+
+    return .{
+        .sokol = dep_sokol,
+        .cimgui = dep_cimgui,
+        .sparze = dep_sparze,
+    };
+}
+
+fn createExampleModule(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) *std.Build.Module {
+    const cimgui_config = cimgui.getConfig(options.imgui_docking);
 
     const mod = b.createModule(.{
         .root_source_file = b.path(b.fmt("examples/{s}.zig", .{example.name})),
         .target = options.target,
         .optimize = options.optimize,
         .imports = &.{
-            .{ .name = "sokol", .module = dep_sokol.module("sokol") },
-            .{ .name = cimgui_config.module_name, .module = dep_cimgui.module(cimgui_config.module_name) },
-            // .{ .name = "shader", .module = try createShaderModule(b, dep_sokol) },
+            .{ .name = "sokol", .module = deps.sokol.module("sokol") },
+            .{ .name = cimgui_config.module_name, .module = deps.cimgui.module(cimgui_config.module_name) },
         },
     });
     mod.addImport("zenithor", options.mod_zenithor);
 
-    const build_step, const run = if (options.target.result.cpu.arch.isWasm()) wasm: {
-        const wasm_example_step = try buildWeb(b, .{
-            .name = example.name,
-            .mod = mod,
-            .dep_sokol = dep_sokol,
-            .dep_cimgui = dep_cimgui,
-            .sparze_mod = sparze_mod,
-        });
-        // create a build step which invokes the Emscripten linker
-        const dep_emsdk = dep_sokol.builder.dependency("emsdk", .{});
-        const emsdk_incl_path = dep_emsdk.path("upstream/emscripten/cache/sysroot/include");
-        options.dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(emsdk_incl_path);
+    return mod;
+}
 
-        const link_step = try sokol.emLinkStep(b, .{
-            .lib_main = wasm_example_step,
-            .target = mod.resolved_target.?,
-            .optimize = mod.optimize.?,
-            .emsdk = dep_emsdk,
-            .use_webgpu = options.wgpu,
-            .use_webgl2 = !options.wgpu,
-            .use_emmalloc = true,
-            .use_filesystem = false,
-            .shell_file_path = dep_sokol.path("src/sokol/web/shell.html"),
-            .extra_args = &.{
-                "-sSHARED_MEMORY=0",
-                "-sEXIT_RUNTIME=0",
-                "-sSTACK_SIZE=1MB",
-                "-sSTACK_OVERFLOW_CHECK=2",
-                "-sINITIAL_MEMORY=64MB",
-                "-sALLOW_MEMORY_GROWTH=1",
-                "-sASSERTIONS=2",
-                "-sSAFE_HEAP=1",
-                "-sUSE_PTHREADS=0",
-                "--bind",
-            },
-        });
-        // attach Emscripten linker output to default install step
-        b.getInstallStep().dependOn(&link_step.step);
-        // ...and a special run step to start the web build output via 'emrun'
-        const run = sokol.emRunStep(b, .{ .name = example.name, .emsdk = dep_emsdk });
-        run.step.dependOn(&link_step.step);
-        break :wasm .{ &link_step.step, run };
-    } else native: {
-        const example_step = buildNative(b, .{
-            .name = example.name,
-            .mod = mod,
-            .dep_sokol = dep_sokol,
-            .dep_cimgui = dep_cimgui,
-            .sparze_mod = sparze_mod,
-        });
+fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) ExampleResult {
+    const mod = createExampleModule(b, example, options, deps);
+    const exe = b.addExecutable(.{
+        .name = example.name,
+        .root_module = mod,
+    });
+    exe.root_module.addImport("sparze", deps.sparze.module("sparze"));
 
-        const run = b.addRunArtifact(example_step);
-        break :native .{ &example_step.step, run };
-    };
+    const build_step = &exe.step;
+    const build_label = b.fmt("build-{s}-native", .{example.name});
+    const run_label = b.fmt("run-{s}-native", .{example.name});
 
-    b.step(b.fmt("{s}", .{example.name}), b.fmt("Build {s} example", .{example.name})).dependOn(build_step);
-    b.step(b.fmt("run-{s}", .{example.name}), b.fmt("Run {s} example", .{example.name})).dependOn(&run.step);
+    b.step(build_label, b.fmt("Build {s} (native)", .{example.name})).dependOn(build_step);
 
-    return build_step;
+    const run = b.addRunArtifact(exe);
+    b.step(run_label, b.fmt("Run {s} (native)", .{example.name})).dependOn(&run.step);
+
+    return .{ .build = &exe.step, .run = run };
+}
+
+fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) !ExampleResult {
+    const cimgui_config = cimgui.getConfig(options.imgui_docking);
+    const dep_emsdk = deps.sokol.builder.dependency("emsdk", .{});
+    options.dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
+
+    const mod = createExampleModule(b, example, options, deps);
+    const lib = b.addLibrary(.{
+        .name = example.name,
+        .root_module = mod,
+    });
+    lib.root_module.addImport("sparze", deps.sparze.module("sparze"));
+
+    const link = try sokol.emLinkStep(b, .{
+        .lib_main = lib,
+        .target = options.target,
+        .optimize = options.optimize,
+        .emsdk = dep_emsdk,
+        .use_webgpu = options.wgpu,
+        .use_webgl2 = !options.wgpu,
+        .use_emmalloc = true,
+        .use_filesystem = false,
+        .shell_file_path = deps.sokol.path("src/sokol/web/shell.html"),
+        .extra_args = &.{
+            "-sSHARED_MEMORY=0",
+            "-sEXIT_RUNTIME=0",
+            "-sSTACK_SIZE=1MB",
+            "-sSTACK_OVERFLOW_CHECK=2",
+            "-sINITIAL_MEMORY=64MB",
+            "-sALLOW_MEMORY_GROWTH=1",
+            "-sASSERTIONS=2",
+            "-sSAFE_HEAP=1",
+            "-sUSE_PTHREADS=0",
+            "--bind",
+        },
+    });
+
+    b.getInstallStep().dependOn(&link.step);
+
+    const build_label = b.fmt("build-{s}-web", .{example.name});
+    const run_label = b.fmt("run-{s}-web", .{example.name});
+    b.step(build_label, b.fmt("Build {s} (web)", .{example.name})).dependOn(&link.step);
+
+    const deno = b.addSystemCommand(&.{
+        "deno", "run", "--allow-net", "--allow-read", "--watch", "server.ts",
+    });
+    deno.step.dependOn(&link.step);
+    b.step(run_label, b.fmt("Run {s} (web)", .{example.name})).dependOn(&deno.step);
+
+    return .{ .build = &link.step, .run = deno };
 }
 
 pub fn build(b: *std.Build) !void {
@@ -245,26 +300,4 @@ fn createShaderModule(b: *std.Build, dep_sokol: *std.Build.Dependency) !*std.Bui
     });
 
     return mod_shd;
-}
-
-fn buildNative(b: *std.Build, options: Options) *std.Build.Step.Compile {
-    const exe = b.addExecutable(.{
-        .name = options.name,
-        .root_module = options.mod,
-    });
-
-    exe.root_module.addImport("sparze", options.sparze_mod);
-
-    return exe;
-}
-
-fn buildWeb(b: *std.Build, options: Options) !*std.Build.Step.Compile {
-    const lib = b.addLibrary(.{
-        .name = options.name,
-        .root_module = options.mod,
-    });
-
-    lib.root_module.addImport("sparze", options.sparze_mod);
-
-    return lib;
 }
