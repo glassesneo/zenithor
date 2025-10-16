@@ -21,6 +21,7 @@ pub fn buildWorld(comptime plugins: anytype) type {
     // compute max possible length
     var total_len: usize = 0;
     inline for (plugins) |P| {
+        if (!@hasDecl(P, "Components")) continue;
         inline for (P.Components) |_| {
             total_len += 1;
         }
@@ -29,8 +30,9 @@ pub fn buildWorld(comptime plugins: anytype) type {
     // dedup into temporary list
     var tmp: [total_len]type = undefined;
     var count: usize = 0;
-    inline for (plugins) |Plugin| {
-        inline for (Plugin.Components) |C| {
+    inline for (plugins) |P| {
+        if (!@hasDecl(P, "Components")) continue;
+        inline for (P.Components) |C| {
             if (!containsType(tmp, C, count)) {
                 tmp[count] = C;
                 count += 1;
@@ -51,7 +53,8 @@ pub fn buildWorld(comptime plugins: anytype) type {
 }
 
 pub fn run(comptime plugins: anytype) void {
-    const World = buildWorld(.{BuiltinPlugin} ++ plugins);
+    const allPlugins = .{BuiltinPlugin} ++ plugins;
+    const World = buildWorld(allPlugins);
     const SystemScheduler = system_module.SystemScheduler(World);
 
     const App = struct {
@@ -98,6 +101,12 @@ pub fn run(comptime plugins: anytype) void {
             App.arena = std.heap.ArenaAllocator.init(base_alloc);
             const allocator = App.arena.allocator();
             App.world = .init(allocator);
+            inline for (allPlugins) |P| {
+                if (!@hasDecl(P, "Groups")) continue;
+                for (P.Groups) |Group| {
+                    App.world.createGroup(Group);
+                }
+            }
 
             // Call plugin build functions
             const registry = system_module.SystemRegistry.init(App.registerSystem, App.registerStartupSystem, App.registerTerminateSystem);
@@ -131,12 +140,14 @@ pub fn run(comptime plugins: anytype) void {
             App.world.endFrame() catch unreachable;
             App.world.deinit();
             App.arena.deinit();
-            sokol.imgui.shutdown();
             sokol.gl.shutdown();
             sokol.gfx.shutdown();
         }
         export fn appEvent(ev: [*c]const sokol.app.Event) void {
-            _ = sokol.imgui.handleEvent(ev.*);
+            inline for (plugins) |P| {
+                if (P != @import("../plugins/imgui/root.zig")) continue;
+                _ = sokol.imgui.handleEvent(ev.*);
+            }
         }
     };
 

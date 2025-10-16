@@ -58,11 +58,16 @@ fn renderUi() !void {
     sokol.imgui.render();
 }
 
+fn deinit() !void {
+    sokol.imgui.shutdown();
+}
+
 pub fn build(registry: SystemRegistry) !void {
     registry.registerStartupSystem(init, .first);
     registry.registerSystem(setupFrame, .first);
     registry.registerSystem(drawWindow, .render);
     registry.registerSystem(renderUi, .render_submit);
+    registry.registerTerminateSystem(deinit, .post_process);
 }
 
 const std = @import("std");
