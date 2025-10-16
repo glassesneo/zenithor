@@ -145,7 +145,6 @@ fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, 
 }
 
 fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) !ExampleResult {
-    const cimgui_config = cimgui.getConfig(options.imgui_docking);
     const dep_emsdk = deps.sokol.builder.dependency("emsdk", .{});
 
     const mod = createExampleModule(b, example, options, deps);
