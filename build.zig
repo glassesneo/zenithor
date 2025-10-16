@@ -87,10 +87,15 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
         .optimize = options.optimize,
     });
 
+    // Get emsdk dependency for wasm targets
+    const dep_emsdk = if (options.target.result.cpu.arch.isWasm())
+        dep_sokol.builder.dependency("emsdk", .{})
+    else
+        null;
+
     // Add emscripten system include path for wasm targets
-    if (options.target.result.cpu.arch.isWasm()) {
-        const dep_emsdk = dep_sokol.builder.dependency("emsdk", .{});
-        dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
+    if (dep_emsdk) |emsdk| {
+        dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(emsdk.path("upstream/emscripten/cache/sysroot/include"));
     }
 
     dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
@@ -104,6 +109,7 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
         .sokol = dep_sokol,
         .cimgui = dep_cimgui,
         .sparze = dep_sparze,
+        .emsdk = dep_emsdk,
     };
 }
 
@@ -145,7 +151,7 @@ fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, 
 }
 
 fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) !ExampleResult {
-    const dep_emsdk = deps.sokol.builder.dependency("emsdk", .{});
+    const dep_emsdk = deps.emsdk orelse return error.EmsdkNotFound;
 
     const mod = createExampleModule(b, example, options, deps);
     const lib = b.addLibrary(.{
