@@ -141,7 +141,7 @@ fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, 
 fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) !ExampleResult {
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
     const dep_emsdk = deps.sokol.builder.dependency("emsdk", .{});
-    options.dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
+    deps.cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
 
     const mod = createExampleModule(b, example, options, deps);
     const lib = b.addLibrary(.{
