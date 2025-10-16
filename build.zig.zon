@@ -41,12 +41,12 @@
             .hash = "sokol-0.1.0-pb1HK0y3LgDsw82OEarAkldZXCtPK1deMD16IJOP0SCy",
         },
         .sparze = .{
-            .url = "git+https://github.com/glassesneo/sparze.git#517a08dcd6d2429e226ce1af44f8b2a17fe6c28d",
-            .hash = "sparze-0.0.0-IVywrZTLAQCCBNjcM53rZVUJzVPx6KogWGiczL6Z9qpr",
+            .url = "git+https://github.com/glassesneo/sparze.git#31ed16c51667778c4c69aad8cb38d5095678b094",
+            .hash = "sparze-0.0.0-IVywrX4fAgAY0gsneKjwxeYAgH3QKn8guRQ71jsMcunN",
         },
         .cimgui = .{
-            .url = "git+https://github.com/floooh/dcimgui.git#c31779fdde33e52bfc1d54a0b8ff7bf38a17dbbf",
-            .hash = "cimgui-0.1.0-44ClkQRJlABdFMKRqIG8KDD6jy1eQbgPO335NziPYjmL",
+            .url = "git+https://github.com/floooh/dcimgui.git#d5fb4e3d27b79062dc5981db3631dadc4f204654",
+            .hash = "cimgui-0.1.0-44Clkd6YlAAYULKHDwsDX9EPmka-VAVEjUl-o6ve307E",
         },
     },
     .paths = .{

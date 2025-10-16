@@ -9,9 +9,7 @@ const Transform = BuiltinPlugin.Transform;
 const system_module = @import("../../core/system.zig");
 const SystemRegistry = system_module.SystemRegistry;
 
-pub const Point = struct {
-    tag: u8 = 0,
-};
+pub const Point = struct {};
 
 pub const Line = struct {
     x: f32,
