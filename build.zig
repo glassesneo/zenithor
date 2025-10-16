@@ -87,6 +87,12 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
         .optimize = options.optimize,
     });
 
+    // Add emscripten system include path for wasm targets
+    if (options.target.result.cpu.arch.isWasm()) {
+        const dep_emsdk = dep_sokol.builder.dependency("emsdk", .{});
+        dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
+    }
+
     dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
 
     const dep_sparze = b.dependency("sparze", .{
@@ -141,7 +147,6 @@ fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, 
 fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) !ExampleResult {
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
     const dep_emsdk = deps.sokol.builder.dependency("emsdk", .{});
-    deps.cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
 
     const mod = createExampleModule(b, example, options, deps);
     const lib = b.addLibrary(.{
