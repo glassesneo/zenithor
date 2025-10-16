@@ -16,6 +16,8 @@ const ExampleOptions = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     gl: bool,
+    gles3: bool,
+    wgpu: bool,
     imgui_docking: bool,
     dep_cimgui: *std.Build.Dependency,
     mod_zenithor: *std.Build.Module,
@@ -44,6 +46,8 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
         .optimize = options.optimize,
         .with_sokol_imgui = true,
         .gl = options.gl,
+        .gles3 = options.gles3,
+        .wgpu = options.wgpu,
     });
 
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
@@ -91,7 +95,8 @@ fn buildExample(b: *std.Build, example: Example, options: ExampleOptions) !*std.
             .target = mod.resolved_target.?,
             .optimize = mod.optimize.?,
             .emsdk = dep_emsdk,
-            .use_webgl2 = true,
+            .use_webgpu = options.wgpu,
+            .use_webgl2 = !options.wgpu,
             .use_emmalloc = true,
             .use_filesystem = false,
             .shell_file_path = dep_sokol.path("src/sokol/web/shell.html"),
@@ -141,6 +146,8 @@ pub fn build(b: *std.Build) !void {
     const options = b.addOptions();
     options.addOption([]const u8, "version", "0.1.0");
     const gl = b.option(bool, "gl", "Whether to use OpenGL backend") orelse false;
+    const gles3 = b.option(bool, "gles3", "Whether to use OpenGL ES3 backend") orelse false;
+    const wgpu = b.option(bool, "wgpu", "Whether to use WebGPU backend") orelse false;
     const imgui_docking = b.option(bool, "imgui-docking", "Whether to build with imgui docking support") orelse false;
 
     const cimgui_config = cimgui.getConfig(imgui_docking);
@@ -150,6 +157,8 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .with_sokol_imgui = true,
         .gl = gl,
+        .gles3 = gles3,
+        .wgpu = wgpu,
     });
 
     const dep_cimgui = b.dependency("cimgui", .{
@@ -196,10 +205,9 @@ pub fn build(b: *std.Build) !void {
 
     const env_map = std.process.getEnvMap(allocator) catch unreachable;
 
-    if (env_map.get("CUPS_INCLUDE_DIR")) |dir| for_darwin: {
-        if (mod_target.os.tag != .macos) break :for_darwin;
-
-        const cups_include_path: std.Build.LazyPath = .{ .cwd_relative = dir };
+    if (mod_target.os.tag == .macos) for_darwin: {
+        const cups_include_dir = env_map.get("CUPS_INCLUDE_DIR") orelse break :for_darwin;
+        const cups_include_path: std.Build.LazyPath = .{ .cwd_relative = cups_include_dir };
         dep_sokol.artifact("sokol_clib").addIncludePath(cups_include_path);
     }
 
@@ -207,6 +215,8 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
         .gl = gl,
+        .gles3 = gles3,
+        .wgpu = wgpu,
         .imgui_docking = imgui_docking,
         .dep_cimgui = dep_cimgui,
         .mod_zenithor = lib_mod,
