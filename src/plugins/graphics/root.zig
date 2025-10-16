@@ -58,9 +58,9 @@ fn drawPoint(points: Query(struct { Point, Transform })) !void {
     sokol.gl.beginPoints();
     for (points.entities) |entity| {
         if (!points.hasAllComponents(entity)) continue;
-        const transport = points.getComponentMut(entity, Transform).?;
+        const transform = points.getComponentMut(entity, Transform).?;
         sokol.gl.c4b(255, 0, 0, 0);
-        sokol.gl.v2f(transport.x, transport.y);
+        sokol.gl.v2f(transform.x, transform.y);
     }
     sokol.gl.end();
 }
@@ -69,11 +69,11 @@ fn drawLine(lines: Query(struct { Line, Transform })) !void {
     sokol.gl.beginLines();
     for (lines.entities) |entity| {
         if (!lines.hasAllComponents(entity)) continue;
-        const transport = lines.getComponentMut(entity, Transform).?;
+        const transform = lines.getComponentMut(entity, Transform).?;
         const line = lines.getComponentMut(entity, Line).?;
         sokol.gl.c4b(0, 0, 0, 255);
-        sokol.gl.v2f(transport.x, transport.y);
-        sokol.gl.v2f(transport.x + line.x, transport.y + line.y);
+        sokol.gl.v2f(transform.x, transform.y);
+        sokol.gl.v2f(transform.x + line.x, transform.y + line.y);
     }
     sokol.gl.end();
 }
@@ -82,12 +82,12 @@ fn drawTriangle(triangles: Query(struct { Triangle, Transform })) !void {
     sokol.gl.beginTriangles();
     for (triangles.entities) |entity| {
         if (!triangles.hasAllComponents(entity)) continue;
-        const transport = triangles.getComponentMut(entity, Transform).?;
+        const transform = triangles.getComponentMut(entity, Transform).?;
         const triangle = triangles.getComponentMut(entity, Triangle).?;
         sokol.gl.c4b(0, 255, 0, 0);
-        sokol.gl.v2f(transport.x + triangle.x1, transport.y + triangle.y1);
-        sokol.gl.v2f(transport.x + triangle.x2, transport.y + triangle.y2);
-        sokol.gl.v2f(transport.x + triangle.x3, transport.y + triangle.y3);
+        sokol.gl.v2f(transform.x + triangle.x1, transform.y + triangle.y1);
+        sokol.gl.v2f(transform.x + triangle.x2, transform.y + triangle.y2);
+        sokol.gl.v2f(transform.x + triangle.x3, transform.y + triangle.y3);
     }
     sokol.gl.end();
 }
@@ -96,13 +96,13 @@ fn drawRectangle(rectangles: Query(struct { Rectangle, Transform })) !void {
     sokol.gl.beginQuads();
     for (rectangles.entities) |entity| {
         if (!rectangles.hasAllComponents(entity)) continue;
-        const transport = rectangles.getComponentMut(entity, Transform).?;
+        const transform = rectangles.getComponentMut(entity, Transform).?;
         const rectangle = rectangles.getComponentMut(entity, Rectangle).?;
         sokol.gl.c4b(255, 255, 0, 0);
-        sokol.gl.v2f(transport.x, transport.y);
-        sokol.gl.v2f(transport.x + rectangle.x, transport.y);
-        sokol.gl.v2f(transport.x + rectangle.x, transport.y + rectangle.y);
-        sokol.gl.v2f(transport.x, transport.y + rectangle.y);
+        sokol.gl.v2f(transform.x, transform.y);
+        sokol.gl.v2f(transform.x + rectangle.x, transform.y);
+        sokol.gl.v2f(transform.x + rectangle.x, transform.y + rectangle.y);
+        sokol.gl.v2f(transform.x, transform.y + rectangle.y);
     }
     sokol.gl.end();
 }
