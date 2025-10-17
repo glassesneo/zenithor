@@ -14,6 +14,17 @@ const SystemRegistry = system_module.SystemRegistry;
 pub const Window = struct {
     title: [:0]const u8,
     open: bool = true,
+
+    pub fn format(
+        self: Window,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        _ = fmt;
+        _ = options;
+        try writer.print("Window(title: \"{s}\", open: {any})", .{ self.title, self.open });
+    }
 };
 
 pub const Components = .{Window};

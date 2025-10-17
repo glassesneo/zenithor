@@ -7,6 +7,7 @@ const examples = [_]Example{
     .{ .name = "2d_shapes" },
     .{ .name = "imgui_demo" },
     .{ .name = "time_demo" },
+    .{ .name = "debug_demo" },
 };
 
 const Example = struct {

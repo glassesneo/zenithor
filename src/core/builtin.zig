@@ -8,6 +8,10 @@ pub const Transform = struct {
     x: f32,
     y: f32,
     z: f32,
+
+    pub fn format(self: Transform, writer: anytype) !void {
+        try writer.print("Transform(x: {d:.2}, y: {d:.2}, z: {d:.2})", .{ self.x, self.y, self.z });
+    }
 };
 
 pub const Components = .{Transform};

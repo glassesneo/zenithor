@@ -14,6 +14,10 @@ pub const Point = struct {};
 pub const Line = struct {
     x: f32,
     y: f32,
+
+    pub fn format(self: Line, writer: anytype) !void {
+        try writer.print("Line(end: x: {d:.2}, y: {d:.2})", .{ self.x, self.y });
+    }
 };
 
 pub const Triangle = struct {
@@ -23,11 +27,23 @@ pub const Triangle = struct {
     y2: f32,
     x3: f32,
     y3: f32,
+
+    pub fn format(self: Triangle, writer: anytype) !void {
+        try writer.print("Triangle(v1: ({d:.2}, {d:.2}), v2: ({d:.2}, {d:.2}), v3: ({d:.2}, {d:.2}))", .{
+            self.x1, self.y1,
+            self.x2, self.y2,
+            self.x3, self.y3,
+        });
+    }
 };
 
 pub const Rectangle = struct {
     x: f32,
     y: f32,
+
+    pub fn format(self: Rectangle, writer: anytype) !void {
+        try writer.print("Rectangle(width: {d:.2}, height: {d:.2})", .{ self.x, self.y });
+    }
 };
 
 pub const Components = .{ Point, Line, Triangle, Rectangle };
