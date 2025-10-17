@@ -103,8 +103,8 @@ pub fn run(comptime plugins: anytype) void {
             App.world = .init(allocator);
             inline for (allPlugins) |P| {
                 if (!@hasDecl(P, "Groups")) continue;
-                for (P.Groups) |Group| {
-                    App.world.createGroup(Group);
+                inline for (P.Groups) |Group| {
+                    App.world.createGroup(Group) catch unreachable;
                 }
             }
 

@@ -3,7 +3,7 @@ const SingleQuery = sparze.SingleQuery;
 const Query = sparze.Query;
 const sokol = @import("sokol");
 const imgui_docking = @import("build_options").docking;
-const ig = if (imgui_docking) @import("cimgui_docking") else @import("cimgui");
+pub const ig = if (imgui_docking) @import("cimgui_docking") else @import("cimgui");
 
 const BuiltinPlugin = @import("../../core/builtin.zig");
 const Transform = BuiltinPlugin.Transform;
