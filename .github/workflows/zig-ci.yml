@@ -12,8 +12,11 @@ on:
       - develop
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v3
       - name: Install Zig
@@ -21,19 +24,20 @@ jobs:
           curl -L https://ziglang.org/download/0.15.1/zig-x86_64-linux-0.15.1.tar.xz | tar -xJ
           sudo mv zig-x86_64-linux-0.15.1 /usr/local/zig
           sudo ln -s /usr/local/zig/zig /usr/local/bin/zig
-      - name: Install linux-specific dependencies
+      - name: prepare-linux
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install libgl1-mesa-dev libegl1-mesa-dev mesa-common-dev xorg-dev libasound-dev
-      - name: Run Tests
-        run: |
-          zig build test
-      - name: Build Examples
+          sudo apt-get install libglu1-mesa-dev mesa-common-dev xorg-dev libasound-dev
+      - name: build Native
         run: |
           zig build examples --summary all
-      - name: Build Examples in wasm target
+      - name: build Native with gl
+        run: |
+          zig build examples --summary all -Dgl
+      - name: build Wasm
         run: |
           zig build examples --summary all -Dtarget=wasm32-emscripten
-      - name: Build Examples in wasm target with wgpu
+      - name: build Wasm in with wgpu
         run: |
           zig build examples --summary all -Dtarget=wasm32-emscripten -Dwgpu
