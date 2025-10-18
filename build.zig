@@ -3,11 +3,11 @@ const sokol = @import("sokol");
 const cimgui = @import("cimgui");
 
 const examples = [_]Example{
-    .{ .name = "window" },
-    .{ .name = "2d_shapes" },
-    .{ .name = "imgui_demo" },
-    .{ .name = "time_demo" },
-    .{ .name = "debug_demo" },
+    .{ .name = "demo_window" },
+    .{ .name = "demo_2d" },
+    .{ .name = "demo_imgui" },
+    .{ .name = "demo_time" },
+    .{ .name = "demo_debug" },
 };
 
 const Example = struct {
