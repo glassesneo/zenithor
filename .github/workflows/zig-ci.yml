@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@main
       - uses: mlugg/setup-zig@v2
         with:
-          version: master
+          version: 0.15.1
       - name: prepare-linux
         if: runner.os == 'Linux'
         run: |
@@ -36,6 +36,6 @@ jobs:
       - name: build Wasm
         run: |
           zig build examples --summary all -Dtarget=wasm32-emscripten
-      - name: build Wasm in with wgpu
+      - name: build Wasm with wgpu
         run: |
           zig build examples --summary all -Dtarget=wasm32-emscripten -Dwgpu
