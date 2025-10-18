@@ -35,6 +35,8 @@ const PerformanceMetrics = struct {
     last_frame_time: u64 = 0,
 };
 
+const STABLE_FPS_WARMUP_FRAMES: u64 = 60;
+
 /// Debug state for tracking changes and UI preferences
 const DebugState = struct {
     // Hash map to store previous component values (entity -> component hash)
@@ -109,12 +111,14 @@ fn updatePerformanceMetrics() void {
         if (frame_time > 0.0001) {
             debug_state.performance.current_fps = @floatCast(1.0 / frame_time);
 
-            // Update min/max
-            if (debug_state.performance.current_fps < debug_state.performance.min_fps) {
-                debug_state.performance.min_fps = debug_state.performance.current_fps;
-            }
-            if (debug_state.performance.current_fps > debug_state.performance.max_fps) {
-                debug_state.performance.max_fps = debug_state.performance.current_fps;
+            // Update min/max only after warmup frames have passed
+            if (debug_state.frame_counter >= STABLE_FPS_WARMUP_FRAMES) {
+                if (debug_state.performance.current_fps < debug_state.performance.min_fps) {
+                    debug_state.performance.min_fps = debug_state.performance.current_fps;
+                }
+                if (debug_state.performance.current_fps > debug_state.performance.max_fps) {
+                    debug_state.performance.max_fps = debug_state.performance.current_fps;
+                }
             }
         }
 
@@ -270,44 +274,44 @@ fn drawGizmos(commands: anytype, tracked_entities: []const sparze.Entity) !void 
 
     sokol.gl.end();
 
-    // Draw entity IDs using ImGui foreground draw list
+    // Draw entity IDs using ImGui background draw list so labels render
+    // underneath ImGui windows (match the gizmo which is rendered beneath UI)
     if (!debug_state.show_entity_ids) return;
 
-    const draw_list = ig.igGetForegroundDrawList();
+    const draw_list = ig.igGetBackgroundDrawList();
 
     for (tracked_entities) |entity| {
-        if (transform_sparse_set.getPtr(entity)) |transform| {
-            // Format entity ID - show index, optionally with version
-            var id_buf: [32]u8 = undefined;
-            const entity_index = sparze.getIndex(entity);
-            const entity_version = sparze.getVersion(entity);
+        const transform = transform_sparse_set.getPtr(entity) orelse continue;
+        // Format entity ID - show index, optionally with version
+        var id_buf: [32]u8 = undefined;
+        const entity_index = sparze.getIndex(entity);
+        const entity_version = sparze.getVersion(entity);
 
-            const id_text = if (debug_state.show_entity_versions)
-                std.fmt.bufPrintZ(&id_buf, "{d}:v{d}", .{ entity_index, entity_version }) catch "?"
-            else
-                std.fmt.bufPrintZ(&id_buf, "{d}", .{entity_index}) catch "?";
+        const id_text = if (debug_state.show_entity_versions)
+            std.fmt.bufPrintZ(&id_buf, "{d}:v{d}", .{ entity_index, entity_version }) catch "?"
+        else
+            std.fmt.bufPrintZ(&id_buf, "{d}", .{entity_index}) catch "?";
 
-            // Position text slightly offset from entity
-            const text_offset_x = debug_state.gizmo_size + 5.0;
-            const text_offset_y = -debug_state.gizmo_size - 5.0;
-            const text_pos = ig.ImVec2{ .x = transform.x + text_offset_x, .y = transform.y + text_offset_y };
+        // Position text slightly offset from entity
+        const text_offset_x = debug_state.gizmo_size + 5.0;
+        const text_offset_y = -debug_state.gizmo_size - 5.0;
+        const text_pos = ig.ImVec2{ .x = transform.x + text_offset_x, .y = transform.y + text_offset_y };
 
-            // Draw text with background for readability
-            const text_color = ig.igGetColorU32ImVec4(.{ .x = 1.0, .y = 1.0, .z = 0.0, .w = 1.0 }); // Yellow
-            const bg_color = ig.igGetColorU32ImVec4(.{ .x = 0.0, .y = 0.0, .z = 0.0, .w = 0.7 }); // Semi-transparent black
+        // Draw text with background for readability
+        const text_color = ig.igGetColorU32ImVec4(.{ .x = 1.0, .y = 1.0, .z = 0.0, .w = 1.0 }); // Yellow
+        const bg_color = ig.igGetColorU32ImVec4(.{ .x = 0.0, .y = 0.0, .z = 0.0, .w = 0.7 }); // Semi-transparent black
 
-            // Calculate text size for background
-            const text_size = ig.igCalcTextSize(id_text.ptr);
-            const padding = 2.0;
+        // Calculate text size for background
+        const text_size = ig.igCalcTextSize(id_text.ptr);
+        const padding = 2.0;
 
-            // Draw background rectangle
-            const bg_min = ig.ImVec2{ .x = text_pos.x - padding, .y = text_pos.y - padding };
-            const bg_max = ig.ImVec2{ .x = text_pos.x + text_size.x + padding, .y = text_pos.y + text_size.y + padding };
-            ig.ImDrawList_AddRectFilled(draw_list, bg_min, bg_max, bg_color);
+        // Draw background rectangle
+        const bg_min = ig.ImVec2{ .x = text_pos.x - padding, .y = text_pos.y - padding };
+        const bg_max = ig.ImVec2{ .x = text_pos.x + text_size.x + padding, .y = text_pos.y + text_size.y + padding };
+        ig.ImDrawList_AddRectFilled(draw_list, bg_min, bg_max, bg_color);
 
-            // Draw text
-            ig.ImDrawList_AddText(draw_list, text_pos, text_color, id_text.ptr);
-        }
+        // Draw text
+        ig.ImDrawList_AddText(draw_list, text_pos, text_color, id_text.ptr);
     }
 }
 
@@ -582,11 +586,14 @@ pub fn openPerformanceWindow() void {
         ig.igSeparator();
         ig.igSpacing();
 
-        // Min/Max FPS
+        // Min/Max FPS (show N/A during initial warmup frames)
         ig.igText("Min FPS:");
         ig.igSameLine();
         var min_buf: [32]u8 = undefined;
-        const min_text = std.fmt.bufPrintZ(&min_buf, "{d:.1}", .{perf.min_fps}) catch "N/A";
+        const min_text = if (debug_state.frame_counter < STABLE_FPS_WARMUP_FRAMES)
+            std.fmt.bufPrintZ(&min_buf, "N/A", .{}) catch "N/A"
+        else
+            std.fmt.bufPrintZ(&min_buf, "{d:.1}", .{perf.min_fps}) catch "N/A";
         ig.igPushStyleColorImVec4(ig.ImGuiCol_Text, .{ .x = 1.0, .y = 0.5, .z = 0.3, .w = 1.0 });
         ig.igText("%s", min_text.ptr);
         ig.igPopStyleColor();
@@ -594,7 +601,10 @@ pub fn openPerformanceWindow() void {
         ig.igText("Max FPS:");
         ig.igSameLine();
         var max_buf: [32]u8 = undefined;
-        const max_text = std.fmt.bufPrintZ(&max_buf, "{d:.1}", .{perf.max_fps}) catch "N/A";
+        const max_text = if (debug_state.frame_counter < STABLE_FPS_WARMUP_FRAMES)
+            std.fmt.bufPrintZ(&max_buf, "N/A", .{}) catch "N/A"
+        else
+            std.fmt.bufPrintZ(&max_buf, "{d:.1}", .{perf.max_fps}) catch "N/A";
         ig.igPushStyleColorImVec4(ig.ImGuiCol_Text, .{ .x = 0.3, .y = 0.8, .z = 1.0, .w = 1.0 });
         ig.igText("%s", max_text.ptr);
         ig.igPopStyleColor();
