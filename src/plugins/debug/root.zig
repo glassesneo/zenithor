@@ -16,6 +16,25 @@ const SystemRegistry = system_module.SystemRegistry;
 /// Simple tag component for marking entities to be tracked in debug UI
 pub const Tracked = struct {};
 
+/// Entity lifecycle event for logging
+const LifecycleEvent = struct {
+    entity: sparze.Entity,
+    event_type: enum { created, destroyed },
+    frame_number: u64,
+    timestamp: f64, // seconds since start
+};
+
+/// Performance metrics tracking
+const PerformanceMetrics = struct {
+    frame_times: [120]f32 = [_]f32{0.0} ** 120, // Last 120 frames (2 seconds at 60fps)
+    frame_index: usize = 0,
+    current_fps: f32 = 0.0,
+    min_fps: f32 = 999.0,
+    max_fps: f32 = 0.0,
+    avg_frame_time_ms: f32 = 0.0,
+    last_frame_time: u64 = 0,
+};
+
 /// Debug state for tracking changes and UI preferences
 const DebugState = struct {
     // Hash map to store previous component values (entity -> component hash)
@@ -24,9 +43,26 @@ const DebugState = struct {
     component_visibility: std.AutoHashMap(u64, bool),
     // Global settings
     show_gizmos: bool = true,
+    show_entity_ids: bool = true,
+    show_entity_versions: bool = false,
     gizmo_size: f32 = 10.0,
     highlight_duration_frames: u32 = 60, // How long to highlight changes
     highlight_timers: std.AutoHashMap(u64, u32), // entity_component_hash -> frames remaining
+
+    // Performance metrics
+    performance: PerformanceMetrics = .{},
+    show_performance_window: bool = true,
+
+    // Entity lifecycle log
+    lifecycle_log: std.ArrayListUnmanaged(LifecycleEvent) = .{},
+    allocator: std.mem.Allocator = undefined,
+    show_lifecycle_window: bool = true,
+    frame_counter: u64 = 0,
+    start_time: f64 = 0.0,
+
+    // Entity tracking
+    tracked_entity_count: usize = 0,
+    total_entity_count: usize = 0,
 };
 
 var debug_state: DebugState = undefined;
@@ -38,7 +74,10 @@ fn initDebugState(allocator: std.mem.Allocator) !void {
             .previous_values = std.AutoHashMap(u64, u64).init(allocator),
             .component_visibility = std.AutoHashMap(u64, bool).init(allocator),
             .highlight_timers = std.AutoHashMap(u64, u32).init(allocator),
+            .allocator = allocator,
         };
+        debug_state.start_time = sokol.time.sec(sokol.time.now());
+        sokol.time.setup();
         debug_state_initialized = true;
     }
 }
@@ -48,7 +87,84 @@ fn deinitDebugState() void {
         debug_state.previous_values.deinit();
         debug_state.component_visibility.deinit();
         debug_state.highlight_timers.deinit();
+        debug_state.lifecycle_log.deinit(debug_state.allocator);
         debug_state_initialized = false;
+    }
+}
+
+/// Update performance metrics each frame
+fn updatePerformanceMetrics() void {
+    const now = sokol.time.now();
+
+    if (debug_state.performance.last_frame_time != 0) {
+        const frame_ticks = now - debug_state.performance.last_frame_time;
+        const frame_time = sokol.time.sec(frame_ticks);
+        const frame_time_ms = @as(f32, @floatCast(frame_time * 1000.0));
+
+        // Store frame time in ring buffer
+        debug_state.performance.frame_times[debug_state.performance.frame_index] = frame_time_ms;
+        debug_state.performance.frame_index = (debug_state.performance.frame_index + 1) % debug_state.performance.frame_times.len;
+
+        // Calculate FPS
+        if (frame_time > 0.0001) {
+            debug_state.performance.current_fps = @floatCast(1.0 / frame_time);
+
+            // Update min/max
+            if (debug_state.performance.current_fps < debug_state.performance.min_fps) {
+                debug_state.performance.min_fps = debug_state.performance.current_fps;
+            }
+            if (debug_state.performance.current_fps > debug_state.performance.max_fps) {
+                debug_state.performance.max_fps = debug_state.performance.current_fps;
+            }
+        }
+
+        // Calculate average frame time
+        var sum: f32 = 0.0;
+        for (debug_state.performance.frame_times) |ft| {
+            sum += ft;
+        }
+        debug_state.performance.avg_frame_time_ms = sum / @as(f32, @floatFromInt(debug_state.performance.frame_times.len));
+    }
+
+    debug_state.performance.last_frame_time = now;
+    debug_state.frame_counter += 1;
+}
+
+/// Log entity creation
+pub fn logEntityCreated(entity: sparze.Entity) !void {
+    if (!debug_state_initialized) return;
+
+    const event = LifecycleEvent{
+        .entity = entity,
+        .event_type = .created,
+        .frame_number = debug_state.frame_counter,
+        .timestamp = sokol.time.sec(sokol.time.now()) - debug_state.start_time,
+    };
+
+    try debug_state.lifecycle_log.append(debug_state.allocator, event);
+
+    // Keep log size manageable (last 1000 events)
+    if (debug_state.lifecycle_log.items.len > 1000) {
+        _ = debug_state.lifecycle_log.orderedRemove(0);
+    }
+}
+
+/// Log entity destruction
+pub fn logEntityDestroyed(entity: sparze.Entity) !void {
+    if (!debug_state_initialized) return;
+
+    const event = LifecycleEvent{
+        .entity = entity,
+        .event_type = .destroyed,
+        .frame_number = debug_state.frame_counter,
+        .timestamp = sokol.time.sec(sokol.time.now()) - debug_state.start_time,
+    };
+
+    try debug_state.lifecycle_log.append(debug_state.allocator, event);
+
+    // Keep log size manageable
+    if (debug_state.lifecycle_log.items.len > 1000) {
+        _ = debug_state.lifecycle_log.orderedRemove(0);
     }
 }
 
@@ -115,6 +231,7 @@ fn toggleComponentVisibility(comptime ComponentType: type) !void {
 }
 
 /// Draw gizmos for all tracked entities with Transform component
+/// Displays entity index next to gizmo (e.g., "42" or "42:v1" if version shown)
 fn drawGizmos(commands: anytype, tracked_entities: []const sparze.Entity) !void {
     if (!debug_state.show_gizmos) return;
 
@@ -152,9 +269,55 @@ fn drawGizmos(commands: anytype, tracked_entities: []const sparze.Entity) !void 
     }
 
     sokol.gl.end();
+
+    // Draw entity IDs using ImGui foreground draw list
+    if (!debug_state.show_entity_ids) return;
+
+    const draw_list = ig.igGetForegroundDrawList();
+
+    for (tracked_entities) |entity| {
+        if (transform_sparse_set.getPtr(entity)) |transform| {
+            // Format entity ID - show index, optionally with version
+            var id_buf: [32]u8 = undefined;
+            const entity_index = sparze.getIndex(entity);
+            const entity_version = sparze.getVersion(entity);
+
+            const id_text = if (debug_state.show_entity_versions)
+                std.fmt.bufPrintZ(&id_buf, "{d}:v{d}", .{ entity_index, entity_version }) catch "?"
+            else
+                std.fmt.bufPrintZ(&id_buf, "{d}", .{entity_index}) catch "?";
+
+            // Position text slightly offset from entity
+            const text_offset_x = debug_state.gizmo_size + 5.0;
+            const text_offset_y = -debug_state.gizmo_size - 5.0;
+            const text_pos = ig.ImVec2{ .x = transform.x + text_offset_x, .y = transform.y + text_offset_y };
+
+            // Draw text with background for readability
+            const text_color = ig.igGetColorU32ImVec4(.{ .x = 1.0, .y = 1.0, .z = 0.0, .w = 1.0 }); // Yellow
+            const bg_color = ig.igGetColorU32ImVec4(.{ .x = 0.0, .y = 0.0, .z = 0.0, .w = 0.7 }); // Semi-transparent black
+
+            // Calculate text size for background
+            const text_size = ig.igCalcTextSize(id_text.ptr);
+            const padding = 2.0;
+
+            // Draw background rectangle
+            const bg_min = ig.ImVec2{ .x = text_pos.x - padding, .y = text_pos.y - padding };
+            const bg_max = ig.ImVec2{ .x = text_pos.x + text_size.x + padding, .y = text_pos.y + text_size.y + padding };
+            ig.ImDrawList_AddRectFilled(draw_list, bg_min, bg_max, bg_color);
+
+            // Draw text
+            ig.ImDrawList_AddText(draw_list, text_pos, text_color, id_text.ptr);
+        }
+    }
 }
 
 /// Open a debug window showing all components of tracked entities
+///
+/// Features:
+/// - Component inspector with change highlighting
+/// - Entity gizmos (crosshair markers at entity positions)
+/// - Entity ID labels (shows entity index, e.g., "42" or "42:v1" with version)
+///
 /// Usage: call this from a system with access to commands/world and the tracked entities query
 pub fn openDebugWindow(ComponentTypes: anytype, commands: anytype, tracked_entities: []const sparze.Entity) !void {
     // Initialize debug state if needed
@@ -162,13 +325,16 @@ pub fn openDebugWindow(ComponentTypes: anytype, commands: anytype, tracked_entit
         try initDebugState(std.heap.c_allocator);
     }
 
+    // Update tracked entity count
+    debug_state.tracked_entity_count = tracked_entities.len;
+
     // Update highlight timers
     updateHighlightTimers();
 
     const pos = ig.ImVec2{ .x = 10, .y = 10 };
     ig.igSetNextWindowPos(pos, ig.ImGuiCond_Once);
 
-    const size = ig.ImVec2{ .x = 500, .y = 600 };
+    const size = ig.ImVec2{ .x = 420, .y = 700 };
     ig.igSetNextWindowSize(size, ig.ImGuiCond_Once);
 
     var window_open = true;
@@ -187,6 +353,22 @@ pub fn openDebugWindow(ComponentTypes: anytype, commands: anytype, tracked_entit
         }
         if (ig.igIsItemHovered(ig.ImGuiHoveredFlags_None)) {
             ig.igSetTooltip("%s", if (debug_state.show_gizmos) "Hide Gizmos" else "Show Gizmos");
+        }
+
+        ig.igSameLine();
+        if (ig.igSmallButton("IDs")) {
+            debug_state.show_entity_ids = !debug_state.show_entity_ids;
+        }
+        if (ig.igIsItemHovered(ig.ImGuiHoveredFlags_None)) {
+            ig.igSetTooltip("%s", if (debug_state.show_entity_ids) "Hide Entity IDs" else "Show Entity IDs");
+        }
+
+        ig.igSameLine();
+        if (ig.igSmallButton("Ver")) {
+            debug_state.show_entity_versions = !debug_state.show_entity_versions;
+        }
+        if (ig.igIsItemHovered(ig.ImGuiHoveredFlags_None)) {
+            ig.igSetTooltip("%s", if (debug_state.show_entity_versions) "Hide Versions" else "Show Versions");
         }
 
         ig.igSeparator();
@@ -237,7 +419,9 @@ pub fn openDebugWindow(ComponentTypes: anytype, commands: anytype, tracked_entit
 
             // Entity header
             var entity_buf: [128]u8 = undefined;
-            const entity_text = std.fmt.bufPrintZ(&entity_buf, "Entity ID: {d}", .{entity}) catch "Entity: <error>";
+            const entity_index = sparze.getIndex(entity);
+            const entity_version = sparze.getVersion(entity);
+            const entity_text = std.fmt.bufPrintZ(&entity_buf, "Entity {d} (v{d})", .{ entity_index, entity_version }) catch "Entity: <error>";
 
             // Make it a collapsible header for each entity
             const entity_header_flags = ig.ImGuiTreeNodeFlags_DefaultOpen |
@@ -365,10 +549,197 @@ pub fn openDebugWindow(ComponentTypes: anytype, commands: anytype, tracked_entit
     try drawGizmos(commands, tracked_entities);
 }
 
+/// Open performance metrics window
+pub fn openPerformanceWindow() void {
+    if (!debug_state.show_performance_window) return;
+
+    const pos = ig.ImVec2{ .x = 440, .y = 10 };
+    ig.igSetNextWindowPos(pos, ig.ImGuiCond_Once);
+
+    const size = ig.ImVec2{ .x = 350, .y = 250 };
+    ig.igSetNextWindowSize(size, ig.ImGuiCond_Once);
+
+    if (ig.igBegin("Performance Metrics", &debug_state.show_performance_window, ig.ImGuiWindowFlags_None)) {
+        const perf = &debug_state.performance;
+
+        // FPS Display
+        ig.igText("FPS:");
+        ig.igSameLine();
+        var fps_buf: [32]u8 = undefined;
+        const fps_text = std.fmt.bufPrintZ(&fps_buf, "{d:.1}", .{perf.current_fps}) catch "N/A";
+        ig.igPushStyleColorImVec4(ig.ImGuiCol_Text, .{ .x = 0.2, .y = 1.0, .z = 0.4, .w = 1.0 });
+        ig.igText("%s", fps_text.ptr);
+        ig.igPopStyleColor();
+
+        // Frame Time
+        ig.igText("Frame Time:");
+        ig.igSameLine();
+        var ft_buf: [32]u8 = undefined;
+        const ft_text = std.fmt.bufPrintZ(&ft_buf, "{d:.2} ms", .{perf.avg_frame_time_ms}) catch "N/A";
+        ig.igText("%s", ft_text.ptr);
+
+        ig.igSpacing();
+        ig.igSeparator();
+        ig.igSpacing();
+
+        // Min/Max FPS
+        ig.igText("Min FPS:");
+        ig.igSameLine();
+        var min_buf: [32]u8 = undefined;
+        const min_text = std.fmt.bufPrintZ(&min_buf, "{d:.1}", .{perf.min_fps}) catch "N/A";
+        ig.igPushStyleColorImVec4(ig.ImGuiCol_Text, .{ .x = 1.0, .y = 0.5, .z = 0.3, .w = 1.0 });
+        ig.igText("%s", min_text.ptr);
+        ig.igPopStyleColor();
+
+        ig.igText("Max FPS:");
+        ig.igSameLine();
+        var max_buf: [32]u8 = undefined;
+        const max_text = std.fmt.bufPrintZ(&max_buf, "{d:.1}", .{perf.max_fps}) catch "N/A";
+        ig.igPushStyleColorImVec4(ig.ImGuiCol_Text, .{ .x = 0.3, .y = 0.8, .z = 1.0, .w = 1.0 });
+        ig.igText("%s", max_text.ptr);
+        ig.igPopStyleColor();
+
+        if (ig.igButton("Reset Min/Max")) {
+            perf.min_fps = perf.current_fps;
+            perf.max_fps = perf.current_fps;
+        }
+
+        ig.igSpacing();
+        ig.igSeparator();
+        ig.igSpacing();
+
+        // Frame time graph
+        ig.igText("Frame Time History:");
+        ig.igPlotLines("##frametime", &perf.frame_times, @intCast(perf.frame_times.len));
+
+        ig.igSpacing();
+
+        // Entity counts
+        ig.igText("Tracked Entities:");
+        ig.igSameLine();
+        var tracked_buf: [32]u8 = undefined;
+        const tracked_text = std.fmt.bufPrintZ(&tracked_buf, "{d}", .{debug_state.tracked_entity_count}) catch "?";
+        ig.igText("%s", tracked_text.ptr);
+
+        ig.igText("Total Events:");
+        ig.igSameLine();
+        var events_buf: [32]u8 = undefined;
+        const events_text = std.fmt.bufPrintZ(&events_buf, "{d}", .{debug_state.lifecycle_log.items.len}) catch "?";
+        ig.igText("%s", events_text.ptr);
+
+        ig.igSpacing();
+        ig.igText("Frame:");
+        ig.igSameLine();
+        var frame_buf: [32]u8 = undefined;
+        const frame_text = std.fmt.bufPrintZ(&frame_buf, "{d}", .{debug_state.frame_counter}) catch "?";
+        ig.igPushStyleColorImVec4(ig.ImGuiCol_Text, .{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 });
+        ig.igText("%s", frame_text.ptr);
+        ig.igPopStyleColor();
+    }
+    ig.igEnd();
+}
+
+/// Open entity lifecycle log window
+pub fn openLifecycleWindow() void {
+    if (!debug_state.show_lifecycle_window) return;
+
+    const pos = ig.ImVec2{ .x = 440, .y = 270 };
+    ig.igSetNextWindowPos(pos, ig.ImGuiCond_Once);
+
+    const size = ig.ImVec2{ .x = 350, .y = 520 };
+    ig.igSetNextWindowSize(size, ig.ImGuiCond_Once);
+
+    if (ig.igBegin("Entity Lifecycle Log", &debug_state.show_lifecycle_window, ig.ImGuiWindowFlags_None)) {
+        var header_buf: [64]u8 = undefined;
+        const header_text = std.fmt.bufPrintZ(&header_buf, "Events: {d}", .{debug_state.lifecycle_log.items.len}) catch "Events";
+        ig.igTextColored(.{ .x = 0.2, .y = 0.8, .z = 1.0, .w = 1.0 }, "%s", header_text.ptr);
+
+        ig.igSameLine();
+        if (ig.igSmallButton("Clear")) {
+            debug_state.lifecycle_log.clearRetainingCapacity();
+        }
+
+        ig.igSeparator();
+        ig.igSpacing();
+
+        // Statistics
+        var created_count: usize = 0;
+        var destroyed_count: usize = 0;
+        for (debug_state.lifecycle_log.items) |event| {
+            switch (event.event_type) {
+                .created => created_count += 1,
+                .destroyed => destroyed_count += 1,
+            }
+        }
+
+        var stats_buf: [128]u8 = undefined;
+        const stats_text = std.fmt.bufPrintZ(&stats_buf, "Created: {d}  |  Destroyed: {d}  |  Net: {d}", .{
+            created_count,
+            destroyed_count,
+            created_count -| destroyed_count,
+        }) catch "Stats";
+        ig.igText("%s", stats_text.ptr);
+
+        ig.igSpacing();
+        ig.igSeparator();
+        ig.igSpacing();
+
+        // Event log (reverse chronological - newest first)
+        _ = ig.igBeginChild("EventLog", .{ .x = 0, .y = 0 }, ig.ImGuiChildFlags_Border, ig.ImGuiWindowFlags_None);
+
+        var i: usize = debug_state.lifecycle_log.items.len;
+        while (i > 0) {
+            i -= 1;
+            const event = debug_state.lifecycle_log.items[i];
+
+            var event_buf: [256]u8 = undefined;
+            const event_type_str = switch (event.event_type) {
+                .created => "CREATED",
+                .destroyed => "DESTROYED",
+            };
+
+            const event_entity_index = sparze.getIndex(event.entity);
+            const event_entity_version = sparze.getVersion(event.entity);
+            const event_text = std.fmt.bufPrintZ(&event_buf, "[{d:5.2}s] Frame {d:6} | Entity {d} (v{d}) {s}", .{
+                event.timestamp,
+                event.frame_number,
+                event_entity_index,
+                event_entity_version,
+                event_type_str,
+            }) catch "Event";
+
+            // Color code by event type
+            const color = switch (event.event_type) {
+                .created => ig.ImVec4{ .x = 0.3, .y = 1.0, .z = 0.5, .w = 1.0 },
+                .destroyed => ig.ImVec4{ .x = 1.0, .y = 0.4, .z = 0.3, .w = 1.0 },
+            };
+
+            ig.igPushStyleColorImVec4(ig.ImGuiCol_Text, color);
+            ig.igText("%s", event_text.ptr);
+            ig.igPopStyleColor();
+        }
+
+        // Auto-scroll to bottom (newest)
+        if (ig.igGetScrollY() >= ig.igGetScrollMaxY()) {
+            ig.igSetScrollHereY(1.0);
+        }
+
+        ig.igEndChild();
+    }
+    ig.igEnd();
+}
+
 pub const Components = .{Tracked};
 
 pub fn build(registry: SystemRegistry) !void {
+    registry.registerSystem(updateDebugSystems, .first);
     registry.registerTerminateSystem(cleanup, .last);
+}
+
+fn updateDebugSystems() !void {
+    updatePerformanceMetrics();
+    openPerformanceWindow();
+    openLifecycleWindow();
 }
 
 fn cleanup() !void {

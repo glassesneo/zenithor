@@ -95,6 +95,7 @@ pub fn build(registry: SystemRegistry) !void {
 - Must be explicitly registered by users in `zenithor.run(.{ Plugin })` to access their features
 - **GraphicsPlugin** (`src/plugins/graphics/root.zig`) - 2D shape rendering (Point, Line, Triangle, Rectangle)
 - **ImGuiPlugin** (`src/plugins/imgui/root.zig`) - Dear ImGui integration with Window component
+- **DebugPlugin** (`src/plugins/debug/root.zig`) - Runtime debugging tools with entity tracking, gizmos, and performance monitoring
 
 ### World Building
 
@@ -385,6 +386,59 @@ Plugin `Groups` declarations are used to:
 1. Validate groups at compile time
 2. Create groups during initialization
 3. Enable optimized group-based queries in systems
+
+## Application Configuration
+
+### Window Settings
+
+Default window size is configured in `src/core/application.zig`:
+```zig
+.width = 1280,
+.height = 800,
+```
+
+This provides sufficient space for debug UI windows and game content without overlapping.
+
+### Debug Plugin
+
+The Debug plugin (`src/plugins/debug/root.zig`) provides comprehensive debugging tools:
+
+**Features:**
+- **Entity Tracker** - Inspect components and their values with change highlighting
+- **Gizmos** - Visual crosshair markers at entity positions
+- **Entity ID Labels** - Display entity index next to gizmos (e.g., "42" or "42:v1")
+- **Performance Metrics** - FPS, frame time graphs, and statistics
+- **Lifecycle Log** - Track entity creation/destruction events
+
+**Window Layout (1280x800):**
+- Entity Tracker: (10, 10) - 420x700
+- Performance Metrics: (440, 10) - 350x250
+- Lifecycle Log: (440, 270) - 350x520
+
+**Usage:**
+```zig
+// Mark entities for tracking
+const entity = try commands.createEntityWith(.{
+    Transform{ .x = 100, .y = 100, .z = 0 },
+    DebugPlugin.Tracked{}, // Tag for debug tracking
+});
+
+// Display debug UI
+fn debugSystem(commands: anytype, tracked: zenithor.SingleTag(DebugPlugin.Tracked)) !void {
+    try DebugPlugin.openDebugWindow(.{
+        Transform,
+        Velocity,
+        Health,
+    }, commands, tracked.entities);
+}
+```
+
+**Entity Structure:**
+- Entities consist of a 16-bit **index** (slot identifier) and 16-bit **version** (generation counter)
+- Access via `sparze.getIndex(entity)` and `sparze.getVersion(entity)`
+- Debug UI displays index by default, with optional version toggle
+
+See `src/plugins/debug/API.md` for complete API documentation.
 
 ## Important Notes
 
