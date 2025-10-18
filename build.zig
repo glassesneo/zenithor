@@ -42,6 +42,7 @@ fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
 
     const native_all = b.step("examples-native", "Build all native examples");
     const web_all = b.step("examples-web", "Build all web examples");
+    const web_serve_all = b.step("examples-web-serve", "Serve all web examples");
     const examples_alias = b.step("examples", "Build examples");
 
     if (is_wasm) {
@@ -51,12 +52,13 @@ fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
             const run_desc = b.fmt("Run {s} example", .{example.name});
             const out = try buildWebExample(b, example, options, deps);
             web_all.dependOn(out.build);
+            web_serve_all.dependOn(&out.run.step);
 
             b.step(example.name, build_desc).dependOn(out.build);
             b.step(b.fmt("run-{s}", .{example.name}), run_desc).dependOn(&out.run.step);
         }
-
         examples_alias.dependOn(web_all);
+        b.step("serve-examples", "Serve web examples").dependOn(web_serve_all);
     } else {
         for (examples) |example| {
             const deps = try loadExampleDependencies(b, options);
@@ -183,7 +185,7 @@ fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, dep
     b.step(build_label, b.fmt("Build {s} (web)", .{example.name})).dependOn(&link.step);
 
     const deno = b.addSystemCommand(&.{
-        "deno", "run", "--allow-net", "--allow-read", "--watch", "server.ts",
+        "deno", "run", "--allow-net", "--allow-read", "--watch", "server/server.ts",
     });
     deno.step.dependOn(&link.step);
     b.step(run_label, b.fmt("Run {s} (web)", .{example.name})).dependOn(&deno.step);

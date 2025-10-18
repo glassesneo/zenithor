@@ -3,6 +3,8 @@ import { serveDir } from "jsr:@std/http@1";
 const fsRoot = Deno.args[0] ?? "./zig-out/web";
 const PORT = 8000;
 const HOT_RELOAD_PATH = "/__hot-reload";
+const API_EXAMPLES_PATH = "/__api/examples";
+const ASSETS_PATH = "/__assets";
 
 // Store WebSocket connections for hot reload notifications
 const wsConnections = new Set<WebSocket>();
@@ -99,6 +101,80 @@ function injectHotReload(html: string) {
   return html + script;
 }
 
+interface ExampleInfo {
+  name: string;
+  htmlPath: string;
+  wasmSize: number;
+  lastModified: Date;
+}
+
+async function getAvailableExamples(): Promise<ExampleInfo[]> {
+  const examples: ExampleInfo[] = [];
+  
+  try {
+    for await (const entry of Deno.readDir(fsRoot)) {
+      if (entry.isFile && entry.name.endsWith(".html")) {
+        const name = entry.name.replace(".html", "");
+        const htmlPath = `${fsRoot}/${entry.name}`;
+        const wasmPath = `${fsRoot}/${name}.wasm`;
+        
+        try {
+          const wasmStat = await Deno.stat(wasmPath);
+          const htmlStat = await Deno.stat(htmlPath);
+          
+          examples.push({
+            name,
+            htmlPath: `/${entry.name}`,
+            wasmSize: wasmStat.size,
+            lastModified: htmlStat.mtime ?? new Date(),
+          });
+        } catch {
+          // Skip if wasm file doesn't exist
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error reading examples directory:", error);
+  }
+  
+  return examples.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+async function serveAsset(pathname: string): Promise<Response | null> {
+  const assetMap: Record<string, { path: string; contentType: string }> = {
+    "/style.css": { path: "./server/style.css", contentType: "text/css" },
+    "/index.js": { path: "./server/index.js", contentType: "application/javascript" },
+  };
+
+  const asset = assetMap[pathname];
+  if (!asset) return null;
+
+  try {
+    const content = await Deno.readTextFile(asset.path);
+    return new Response(content, {
+      status: 200,
+      headers: { "content-type": asset.contentType },
+    });
+  } catch {
+    return new Response("Not Found", { status: 404 });
+  }
+}
+
 async function serveHandler(req: Request): Promise<Response> {
   const url = new URL(req.url, `http://${req.headers.get("host")}`);
 
@@ -106,6 +182,43 @@ async function serveHandler(req: Request): Promise<Response> {
     return handleWebSocket(req);
   }
 
+  // Serve API endpoint for examples data
+  if (url.pathname === API_EXAMPLES_PATH) {
+    const examples = await getAvailableExamples();
+    const formattedExamples = examples.map(ex => ({
+      name: ex.name,
+      htmlPath: ex.htmlPath,
+      wasmSize: formatBytes(ex.wasmSize),
+      lastModified: formatDate(ex.lastModified),
+    }));
+    
+    return new Response(JSON.stringify(formattedExamples), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  // Serve static assets (CSS, JS)
+  if (url.pathname.startsWith(ASSETS_PATH)) {
+    const assetPath = url.pathname.replace(ASSETS_PATH, "");
+    const response = await serveAsset(assetPath);
+    if (response) return response;
+  }
+
+  // Serve custom index page at root
+  if (url.pathname === "/") {
+    try {
+      const html = await Deno.readTextFile("./server/index.html");
+      return new Response(html, {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    } catch {
+      return new Response("Index page not found", { status: 404 });
+    }
+  }
+
+  // Serve example files with hot reload injection
   const response = await serveDir(req, { fsRoot });
 
   const contentType = response.headers.get("content-type") ?? "";
@@ -119,7 +232,7 @@ async function serveHandler(req: Request): Promise<Response> {
     headers.set("content-length", String(bodyBytes.length));
 
     return new Response(bodyBytes, {
-      status: response.status,
+      status: 200,
       headers,
     });
   }
