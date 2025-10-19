@@ -59,7 +59,6 @@ fn movement(movement_query: zenithor.Group(CoordinateGroup)) !void {
     const velocities = movement_query.getMutArrayOf(Velocity);
 
     for (transforms, velocities) |*transform, *velocity| {
-        std.debug.print("{any}\n", .{transform});
         // Update position
         transform.x += velocity.x * dt;
         transform.y += velocity.y * dt;

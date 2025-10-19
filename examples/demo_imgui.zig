@@ -20,17 +20,17 @@ fn setup(commands: anytype) !void {
     });
 }
 
-fn printTransform(transforms: zenithor.SingleQuery(BuiltinPlugin.Transform)) !void {
-    for (transforms.entities, transforms.components) |entity, transform| {
-        std.debug.print("entity: {any}, transform: {any}\n", .{ entity, transform });
-    }
-}
+// fn printTransform(transforms: zenithor.SingleQuery(BuiltinPlugin.Transform)) !void {
+// for (transforms.entities, transforms.components) |entity, transform| {
+// std.debug.print("entity: {any}, transform: {any}\n", .{ entity, transform });
+// }
+// }
 
 const Game = struct {
     pub const Components = .{};
 
     pub fn build(registry: SystemRegistry) !void {
         registry.registerStartupSystem(setup, .first);
-        registry.registerSystem(printTransform, .first);
+        // registry.registerSystem(printTransform, .first);
     }
 };
