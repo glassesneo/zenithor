@@ -77,12 +77,31 @@ Example plugin structure:
 pub const Components = .{ MyComponent };
 pub const Groups = &.{ MyGroup };
 
+// Option 1: Without allocator parameter
 pub fn build(registry: SystemRegistry) !void {
     registry.registerStartupSystem(initSystem, .first);
     registry.registerSystem(updateSystem, .update);
     registry.registerTerminateSystem(cleanupSystem, .last);
 }
+
+// Option 2: With allocator parameter (optional, order-independent)
+pub fn build(allocator: std.mem.Allocator, registry: SystemRegistry) !void {
+    // Allocator is the World's allocator, useful for plugin initialization
+    registry.registerStartupSystem(initSystem, .first);
+    registry.registerSystem(updateSystem, .update);
+    registry.registerTerminateSystem(cleanupSystem, .last);
+}
+
+// Option 3: Parameters in any order
+pub fn build(registry: SystemRegistry, allocator: std.mem.Allocator) !void {
+    // Parameter order doesn't matter - engine detects types at compile time
+    registry.registerStartupSystem(initSystem, .first);
+    registry.registerSystem(updateSystem, .update);
+    registry.registerTerminateSystem(cleanupSystem, .last);
+}
 ```
+
+**Note**: The `build()` function can optionally accept an `allocator` parameter. The engine automatically detects parameter types at compile time and constructs the appropriate argument tuple, so parameter order doesn't matter.
 
 ### Plugin Categories
 
@@ -149,7 +168,10 @@ Note: The ECS World loads component types from all `Components` tuples and execu
 1. Create plugin file (e.g., `src/plugins/my_plugin/root.zig`)
 2. Define `Components` tuple with component types
 3. Optionally define `Groups` array for entity groupings
-4. Implement `build(registry: SystemRegistry)` to register systems
+4. Implement `build()` function to register systems:
+   - Without allocator: `build(registry: SystemRegistry) !void`
+   - With allocator: `build(allocator: std.mem.Allocator, registry: SystemRegistry) !void`
+   - Parameters can be in any order - the engine detects types at compile time
 5. Add plugin to `src/root.zig` exports
 6. Include plugin in example/application via `zenithor.run(.{ MyPlugin })`
 

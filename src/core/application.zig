@@ -113,7 +113,50 @@ pub fn run(comptime plugins: anytype) void {
 
             inline for (plugins) |Plugin| {
                 if (@hasDecl(Plugin, "build")) {
-                    Plugin.build(registry) catch unreachable;
+                    const build_fn_info = @typeInfo(@TypeOf(Plugin.build)).@"fn";
+
+                    // Create a wrapper function to construct args at runtime
+                    const wrapper = struct {
+                        fn call(alloc: std.mem.Allocator, reg: system_module.SystemRegistry) !void {
+                            // Build tuple type at compile time
+                            const ArgsType = comptime blk: {
+                                var fields: [build_fn_info.params.len]std.builtin.Type.StructField = undefined;
+                                for (build_fn_info.params, 0..) |param, i| {
+                                    const ArgType = param.type.?;
+                                    // SystemRegistry contains comptime function pointers
+                                    const is_comptime_type = ArgType == system_module.SystemRegistry;
+                                    fields[i] = std.builtin.Type.StructField{
+                                        .name = std.fmt.comptimePrint("{d}", .{i}),
+                                        .type = ArgType,
+                                        .is_comptime = is_comptime_type,
+                                        .alignment = if (is_comptime_type) 0 else @alignOf(ArgType),
+                                        .default_value_ptr = if (is_comptime_type) &reg else null,
+                                    };
+                                }
+                                break :blk @Type(.{ .@"struct" = .{
+                                    .layout = .auto,
+                                    .is_tuple = true,
+                                    .decls = &.{},
+                                    .fields = &fields,
+                                } });
+                            };
+
+                            // Populate the tuple at runtime
+                            var args: ArgsType = undefined;
+                            inline for (build_fn_info.params, 0..) |param, i| {
+                                const ParamType = param.type.?;
+                                if (ParamType == std.mem.Allocator) {
+                                    args[i] = alloc;
+                                } else if (ParamType == system_module.SystemRegistry) {
+                                    args[i] = reg;
+                                }
+                            }
+
+                            try @call(.auto, Plugin.build, args);
+                        }
+                    }.call;
+
+                    try wrapper(allocator, registry);
                 }
             }
 
