@@ -6,6 +6,7 @@ const examples = [_]Example{
     .{ .name = "demo_window" },
     .{ .name = "demo_2d" },
     .{ .name = "demo_imgui" },
+    .{ .name = "demo_input" },
     .{ .name = "demo_time" },
     .{ .name = "demo_debug" },
 };
