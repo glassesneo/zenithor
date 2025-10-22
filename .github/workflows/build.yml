@@ -22,14 +22,14 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.15.1
-      - name: run Tests
-        run: |
-          zig build test
       - name: prepare-linux
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install libglu1-mesa-dev mesa-common-dev xorg-dev libasound-dev
+      - name: run Tests
+        run: |
+          zig build test
       - name: build Native
         run: |
           zig build examples --summary all
