@@ -225,11 +225,16 @@ pub fn run(comptime plugins: anytype) void {
 }
 
 test "buildWorld: deduplicates components across plugins" {
+    const Duplicate = struct { field: u16 };
     const Plugin1 = struct {
-        pub const Components = .{ u32, f32 };
+        pub const A = struct {};
+        pub const B = struct {};
+        pub const Components = .{ A, B, Duplicate };
     };
     const Plugin2 = struct {
-        pub const Components = .{ u32, i32 }; // u32 duplicated
+        pub const C = struct { field1: []const u8 };
+        pub const D = struct { field1: []const u8 };
+        pub const Components = .{ C, D, Duplicate }; // duplicated
     };
 
     const World = buildWorld(.{ Plugin1, Plugin2 });
@@ -248,7 +253,7 @@ test "buildWorld: handles empty plugin list" {
 
 test "buildWorld: handles single plugin" {
     const Plugin = struct {
-        pub const Components = .{u32};
+        pub const Components = .{struct {}};
     };
 
     const World = buildWorld(.{Plugin});
