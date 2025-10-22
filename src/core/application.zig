@@ -64,6 +64,10 @@ pub fn run(comptime plugins: anytype) void {
         var startup_system_scheduler: SystemScheduler = SystemScheduler.init();
         var terminate_system_scheduler: SystemScheduler = SystemScheduler.init();
 
+        const max_event_handlers = 32;
+        var event_handlers: [max_event_handlers]*const fn ([*c]const sokol.app.Event) void = undefined;
+        var event_handler_count: usize = 0;
+
         pub fn registerSystem(comptime system_fn: anytype, stage: Stage) void {
             const wrapper = struct {
                 fn run(w: *World) !void {
@@ -90,6 +94,16 @@ pub fn run(comptime plugins: anytype) void {
             }.run;
             terminate_system_scheduler.register(wrapper, stage);
         }
+
+        pub fn registerEventHandler(comptime handler_fn: anytype) void {
+            const wrapper = struct {
+                fn handle(ev: [*c]const sokol.app.Event) void {
+                    handler_fn(ev.*) catch {};
+                }
+            }.handle;
+            event_handlers[event_handler_count] = wrapper;
+            event_handler_count += 1;
+        }
     };
 
     const Callbacks = struct {
@@ -109,7 +123,7 @@ pub fn run(comptime plugins: anytype) void {
             }
 
             // Call plugin build functions
-            const registry = system_module.SystemRegistry.init(App.registerSystem, App.registerStartupSystem, App.registerTerminateSystem);
+            const registry = system_module.SystemRegistry.init(App.registerSystem, App.registerStartupSystem, App.registerTerminateSystem, App.registerEventHandler);
 
             inline for (plugins) |Plugin| {
                 if (@hasDecl(Plugin, "build")) {
@@ -186,10 +200,10 @@ pub fn run(comptime plugins: anytype) void {
             sokol.gl.shutdown();
             sokol.gfx.shutdown();
         }
+
         export fn appEvent(ev: [*c]const sokol.app.Event) void {
-            inline for (plugins) |P| {
-                if (P != @import("../plugins/imgui/root.zig")) continue;
-                _ = sokol.imgui.handleEvent(ev.*);
+            for (0..App.event_handler_count) |i| {
+                App.event_handlers[i](ev);
             }
         }
     };

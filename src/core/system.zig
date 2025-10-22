@@ -52,16 +52,19 @@ pub const SystemRegistry = struct {
     _register_system_func: *const fn (comptime anytype, Stage) void,
     _register_startup_system_func: *const fn (comptime anytype, Stage) void,
     _register_terminate_system_func: *const fn (comptime anytype, Stage) void,
+    _register_event_handler_func: *const fn (comptime anytype) void,
 
     pub inline fn init(
         register_system_func: *const fn (comptime anytype, Stage) void,
         register_startup_system_func: *const fn (comptime anytype, Stage) void,
         register_terminate_system_func: *const fn (comptime anytype, Stage) void,
+        register_event_handler_func: *const fn (comptime anytype) void,
     ) SystemRegistry {
         return .{
             ._register_system_func = register_system_func,
             ._register_startup_system_func = register_startup_system_func,
             ._register_terminate_system_func = register_terminate_system_func,
+            ._register_event_handler_func = register_event_handler_func,
         };
     }
 
@@ -75,6 +78,10 @@ pub const SystemRegistry = struct {
 
     pub inline fn registerTerminateSystem(self: SystemRegistry, comptime system_fn: anytype, stage: Stage) void {
         self._register_terminate_system_func(system_fn, stage);
+    }
+
+    pub inline fn registerEventHandler(self: SystemRegistry, comptime handler_fn: anytype) void {
+        self._register_event_handler_func(handler_fn);
     }
 };
 
@@ -148,11 +155,13 @@ test "SystemRegistry: provides unified registration interface" {
         var system_called = false;
         var startup_called = false;
         var terminate_called = false;
+        var event_handler_called = false;
 
         fn reset() void {
             system_called = false;
             startup_called = false;
             terminate_called = false;
+            event_handler_called = false;
         }
     };
 
@@ -176,7 +185,13 @@ test "SystemRegistry: provides unified registration interface" {
         }
     }.func;
 
-    const registry = SystemRegistry.init(registerSystem, registerStartup, registerTerminate);
+    const registerEventHandler = struct {
+        fn func(comptime _: anytype) void {
+            TestState.event_handler_called = true;
+        }
+    }.func;
+
+    const registry = SystemRegistry.init(registerSystem, registerStartup, registerTerminate, registerEventHandler);
 
     const dummySystem = struct {
         fn run() !void {}
@@ -185,8 +200,10 @@ test "SystemRegistry: provides unified registration interface" {
     registry.registerSystem(dummySystem, .update);
     registry.registerStartupSystem(dummySystem, .first);
     registry.registerTerminateSystem(dummySystem, .last);
+    registry.registerEventHandler(dummySystem);
 
     try testing.expect(TestState.system_called);
     try testing.expect(TestState.startup_called);
     try testing.expect(TestState.terminate_called);
+    try testing.expect(TestState.event_handler_called);
 }

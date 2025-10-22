@@ -73,12 +73,17 @@ fn deinit() !void {
     sokol.imgui.shutdown();
 }
 
+fn handleEvent(event: sokol.app.Event) !void {
+    _ = sokol.imgui.handleEvent(event);
+}
+
 pub fn build(registry: SystemRegistry) !void {
     registry.registerStartupSystem(init, .first);
     registry.registerSystem(setupFrame, .first);
     registry.registerSystem(drawWindow, .render);
     registry.registerSystem(renderUi, .render_submit);
     registry.registerTerminateSystem(deinit, .post_process);
+    registry.registerEventHandler(handleEvent);
 }
 
 const std = @import("std");
