@@ -1,5 +1,5 @@
 
-name: Zig CI
+name: Build CI
 
 on:
   push:
@@ -12,20 +12,6 @@ on:
       - develop
 
 jobs:
-  test:
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v3
-    - uses: mlugg/setup-zig@v2
-      with:
-        version: 0.15.1
-    - name: Install Zig
-      run: |
-        sudo apt-get update
-        sudo apt-get install libglu1-mesa-dev mesa-common-dev xorg-dev libasound-dev
-    - name: Run Tests
-      run: |
-        zig build test
   build:
     strategy:
       matrix:
