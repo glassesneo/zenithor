@@ -248,7 +248,7 @@ fn drawGizmos(commands: anytype, tracked_entities: []const sparze.Entity) !void 
         if (transform_sparse_set.getPtr(entity)) |transform| {
             // Draw a bright magenta point at entity position
             sokol.gl.c4b(255, 0, 255, 255);
-            sokol.gl.v2f(transform.x, transform.y);
+            sokol.gl.v3f(transform.x, transform.y, transform.z);
         }
     }
 
@@ -263,12 +263,12 @@ fn drawGizmos(commands: anytype, tracked_entities: []const sparze.Entity) !void 
 
             // Horizontal line
             sokol.gl.c4b(255, 255, 0, 200);
-            sokol.gl.v2f(transform.x - size, transform.y);
-            sokol.gl.v2f(transform.x + size, transform.y);
+            sokol.gl.v3f(transform.x - size, transform.y, transform.z);
+            sokol.gl.v3f(transform.x + size, transform.y, transform.z);
 
             // Vertical line
-            sokol.gl.v2f(transform.x, transform.y - size);
-            sokol.gl.v2f(transform.x, transform.y + size);
+            sokol.gl.v3f(transform.x, transform.y - size, transform.z);
+            sokol.gl.v3f(transform.x, transform.y + size, transform.z);
         }
     }
 
