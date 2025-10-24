@@ -10,6 +10,7 @@ const examples = [_]Example{
     .{ .name = "demo_time" },
     .{ .name = "demo_debug" },
     .{ .name = "demo_zindex" },
+    .{ .name = "demo_circle" },
 };
 
 const Example = struct {

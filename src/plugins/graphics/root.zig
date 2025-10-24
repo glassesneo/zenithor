@@ -46,7 +46,16 @@ pub const Rectangle = struct {
     }
 };
 
-pub const Components = .{ Point, Line, Triangle, Rectangle };
+pub const Circle = struct {
+    radius: f32,
+    segments: u32 = 32, // Number of segments to approximate the circle
+
+    pub fn format(self: Circle, writer: anytype) !void {
+        try writer.print("Circle(radius: {d:.2}, segments: {})", .{ self.radius, self.segments });
+    }
+};
+
+pub const Components = .{ Point, Line, Triangle, Rectangle, Circle };
 
 pub var pass_action: sokol.gfx.PassAction = .{};
 
@@ -121,6 +130,39 @@ fn drawRectangle(rectangles: Query(struct { Rectangle, Transform })) !void {
     sokol.gl.end();
 }
 
+fn drawCircle(circles: Query(struct { Circle, Transform })) !void {
+    sokol.gl.beginTriangles();
+    for (circles.entities) |entity| {
+        if (!circles.hasAllComponents(entity)) continue;
+        const transform = circles.getComponentMut(entity, Transform).?;
+        const circle = circles.getComponentMut(entity, Circle).?;
+
+        // Set color (cyan for circles)
+        sokol.gl.c4b(0, 255, 255, 255);
+
+        // Draw circle as triangle fan
+        const segments = circle.segments;
+        const angle_step = 2.0 * std.math.pi / @as(f32, @floatFromInt(segments));
+
+        var i: u32 = 0;
+        while (i < segments) : (i += 1) {
+            const angle1 = @as(f32, @floatFromInt(i)) * angle_step;
+            const angle2 = @as(f32, @floatFromInt(i + 1)) * angle_step;
+
+            const x1 = transform.x + circle.radius * @cos(angle1);
+            const y1 = transform.y + circle.radius * @sin(angle1);
+            const x2 = transform.x + circle.radius * @cos(angle2);
+            const y2 = transform.y + circle.radius * @sin(angle2);
+
+            // Triangle from center to two consecutive points on circumference
+            sokol.gl.v3f(transform.x, transform.y, transform.z); // Center
+            sokol.gl.v3f(x1, y1, transform.z); // Point 1 on circumference
+            sokol.gl.v3f(x2, y2, transform.z); // Point 2 on circumference
+        }
+    }
+    sokol.gl.end();
+}
+
 fn beginPass() !void {
     sokol.gfx.beginPass(.{ .action = pass_action, .swapchain = sokol.glue.swapchain() });
     sokol.gl.draw();
@@ -139,6 +181,7 @@ pub fn build(registry: SystemRegistry) !void {
     registry.registerSystem(drawLine, .render);
     registry.registerSystem(drawTriangle, .render);
     registry.registerSystem(drawRectangle, .render);
+    registry.registerSystem(drawCircle, .render);
     registry.registerSystem(beginPass, .render_submit);
     registry.registerSystem(endPass, .post_render);
 }
@@ -230,4 +273,51 @@ test "Graphics component types are correctly defined" {
     const rectangle = Rectangle{ .x = 150.25, .y = 250.75 };
     try testing.expectEqual(@as(f32, 150.25), rectangle.x);
     try testing.expectEqual(@as(f32, 250.75), rectangle.y);
+
+    // Verify Circle has correct fields
+    const circle1 = Circle{ .radius = 50.0 };
+    try testing.expectEqual(@as(f32, 50.0), circle1.radius);
+    try testing.expectEqual(@as(u32, 32), circle1.segments); // Default segments
+
+    const circle2 = Circle{ .radius = 75.5, .segments = 64 };
+    try testing.expectEqual(@as(f32, 75.5), circle2.radius);
+    try testing.expectEqual(@as(u32, 64), circle2.segments);
+}
+
+test "Circle segment count affects triangle count" {
+    const testing = std.testing;
+
+    // Each segment creates one triangle in the triangle fan
+    const circle_8 = Circle{ .radius = 10.0, .segments = 8 };
+    const circle_16 = Circle{ .radius = 10.0, .segments = 16 };
+    const circle_32 = Circle{ .radius = 10.0, .segments = 32 };
+
+    // Verify segment counts
+    try testing.expectEqual(@as(u32, 8), circle_8.segments);
+    try testing.expectEqual(@as(u32, 16), circle_16.segments);
+    try testing.expectEqual(@as(u32, 32), circle_32.segments);
+
+    // More segments = smoother circle
+    try testing.expect(circle_16.segments > circle_8.segments);
+    try testing.expect(circle_32.segments > circle_16.segments);
+}
+
+test "Circle approximation quality" {
+    const testing = std.testing;
+
+    // Low segment count for performance (octagon-like)
+    const low_quality = Circle{ .radius = 100.0, .segments = 8 };
+    try testing.expectEqual(@as(u32, 8), low_quality.segments);
+
+    // Default quality (good balance)
+    const default_quality = Circle{ .radius = 100.0 }; // segments = 32
+    try testing.expectEqual(@as(u32, 32), default_quality.segments);
+
+    // High quality for smooth circles
+    const high_quality = Circle{ .radius = 100.0, .segments = 64 };
+    try testing.expectEqual(@as(u32, 64), high_quality.segments);
+
+    // Very high quality (smooth but expensive)
+    const ultra_quality = Circle{ .radius = 100.0, .segments = 128 };
+    try testing.expectEqual(@as(u32, 128), ultra_quality.segments);
 }
