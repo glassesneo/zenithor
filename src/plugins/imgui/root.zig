@@ -50,10 +50,10 @@ fn setupFrame() !void {
 fn drawWindow(windowQuery: Query(struct { Window, BuiltinPlugin.Transform })) !void {
     for (windowQuery.entities) |entity| {
         if (!windowQuery.hasAllComponents(entity)) continue;
-        const window = windowQuery.getComponentMut(entity, Window).?;
+        const window = windowQuery.getComponentMut(entity, Window);
         if (!window.open) continue;
 
-        const transform = windowQuery.getComponentMut(entity, Transform).?;
+        const transform = windowQuery.getComponentMut(entity, Transform);
         ig.igSetNextWindowPos(.{ .x = transform.x, .y = transform.y }, ig.ImGuiCond_Once);
         ig.igSetNextWindowSize(.{ .x = 400, .y = 100 }, ig.ImGuiCond_Once);
         if (ig.igBegin(window.title, &window.open, ig.ImGuiWindowFlags_None)) {

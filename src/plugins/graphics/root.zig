@@ -81,7 +81,7 @@ fn drawPoint(points: Query(struct { Point, Transform })) !void {
     sokol.gl.beginPoints();
     for (points.entities) |entity| {
         if (!points.hasAllComponents(entity)) continue;
-        const transform = points.getComponentMut(entity, Transform).?;
+        const transform = points.getComponentMut(entity, Transform);
         sokol.gl.c4b(255, 0, 0, 0);
         sokol.gl.v3f(transform.x, transform.y, transform.z);
     }
@@ -92,8 +92,8 @@ fn drawLine(lines: Query(struct { Line, Transform })) !void {
     sokol.gl.beginLines();
     for (lines.entities) |entity| {
         if (!lines.hasAllComponents(entity)) continue;
-        const transform = lines.getComponentMut(entity, Transform).?;
-        const line = lines.getComponentMut(entity, Line).?;
+        const transform = lines.getComponentMut(entity, Transform);
+        const line = lines.getComponentMut(entity, Line);
         sokol.gl.c4b(0, 0, 0, 255);
         sokol.gl.v3f(transform.x, transform.y, transform.z);
         sokol.gl.v3f(transform.x + line.x, transform.y + line.y, transform.z);
@@ -105,8 +105,8 @@ fn drawTriangle(triangles: Query(struct { Triangle, Transform })) !void {
     sokol.gl.beginTriangles();
     for (triangles.entities) |entity| {
         if (!triangles.hasAllComponents(entity)) continue;
-        const transform = triangles.getComponentMut(entity, Transform).?;
-        const triangle = triangles.getComponentMut(entity, Triangle).?;
+        const transform = triangles.getComponentMut(entity, Transform);
+        const triangle = triangles.getComponentMut(entity, Triangle);
         sokol.gl.c4b(0, 255, 0, 0);
         sokol.gl.v3f(transform.x + triangle.x1, transform.y + triangle.y1, transform.z);
         sokol.gl.v3f(transform.x + triangle.x2, transform.y + triangle.y2, transform.z);
@@ -119,8 +119,8 @@ fn drawRectangle(rectangles: Query(struct { Rectangle, Transform })) !void {
     sokol.gl.beginQuads();
     for (rectangles.entities) |entity| {
         if (!rectangles.hasAllComponents(entity)) continue;
-        const transform = rectangles.getComponentMut(entity, Transform).?;
-        const rectangle = rectangles.getComponentMut(entity, Rectangle).?;
+        const transform = rectangles.getComponentMut(entity, Transform);
+        const rectangle = rectangles.getComponentMut(entity, Rectangle);
         sokol.gl.c4b(255, 255, 0, 0);
         sokol.gl.v3f(transform.x, transform.y, transform.z);
         sokol.gl.v3f(transform.x + rectangle.x, transform.y, transform.z);
@@ -134,8 +134,8 @@ fn drawCircle(circles: Query(struct { Circle, Transform })) !void {
     sokol.gl.beginTriangles();
     for (circles.entities) |entity| {
         if (!circles.hasAllComponents(entity)) continue;
-        const transform = circles.getComponentMut(entity, Transform).?;
-        const circle = circles.getComponentMut(entity, Circle).?;
+        const transform = circles.getComponentMut(entity, Transform);
+        const circle = circles.getComponentMut(entity, Circle);
 
         // Set color (cyan for circles)
         sokol.gl.c4b(0, 255, 255, 255);
@@ -234,9 +234,9 @@ test "Z-depth ordering: lower values render in front" {
     // Lower z values (more negative) should render in front (closer to camera)
     // Higher z values (more positive) should render behind (farther from camera)
 
-    const front_z: f32 = -0.9;  // Closer to camera
-    const middle_z: f32 = 0.0;  // Middle depth
-    const back_z: f32 = 0.9;    // Farther from camera
+    const front_z: f32 = -0.9; // Closer to camera
+    const middle_z: f32 = 0.0; // Middle depth
+    const back_z: f32 = 0.9; // Farther from camera
 
     // Verify ordering relationship
     try testing.expect(front_z < middle_z);

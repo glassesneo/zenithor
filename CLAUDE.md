@@ -326,10 +326,9 @@ fn movementSystem(movement: Group(MovementGroup)) !void {
 fn combatSystem(query: Query(struct { Position, Health })) !void {
     for (query.entities) |entity| {
         if (query.hasAllComponents(entity)) {
-            const pos = query.getComponent(entity, Position).?;
-            if (query.getComponentMut(entity, Health)) |health| {
-                // Process entity
-            }
+            const pos = query.getComponent(entity, Position);
+            const health = getComponentMut(entity, Health);
+            // Process entity
         }
     }
 }
