@@ -49,7 +49,7 @@ fn setupFrame() !void {
 
 fn drawWindow(windowQuery: Query(struct { Window, BuiltinPlugin.Transform })) !void {
     for (windowQuery.entities) |entity| {
-        if (!windowQuery.hasAllComponents(entity)) continue;
+        if (!windowQuery.filter(entity)) continue;
         const window = windowQuery.getComponentMut(entity, Window);
         if (!window.open) continue;
 

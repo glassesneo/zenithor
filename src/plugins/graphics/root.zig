@@ -79,7 +79,7 @@ fn setup2d() !void {
 fn drawPoint(points: Query(struct { Point, Transform, ?Color })) !void {
     sokol.gl.beginPoints();
     for (points.entities) |entity| {
-        if (!points.hasAllComponents(entity)) continue;
+        if (!points.filter(entity)) continue;
         if (points.getOptional(entity, Color)) |color| {
             sokol.gl.c4b(color.r, color.g, color.b, color.a);
         } else {
@@ -94,7 +94,7 @@ fn drawPoint(points: Query(struct { Point, Transform, ?Color })) !void {
 fn drawLine(lines: Query(struct { Line, Transform, ?Color })) !void {
     sokol.gl.beginLines();
     for (lines.entities) |entity| {
-        if (!lines.hasAllComponents(entity)) continue;
+        if (!lines.filter(entity)) continue;
         if (lines.getOptional(entity, Color)) |color| {
             sokol.gl.c4b(color.r, color.g, color.b, color.a);
         } else {
@@ -111,7 +111,7 @@ fn drawLine(lines: Query(struct { Line, Transform, ?Color })) !void {
 fn drawTriangle(triangles: Query(struct { Triangle, Transform, ?Color })) !void {
     sokol.gl.beginTriangles();
     for (triangles.entities) |entity| {
-        if (!triangles.hasAllComponents(entity)) continue;
+        if (!triangles.filter(entity)) continue;
         if (triangles.getOptional(entity, Color)) |color| {
             sokol.gl.c4b(color.r, color.g, color.b, color.a);
         } else {
@@ -129,7 +129,7 @@ fn drawTriangle(triangles: Query(struct { Triangle, Transform, ?Color })) !void 
 fn drawRectangle(rectangles: Query(struct { Rectangle, Transform, ?Color })) !void {
     sokol.gl.beginQuads();
     for (rectangles.entities) |entity| {
-        if (!rectangles.hasAllComponents(entity)) continue;
+        if (!rectangles.filter(entity)) continue;
         if (rectangles.getOptional(entity, Color)) |color| {
             sokol.gl.c4b(color.r, color.g, color.b, color.a);
         } else {
@@ -148,7 +148,7 @@ fn drawRectangle(rectangles: Query(struct { Rectangle, Transform, ?Color })) !vo
 fn drawCircle(circles: Query(struct { Circle, Transform, ?Color })) !void {
     sokol.gl.beginTriangles();
     for (circles.entities) |entity| {
-        if (!circles.hasAllComponents(entity)) continue;
+        if (!circles.filter(entity)) continue;
         const transform = circles.getComponentMut(entity, Transform);
         const circle = circles.getComponentMut(entity, Circle);
 

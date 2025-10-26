@@ -113,7 +113,7 @@ fn animate(tracked_query: zenithor.Query(struct { DebugPlugin.Tracked, BuiltinPl
     const z_offset = @sin(animation_time) * 0.8;
 
     for (tracked_query.entities) |entity| {
-        if (!tracked_query.hasAllComponents(entity)) continue;
+        if (!tracked_query.filter(entity)) continue;
         var transform = tracked_query.getComponentMut(entity, BuiltinPlugin.Transform);
         if (transform.z >= -0.1 and transform.z <= 0.1) {
             transform.z = z_offset;
