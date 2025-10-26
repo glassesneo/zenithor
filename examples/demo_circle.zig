@@ -142,42 +142,37 @@ fn setup(commands: anytype) !void {
     });
 }
 
-fn animate(commands: anytype) !void {
+fn animate(transforms: zenithor.SingleQuery(Transform)) !void {
     const dt = TimePlugin.delta_time;
     animation_time += dt;
 
-    const transform_sparse_set = commands.getSparseSetPtrMut(Transform);
-    const entities = transform_sparse_set.packed_array.items;
-
     // Animate rotating circles (entities around x=1000)
-    for (entities) |entity| {
-        if (transform_sparse_set.getPtrMut(entity)) |transform| {
-            // Rotating circles animation (right side)
-            if (transform.x > 900 and transform.x < 1100 and transform.y > 250 and transform.y < 450) {
-                // Calculate which circle this is based on original position
-                const center_x: f32 = 1000;
-                const center_y: f32 = 350;
-                const dx = transform.x - center_x;
-                const dy = transform.y - center_y;
-                const current_angle = std.math.atan2(dy, dx);
-                const rotation_speed: f32 = 1.0;
-                const new_angle = current_angle + rotation_speed * dt;
-                const radius_orbit: f32 = 100.0;
+    for (transforms.components) |*transform| {
+        // Rotating circles animation (right side)
+        if (transform.x > 900 and transform.x < 1100 and transform.y > 250 and transform.y < 450) {
+            // Calculate which circle this is based on original position
+            const center_x: f32 = 1000;
+            const center_y: f32 = 350;
+            const dx = transform.x - center_x;
+            const dy = transform.y - center_y;
+            const current_angle = std.math.atan2(dy, dx);
+            const rotation_speed: f32 = 1.0;
+            const new_angle = current_angle + rotation_speed * dt;
+            const radius_orbit: f32 = 100.0;
 
-                transform.x = center_x + radius_orbit * @cos(new_angle);
-                transform.y = center_y + radius_orbit * @sin(new_angle);
-            }
+            transform.x = center_x + radius_orbit * @cos(new_angle);
+            transform.y = center_y + radius_orbit * @sin(new_angle);
+        }
 
-            // Oscillating circles animation (bottom left)
-            if (transform.y > 550 and transform.y < 650) {
-                const offset = @sin(animation_time * 2.0) * 40.0;
-                if (transform.x > 150 and transform.x < 250) {
-                    transform.x = 200 + offset;
-                } else if (transform.x > 250 and transform.x < 350) {
-                    transform.x = 280 - offset * 0.5;
-                } else if (transform.x > 350 and transform.x < 450) {
-                    transform.x = 360 + offset * 0.7;
-                }
+        // Oscillating circles animation (bottom left)
+        if (transform.y > 550 and transform.y < 650) {
+            const offset = @sin(animation_time * 2.0) * 40.0;
+            if (transform.x > 150 and transform.x < 250) {
+                transform.x = 200 + offset;
+            } else if (transform.x > 250 and transform.x < 350) {
+                transform.x = 280 - offset * 0.5;
+            } else if (transform.x > 350 and transform.x < 450) {
+                transform.x = 360 + offset * 0.7;
             }
         }
     }

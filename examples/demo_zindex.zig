@@ -29,43 +29,43 @@ fn setup(commands: anytype) !void {
     GraphicsPlugin.pass_action.colors[0].clear_value = .{ .r = 0.9, .g = 0.9, .b = 0.95, .a = 1 };
 
     // Create overlapping rectangles at different z-depths
-    // Rectangle at z=0.5 (back layer - red)
     const rect_back = try commands.createEntityWith(.{
         GraphicsPlugin.Rectangle{ .x = 200, .y = 200 },
         BuiltinPlugin.Transform{ .x = 400, .y = 250, .z = 0.5 },
+        BuiltinPlugin.Color{ .r = 255, .g = 100, .b = 100, .a = 255 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(rect_back);
 
-    // Rectangle at z=0.0 (middle layer - will be yellow)
     const rect_middle = try commands.createEntityWith(.{
         GraphicsPlugin.Rectangle{ .x = 200, .y = 200 },
         BuiltinPlugin.Transform{ .x = 500, .y = 300, .z = 0.0 },
+        BuiltinPlugin.Color{ .r = 255, .g = 255, .b = 100, .a = 255 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(rect_middle);
 
-    // Rectangle at z=-0.5 (front layer - will be yellow)
     const rect_front = try commands.createEntityWith(.{
         GraphicsPlugin.Rectangle{ .x = 200, .y = 200 },
         BuiltinPlugin.Transform{ .x = 600, .y = 350, .z = -0.5 },
+        BuiltinPlugin.Color{ .r = 100, .g = 255, .b = 100, .a = 255 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(rect_front);
 
     // Create triangles at different z-depths
-    // Triangle at z=0.8 (far back - green)
     const tri_back = try commands.createEntityWith(.{
         GraphicsPlugin.Triangle{ .x1 = 0, .y1 = -80, .x2 = 80, .y2 = 80, .x3 = -80, .y3 = 80 },
         BuiltinPlugin.Transform{ .x = 200, .y = 200, .z = 0.8 },
+        BuiltinPlugin.Color{ .r = 100, .g = 255, .b = 100, .a = 255 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(tri_back);
 
-    // Triangle at z=-0.8 (very front - green)
     const tri_front = try commands.createEntityWith(.{
         GraphicsPlugin.Triangle{ .x1 = 0, .y1 = -80, .x2 = 80, .y2 = 80, .x3 = -80, .y3 = 80 },
         BuiltinPlugin.Transform{ .x = 1000, .y = 200, .z = -0.8 },
+        BuiltinPlugin.Color{ .r = 100, .g = 255, .b = 100, .a = 255 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(tri_front);
@@ -74,6 +74,7 @@ fn setup(commands: anytype) !void {
     const line_back = try commands.createEntityWith(.{
         GraphicsPlugin.Line{ .x = 300, .y = 0 },
         BuiltinPlugin.Transform{ .x = 300, .y = 600, .z = 0.3 },
+        BuiltinPlugin.Color{ .r = 100, .g = 100, .b = 255, .a = 255 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(line_back);
@@ -81,6 +82,7 @@ fn setup(commands: anytype) !void {
     const line_front = try commands.createEntityWith(.{
         GraphicsPlugin.Line{ .x = 300, .y = 0 },
         BuiltinPlugin.Transform{ .x = 700, .y = 600, .z = -0.3 },
+        BuiltinPlugin.Color{ .r = 100, .g = 100, .b = 255, .a = 255 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(line_front);
@@ -89,6 +91,7 @@ fn setup(commands: anytype) !void {
     const point_back = try commands.createEntityWith(.{
         GraphicsPlugin.Point{},
         BuiltinPlugin.Transform{ .x = 640, .y = 100, .z = 0.9 },
+        BuiltinPlugin.Color{ .r = 255, .g = 100, .b = 255, .a = 255 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(point_back);
@@ -96,25 +99,24 @@ fn setup(commands: anytype) !void {
     const point_front = try commands.createEntityWith(.{
         GraphicsPlugin.Point{},
         BuiltinPlugin.Transform{ .x = 640, .y = 150, .z = -0.9 },
+        BuiltinPlugin.Color{ .r = 255, .g = 100, .b = 255, .a = 255 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(point_front);
 }
 
-fn animate(tracked_query: zenithor.SingleTag(DebugPlugin.Tracked), commands: anytype) !void {
+fn animate(tracked_query: zenithor.Query(struct { DebugPlugin.Tracked, BuiltinPlugin.Transform })) !void {
     const dt = TimePlugin.delta_time;
     animation_time += dt;
 
     // Animate z-depth of middle entities (sine wave)
     const z_offset = @sin(animation_time) * 0.8;
 
-    const transform_sparse_set = commands.getSparseSetPtrMut(BuiltinPlugin.Transform);
     for (tracked_query.entities) |entity| {
-        if (transform_sparse_set.getPtrMut(entity)) |transform| {
-            // Only animate entities in the middle range
-            if (transform.z >= -0.1 and transform.z <= 0.1) {
-                transform.z = z_offset;
-            }
+        if (!tracked_query.hasAllComponents(entity)) continue;
+        var transform = tracked_query.getComponentMut(entity, BuiltinPlugin.Transform);
+        if (transform.z >= -0.1 and transform.z <= 0.1) {
+            transform.z = z_offset;
         }
     }
 }

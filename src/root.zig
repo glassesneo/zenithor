@@ -16,6 +16,7 @@ const sparze = @import("sparze");
 pub const SingleQuery = sparze.SingleQuery;
 pub const Query = sparze.Query;
 pub const SingleTag = sparze.SingleTag;
+pub const TagQuery = sparze.TagQuery;
 pub const Group = sparze.Group;
 
 test {
