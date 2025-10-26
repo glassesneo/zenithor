@@ -371,6 +371,62 @@ try world.createGroup(CombatGroup);
 4. **Use Query/TagQuery for occasional queries** with varying component combinations
 5. **Validate all groups upfront** for compile-time safety
 
+### Optional Components and Tags
+
+Both `Query` and `TagQuery` support optional components/tags using the `?Component` or `?Tag` syntax. This allows queries to match entities based on required components while optionally checking for additional components.
+
+```zig
+// Query with optional components
+fn combatSystem(query: Query(struct { Health, ?Shield })) !void {
+    const damage = 15;
+
+    for (query.entities) |entity| {
+        if (query.hasAllComponents(entity)) {
+            const health = query.getComponentMut(entity, Health);
+            var actual_damage = damage;
+
+            // Shield absorbs some damage if present
+            if (query.getOptionalMut(entity, Shield)) |shield| {
+                const absorbed = @min(shield.value, actual_damage);
+                shield.value -= absorbed;
+                actual_damage -= absorbed;
+            }
+
+            health.hp -= actual_damage;
+        }
+    }
+}
+
+// TagQuery with optional tags
+fn enemyAISystem(query: TagQuery(struct { Enemy, ?Boss, ?Elite })) !void {
+    for (query.entities) |entity| {
+        if (query.hasAllTags(entity)) {
+            // Base enemy AI
+
+            if (query.hasTag(entity, Boss)) {
+                // Enhanced boss AI
+            }
+
+            if (query.hasTag(entity, Elite)) {
+                // Elite enemy behavior
+            }
+        }
+    }
+}
+```
+
+**Optional Component/Tag API**:
+- **Required components**: Use `getComponent()` / `getComponentMut()` - asserts component exists
+- **Optional components**: Use `getOptional()` / `getOptionalMut()` - returns `?C` or `?*C`
+- **Optional tags**: Use `hasTag(entity, Tag)` - returns `bool`
+- **Filtering**: `hasAllComponents()` and `hasAllTags()` only check required (non-optional) fields
+
+**Benefits**:
+- **Flexibility**: Match entities with required components while optionally checking others
+- **Performance**: Query optimization only considers required components/tags for iteration
+- **Type Safety**: Explicit `?Component` syntax shows which components are optional at compile time
+- **Cleaner Code**: Avoid multiple separate queries when some components are optional
+
 ### Performance Optimizations
 
 **SparseSet Optimizations**:
