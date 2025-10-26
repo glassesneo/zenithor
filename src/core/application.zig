@@ -125,7 +125,7 @@ pub fn run(comptime plugins: anytype) void {
             // Call plugin build functions
             const registry = system_module.SystemRegistry.init(App.registerSystem, App.registerStartupSystem, App.registerTerminateSystem, App.registerEventHandler);
 
-            inline for (plugins) |Plugin| {
+            inline for (allPlugins) |Plugin| {
                 if (@hasDecl(Plugin, "build")) {
                     const build_fn_info = @typeInfo(@TypeOf(Plugin.build)).@"fn";
 

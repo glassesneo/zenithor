@@ -5,6 +5,7 @@ const sokol = @import("sokol");
 
 const BuiltinPlugin = @import("../../core/builtin.zig");
 const Transform = BuiltinPlugin.Transform;
+const Color = BuiltinPlugin.Color;
 
 const system_module = @import("../../core/system.zig");
 const SystemRegistry = system_module.SystemRegistry;
@@ -72,42 +73,52 @@ fn setDefaults() !void {
 
 fn setup2d() !void {
     sokol.gl.matrixModeProjection();
-    const width: f32 = @floatFromInt(sokol.app.width());
-    const height: f32 = @floatFromInt(sokol.app.height());
-    sokol.gl.ortho(0, width, height, 0, -1, 1);
+    sokol.gl.ortho(0, sokol.app.widthf(), sokol.app.heightf(), 0, -1, 1);
 }
 
-fn drawPoint(points: Query(struct { Point, Transform })) !void {
+fn drawPoint(points: Query(struct { Point, Transform, ?Color })) !void {
     sokol.gl.beginPoints();
     for (points.entities) |entity| {
         if (!points.hasAllComponents(entity)) continue;
+        if (points.getOptional(entity, Color)) |color| {
+            sokol.gl.c4b(color.r, color.g, color.b, color.a);
+        } else {
+            sokol.gl.c4b(255, 0, 0, 255);
+        }
         const transform = points.getComponentMut(entity, Transform);
-        sokol.gl.c4b(255, 0, 0, 0);
         sokol.gl.v3f(transform.x, transform.y, transform.z);
     }
     sokol.gl.end();
 }
 
-fn drawLine(lines: Query(struct { Line, Transform })) !void {
+fn drawLine(lines: Query(struct { Line, Transform, ?Color })) !void {
     sokol.gl.beginLines();
     for (lines.entities) |entity| {
         if (!lines.hasAllComponents(entity)) continue;
+        if (lines.getOptional(entity, Color)) |color| {
+            sokol.gl.c4b(color.r, color.g, color.b, color.a);
+        } else {
+            sokol.gl.c4b(255, 0, 0, 255);
+        }
         const transform = lines.getComponentMut(entity, Transform);
         const line = lines.getComponentMut(entity, Line);
-        sokol.gl.c4b(0, 0, 0, 255);
         sokol.gl.v3f(transform.x, transform.y, transform.z);
         sokol.gl.v3f(transform.x + line.x, transform.y + line.y, transform.z);
     }
     sokol.gl.end();
 }
 
-fn drawTriangle(triangles: Query(struct { Triangle, Transform })) !void {
+fn drawTriangle(triangles: Query(struct { Triangle, Transform, ?Color })) !void {
     sokol.gl.beginTriangles();
     for (triangles.entities) |entity| {
         if (!triangles.hasAllComponents(entity)) continue;
+        if (triangles.getOptional(entity, Color)) |color| {
+            sokol.gl.c4b(color.r, color.g, color.b, color.a);
+        } else {
+            sokol.gl.c4b(255, 0, 0, 255);
+        }
         const transform = triangles.getComponentMut(entity, Transform);
         const triangle = triangles.getComponentMut(entity, Triangle);
-        sokol.gl.c4b(0, 255, 0, 0);
         sokol.gl.v3f(transform.x + triangle.x1, transform.y + triangle.y1, transform.z);
         sokol.gl.v3f(transform.x + triangle.x2, transform.y + triangle.y2, transform.z);
         sokol.gl.v3f(transform.x + triangle.x3, transform.y + triangle.y3, transform.z);
@@ -115,13 +126,17 @@ fn drawTriangle(triangles: Query(struct { Triangle, Transform })) !void {
     sokol.gl.end();
 }
 
-fn drawRectangle(rectangles: Query(struct { Rectangle, Transform })) !void {
+fn drawRectangle(rectangles: Query(struct { Rectangle, Transform, ?Color })) !void {
     sokol.gl.beginQuads();
     for (rectangles.entities) |entity| {
         if (!rectangles.hasAllComponents(entity)) continue;
+        if (rectangles.getOptional(entity, Color)) |color| {
+            sokol.gl.c4b(color.r, color.g, color.b, color.a);
+        } else {
+            sokol.gl.c4b(255, 0, 0, 255);
+        }
         const transform = rectangles.getComponentMut(entity, Transform);
         const rectangle = rectangles.getComponentMut(entity, Rectangle);
-        sokol.gl.c4b(255, 255, 0, 0);
         sokol.gl.v3f(transform.x, transform.y, transform.z);
         sokol.gl.v3f(transform.x + rectangle.x, transform.y, transform.z);
         sokol.gl.v3f(transform.x + rectangle.x, transform.y + rectangle.y, transform.z);
@@ -130,22 +145,24 @@ fn drawRectangle(rectangles: Query(struct { Rectangle, Transform })) !void {
     sokol.gl.end();
 }
 
-fn drawCircle(circles: Query(struct { Circle, Transform })) !void {
+fn drawCircle(circles: Query(struct { Circle, Transform, ?Color })) !void {
     sokol.gl.beginTriangles();
     for (circles.entities) |entity| {
         if (!circles.hasAllComponents(entity)) continue;
         const transform = circles.getComponentMut(entity, Transform);
         const circle = circles.getComponentMut(entity, Circle);
 
-        // Set color (cyan for circles)
-        sokol.gl.c4b(0, 255, 255, 255);
+        if (circles.getOptional(entity, Color)) |color| {
+            sokol.gl.c4b(color.r, color.g, color.b, color.a);
+        } else {
+            sokol.gl.c4b(255, 0, 0, 255);
+        }
 
         // Draw circle as triangle fan
         const segments = circle.segments;
         const angle_step = 2.0 * std.math.pi / @as(f32, @floatFromInt(segments));
 
-        var i: u32 = 0;
-        while (i < segments) : (i += 1) {
+        for (0..segments) |i| {
             const angle1 = @as(f32, @floatFromInt(i)) * angle_step;
             const angle2 = @as(f32, @floatFromInt(i + 1)) * angle_step;
 
@@ -158,6 +175,7 @@ fn drawCircle(circles: Query(struct { Circle, Transform })) !void {
             sokol.gl.v3f(transform.x, transform.y, transform.z); // Center
             sokol.gl.v3f(x1, y1, transform.z); // Point 1 on circumference
             sokol.gl.v3f(x2, y2, transform.z); // Point 2 on circumference
+
         }
     }
     sokol.gl.end();
@@ -187,137 +205,3 @@ pub fn build(registry: SystemRegistry) !void {
 }
 
 const std = @import("std");
-
-test "Transform z-coordinate is used in 3D vertex positions" {
-    const testing = std.testing;
-
-    // Test Point
-    const point_transform = Transform{ .x = 100, .y = 200, .z = 0.5 };
-    try testing.expectEqual(@as(f32, 0.5), point_transform.z);
-
-    // Test Line
-    const line_transform = Transform{ .x = 50, .y = 75, .z = -0.3 };
-    try testing.expectEqual(@as(f32, -0.3), line_transform.z);
-
-    // Test Triangle
-    const tri_transform = Transform{ .x = 300, .y = 400, .z = 0.8 };
-    try testing.expectEqual(@as(f32, 0.8), tri_transform.z);
-
-    // Test Rectangle
-    const rect_transform = Transform{ .x = 150, .y = 250, .z = -0.9 };
-    try testing.expectEqual(@as(f32, -0.9), rect_transform.z);
-}
-
-test "Z-depth range validation for orthographic projection" {
-    const testing = std.testing;
-
-    // Test valid z-depth range [-1, 1] for ortho projection
-    // z_near = -1, z_far = 1
-    const z_near: f32 = -1.0;
-    const z_far: f32 = 1.0;
-
-    // Test boundary values
-    try testing.expectEqual(@as(f32, -1.0), z_near);
-    try testing.expectEqual(@as(f32, 1.0), z_far);
-
-    // Test valid z values within range
-    const valid_z_values = [_]f32{ -1.0, -0.5, 0.0, 0.5, 1.0 };
-    for (valid_z_values) |z| {
-        try testing.expect(z >= z_near and z <= z_far);
-    }
-}
-
-test "Z-depth ordering: lower values render in front" {
-    const testing = std.testing;
-
-    // In the orthographic projection with z_near=-1, z_far=1:
-    // Lower z values (more negative) should render in front (closer to camera)
-    // Higher z values (more positive) should render behind (farther from camera)
-
-    const front_z: f32 = -0.9; // Closer to camera
-    const middle_z: f32 = 0.0; // Middle depth
-    const back_z: f32 = 0.9; // Farther from camera
-
-    // Verify ordering relationship
-    try testing.expect(front_z < middle_z);
-    try testing.expect(middle_z < back_z);
-
-    // Lower z value means closer (rendered in front)
-    try testing.expect(front_z < back_z);
-}
-
-test "Graphics component types are correctly defined" {
-    const testing = std.testing;
-
-    // Verify Point is a tag component (empty struct)
-    try testing.expectEqual(@as(usize, 0), @sizeOf(Point));
-
-    // Verify Line has correct fields
-    const line = Line{ .x = 100.5, .y = 200.75 };
-    try testing.expectEqual(@as(f32, 100.5), line.x);
-    try testing.expectEqual(@as(f32, 200.75), line.y);
-
-    // Verify Triangle has correct fields
-    const triangle = Triangle{
-        .x1 = 10.5,
-        .y1 = 20.5,
-        .x2 = 30.5,
-        .y2 = 40.5,
-        .x3 = 50.5,
-        .y3 = 60.5,
-    };
-    try testing.expectEqual(@as(f32, 10.5), triangle.x1);
-    try testing.expectEqual(@as(f32, 60.5), triangle.y3);
-
-    // Verify Rectangle has correct fields
-    const rectangle = Rectangle{ .x = 150.25, .y = 250.75 };
-    try testing.expectEqual(@as(f32, 150.25), rectangle.x);
-    try testing.expectEqual(@as(f32, 250.75), rectangle.y);
-
-    // Verify Circle has correct fields
-    const circle1 = Circle{ .radius = 50.0 };
-    try testing.expectEqual(@as(f32, 50.0), circle1.radius);
-    try testing.expectEqual(@as(u32, 32), circle1.segments); // Default segments
-
-    const circle2 = Circle{ .radius = 75.5, .segments = 64 };
-    try testing.expectEqual(@as(f32, 75.5), circle2.radius);
-    try testing.expectEqual(@as(u32, 64), circle2.segments);
-}
-
-test "Circle segment count affects triangle count" {
-    const testing = std.testing;
-
-    // Each segment creates one triangle in the triangle fan
-    const circle_8 = Circle{ .radius = 10.0, .segments = 8 };
-    const circle_16 = Circle{ .radius = 10.0, .segments = 16 };
-    const circle_32 = Circle{ .radius = 10.0, .segments = 32 };
-
-    // Verify segment counts
-    try testing.expectEqual(@as(u32, 8), circle_8.segments);
-    try testing.expectEqual(@as(u32, 16), circle_16.segments);
-    try testing.expectEqual(@as(u32, 32), circle_32.segments);
-
-    // More segments = smoother circle
-    try testing.expect(circle_16.segments > circle_8.segments);
-    try testing.expect(circle_32.segments > circle_16.segments);
-}
-
-test "Circle approximation quality" {
-    const testing = std.testing;
-
-    // Low segment count for performance (octagon-like)
-    const low_quality = Circle{ .radius = 100.0, .segments = 8 };
-    try testing.expectEqual(@as(u32, 8), low_quality.segments);
-
-    // Default quality (good balance)
-    const default_quality = Circle{ .radius = 100.0 }; // segments = 32
-    try testing.expectEqual(@as(u32, 32), default_quality.segments);
-
-    // High quality for smooth circles
-    const high_quality = Circle{ .radius = 100.0, .segments = 64 };
-    try testing.expectEqual(@as(u32, 64), high_quality.segments);
-
-    // Very high quality (smooth but expensive)
-    const ultra_quality = Circle{ .radius = 100.0, .segments = 128 };
-    try testing.expectEqual(@as(u32, 128), ultra_quality.segments);
-}

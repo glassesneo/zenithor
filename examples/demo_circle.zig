@@ -1,14 +1,15 @@
 const zenithor = @import("zenithor");
 const SystemRegistry = zenithor.SystemRegistry;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
+const Transform = BuiltinPlugin.Transform;
+const Color = BuiltinPlugin.Color;
 const GraphicsPlugin = zenithor.GraphicsPlugin;
 const TimePlugin = zenithor.TimePlugin;
 const ImGuiPlugin = zenithor.ImGuiPlugin;
-const DebugPlugin = zenithor.DebugPlugin;
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, TimePlugin, ImGuiPlugin, DebugPlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, TimePlugin, ImGuiPlugin, Game });
 }
 
 const Game = struct {
@@ -17,7 +18,6 @@ const Game = struct {
     pub fn build(registry: SystemRegistry) !void {
         registry.registerStartupSystem(setup, .first);
         registry.registerSystem(animate, .update);
-        registry.registerSystem(debugInfo, .render);
         registry.registerSystem(infoWindow, .render);
     }
 };
@@ -28,138 +28,181 @@ fn setup(commands: anytype) !void {
     // Set light background
     GraphicsPlugin.pass_action.colors[0].clear_value = .{ .r = 0.95, .g = 0.95, .b = 1.0, .a = 1 };
 
-    // Create circles with different segment counts to show quality levels
-    // Low quality (8 segments - octagon)
-    const circle_low = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 60, .segments = 8 },
-        BuiltinPlugin.Transform{ .x = 150, .y = 200, .z = 0.0 },
-        DebugPlugin.Tracked{},
+    // SECTION 1: Quality comparison - circles with different segment counts (top left)
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 50, .segments = 8 },
+        Transform{ .x = 100, .y = 100, .z = 0.0 },
     });
-    try DebugPlugin.logEntityCreated(circle_low);
 
-    // Medium quality (16 segments)
-    const circle_medium = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 60, .segments = 16 },
-        BuiltinPlugin.Transform{ .x = 350, .y = 200, .z = 0.0 },
-        DebugPlugin.Tracked{},
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 50, .segments = 16 },
+        Transform{ .x = 250, .y = 100, .z = 0.0 },
     });
-    try DebugPlugin.logEntityCreated(circle_medium);
 
-    // Default quality (32 segments)
-    const circle_default = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 60 }, // Uses default 32 segments
-        BuiltinPlugin.Transform{ .x = 550, .y = 200, .z = 0.0 },
-        DebugPlugin.Tracked{},
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 50 }, // Default 32 segments
+        Transform{ .x = 400, .y = 100, .z = 0.0 },
     });
-    try DebugPlugin.logEntityCreated(circle_default);
 
-    // High quality (64 segments)
-    const circle_high = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 60, .segments = 64 },
-        BuiltinPlugin.Transform{ .x = 750, .y = 200, .z = 0.0 },
-        DebugPlugin.Tracked{},
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 50, .segments = 64 },
+        Transform{ .x = 550, .y = 100, .z = 0.0 },
     });
-    try DebugPlugin.logEntityCreated(circle_high);
 
-    // Create circles at different z-depths (overlapping)
-    // Back circle (red tint via separate component if we add colors)
-    const circle_back = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 80, .segments = 32 },
-        BuiltinPlugin.Transform{ .x = 450, .y = 450, .z = 0.5 },
-        DebugPlugin.Tracked{},
-    });
-    try DebugPlugin.logEntityCreated(circle_back);
+    // SECTION 2: Mixed shapes overlapping at different z-depths (center)
+    // This demonstrates z-index ordering with multiple shape types
+    // Each shape has a distinct color to make layering obvious
 
-    // Middle circle
-    const circle_middle = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 80, .segments = 32 },
-        BuiltinPlugin.Transform{ .x = 520, .y = 450, .z = 0.0 },
-        DebugPlugin.Tracked{},
+    // Layer 1 (back): Red circle at z=0.8
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 100, .segments = 32 },
+        Transform{ .x = 640, .y = 350, .z = 0.8 },
+        Color.red,
     });
-    try DebugPlugin.logEntityCreated(circle_middle);
 
-    // Front circle
-    const circle_front = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 80, .segments = 32 },
-        BuiltinPlugin.Transform{ .x = 590, .y = 450, .z = -0.5 },
-        DebugPlugin.Tracked{},
+    // Layer 2: Orange rectangle at z=0.4
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Rectangle{ .x = 150, .y = 150 },
+        Transform{ .x = 565, .y = 275, .z = 0.4 },
+        Color.orange,
     });
-    try DebugPlugin.logEntityCreated(circle_front);
 
-    // Create animated circles that change size
-    const circle_anim1 = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 40, .segments = 32 },
-        BuiltinPlugin.Transform{ .x = 950, .y = 300, .z = 0.0 },
-        DebugPlugin.Tracked{},
+    // Layer 3: Yellow triangle at z=0.0
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Triangle{ .x1 = 0, .y1 = -80, .x2 = 80, .y2 = 80, .x3 = -80, .y3 = 80 },
+        Transform{ .x = 640, .y = 350, .z = 0.0 },
+        Color.yellow,
     });
-    try DebugPlugin.logEntityCreated(circle_anim1);
 
-    const circle_anim2 = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 40, .segments = 32 },
-        BuiltinPlugin.Transform{ .x = 1080, .y = 300, .z = 0.0 },
-        DebugPlugin.Tracked{},
+    // Layer 4: Green circle at z=-0.4
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 60, .segments = 32 },
+        Transform{ .x = 640, .y = 350, .z = -0.4 },
+        Color.green,
     });
-    try DebugPlugin.logEntityCreated(circle_anim2);
+
+    // Layer 5 (front): Blue rectangle at z=-0.8
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Rectangle{ .x = 80, .y = 80 },
+        Transform{ .x = 600, .y = 310, .z = -0.8 },
+        Color.blue,
+    });
+
+    // SECTION 3: Animated rotating circles (right side)
+    // Create 5 circles that will rotate around a center point at different z-depths
+    // Each has a different color to show depth when they overlap
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 35, .segments = 32 },
+        Transform{ .x = 1100, .y = 350, .z = -0.8 },
+        Color.blue,
+    });
+
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 35, .segments = 32 },
+        Transform{ .x = 1030.9, .y = 445.1, .z = -0.4 },
+        Color.green,
+    });
+
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 35, .segments = 32 },
+        Transform{ .x = 938.2, .y = 409.5, .z = 0.0 },
+        Color.yellow,
+    });
+
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 35, .segments = 32 },
+        Transform{ .x = 938.2, .y = 290.5, .z = 0.4 },
+        Color.orange,
+    });
+
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 35, .segments = 32 },
+        Transform{ .x = 1030.9, .y = 254.9, .z = 0.8 },
+        Color.red,
+    });
+
+    // SECTION 4: Overlapping circles with animation (bottom left)
+    // Three circles that will move and demonstrate depth ordering
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 70, .segments = 32 },
+        Transform{ .x = 200, .y = 600, .z = 0.6 },
+        Color.red,
+    });
+
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 70, .segments = 32 },
+        Transform{ .x = 280, .y = 600, .z = 0.0 },
+        Color.green,
+    });
+
+    _ = try commands.createEntityWith(.{
+        GraphicsPlugin.Circle{ .radius = 70, .segments = 32 },
+        Transform{ .x = 360, .y = 600, .z = -0.6 },
+        Color.blue,
+    });
 }
 
-fn animate(tracked_query: zenithor.SingleTag(DebugPlugin.Tracked), commands: anytype) !void {
+fn animate(commands: anytype) !void {
     const dt = TimePlugin.delta_time;
     animation_time += dt;
 
-    const circle_sparse_set = commands.getSparseSetPtrMut(GraphicsPlugin.Circle);
-    const transform_sparse_set = commands.getSparseSetPtrMut(BuiltinPlugin.Transform);
+    const transform_sparse_set = commands.getSparseSetPtrMut(Transform);
+    const entities = transform_sparse_set.packed_array.items;
 
-    for (tracked_query.entities) |entity| {
+    // Animate rotating circles (entities around x=1000)
+    for (entities) |entity| {
         if (transform_sparse_set.getPtrMut(entity)) |transform| {
-            // Animate circles in the right section (x > 900)
-            if (transform.x > 900) {
-                if (circle_sparse_set.getPtrMut(entity)) |circle| {
-                    // Pulse radius with sine wave
-                    const base_radius: f32 = 40.0;
-                    const pulse_amount: f32 = 15.0;
-                    circle.radius = base_radius + pulse_amount * @sin(animation_time * 2.0);
-                }
+            // Rotating circles animation (right side)
+            if (transform.x > 900 and transform.x < 1100 and transform.y > 250 and transform.y < 450) {
+                // Calculate which circle this is based on original position
+                const center_x: f32 = 1000;
+                const center_y: f32 = 350;
+                const dx = transform.x - center_x;
+                const dy = transform.y - center_y;
+                const current_angle = std.math.atan2(dy, dx);
+                const rotation_speed: f32 = 1.0;
+                const new_angle = current_angle + rotation_speed * dt;
+                const radius_orbit: f32 = 100.0;
+
+                transform.x = center_x + radius_orbit * @cos(new_angle);
+                transform.y = center_y + radius_orbit * @sin(new_angle);
             }
 
-            // Animate middle overlapping circles (y around 450)
-            if (transform.y > 400 and transform.y < 500) {
-                // Move the circles in a circular motion
-                const offset_x = @cos(animation_time) * 30.0;
-                const offset_y = @sin(animation_time) * 30.0;
-
-                if (transform.z > -0.1 and transform.z < 0.1) {
-                    transform.x = 520 + offset_x;
-                    transform.y = 450 + offset_y;
+            // Oscillating circles animation (bottom left)
+            if (transform.y > 550 and transform.y < 650) {
+                const offset = @sin(animation_time * 2.0) * 40.0;
+                if (transform.x > 150 and transform.x < 250) {
+                    transform.x = 200 + offset;
+                } else if (transform.x > 250 and transform.x < 350) {
+                    transform.x = 280 - offset * 0.5;
+                } else if (transform.x > 350 and transform.x < 450) {
+                    transform.x = 360 + offset * 0.7;
                 }
             }
         }
     }
 }
 
-fn debugInfo(commands: anytype, tracked: zenithor.SingleTag(DebugPlugin.Tracked)) !void {
-    try DebugPlugin.openDebugWindow(.{
-        BuiltinPlugin.Transform,
-        GraphicsPlugin.Circle,
-    }, commands, tracked.entities);
-}
-
 fn infoWindow() !void {
-    const pos = ig.ImVec2{ .x = 10, .y = 720 };
+    const pos = ig.ImVec2{ .x = 10, .y = 10 };
     ig.igSetNextWindowPos(pos, ig.ImGuiCond_Once);
 
-    const size = ig.ImVec2{ .x = 420, .y = 70 };
+    const size = ig.ImVec2{ .x = 400, .y = 200 };
     ig.igSetNextWindowSize(size, ig.ImGuiCond_Once);
 
     var window_open = true;
-    if (ig.igBegin("Circle Demo", &window_open, ig.ImGuiWindowFlags_None)) {
-        ig.igTextColored(.{ .x = 0.2, .y = 0.8, .z = 1.0, .w = 1.0 }, "%s", "2D Circle Rendering Demo");
+    if (ig.igBegin("Circle & Z-Index Demo", &window_open, ig.ImGuiWindowFlags_None)) {
+        ig.igTextColored(.{ .x = 0.2, .y = 0.8, .z = 1.0, .w = 1.0 }, "%s", "2D Circle Rendering & Z-Index Demo");
         ig.igSeparator();
         ig.igSpacing();
 
-        ig.igText("%s", "This demo shows circle rendering features:");
-        ig.igBulletText("%s", "Top row: Different segment counts (8, 16, 32, 64)");
-        ig.igBulletText("%s", "Middle: Overlapping circles at different z-depths");
-        ig.igBulletText("%s", "Right: Animated circles with pulsing radius");
+        ig.igText("%s", "Demonstrations:");
+        ig.igBulletText("%s", "Top row: Circle quality (8, 16, 32, 64 segments)");
+        ig.igBulletText("%s", "Center: Mixed shapes at different z-depths");
+        ig.igTextWrapped("%s", "  (Circle, Rectangle, Triangle, Circle, Rectangle)");
+        ig.igTextWrapped("%s", "  Note how shapes layer based on z-value!");
+        ig.igBulletText("%s", "Right: Rotating circles at various depths");
+        ig.igBulletText("%s", "Bottom-left: Oscillating overlapping circles");
         ig.igSpacing();
 
         ig.igText("Animation time:");
@@ -169,7 +212,9 @@ fn infoWindow() !void {
         ig.igText("%s", time_text.ptr);
 
         ig.igSpacing();
-        ig.igTextColored(.{ .x = 0.6, .y = 0.6, .z = 0.6, .w = 1.0 }, "%s", "Check Entity Tracker to see circle properties!");
+        ig.igTextColored(.{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }, "%s", "Z-Index Legend:");
+        ig.igTextWrapped("%s", "Lower z (more negative) = In front (closer)");
+        ig.igTextWrapped("%s", "Higher z (more positive) = Behind (farther)");
     }
     ig.igEnd();
 }

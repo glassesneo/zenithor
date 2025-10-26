@@ -37,10 +37,9 @@ pub const Color = struct {
     pub const purple = Color{ .r = 128, .g = 0, .b = 128, .a = 255 };
 };
 
-pub const Components = .{ Transform, Color };
-
-pub fn build(registry: SystemRegistry) !void {
-    _ = registry;
-}
+pub const Components = .{
+    Transform,
+    Color,
+};
 
 const std = @import("std");
