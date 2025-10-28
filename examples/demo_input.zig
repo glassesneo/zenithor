@@ -22,7 +22,7 @@ fn setup(commands: anytype) !void {
     GraphicsPlugin.pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.15, .b = 0.2, .a = 1.0 };
 }
 
-fn displayMousePosition() !void {
+fn displayMousePosition(mouse: zenithor.Resource(InputPlugin.Mouse)) !void {
     const pos = ig.ImVec2{ .x = 100, .y = 100 };
     ig.igSetNextWindowPos(pos, ig.ImGuiCond_Once);
 
@@ -36,8 +36,8 @@ fn displayMousePosition() !void {
         ig.igSpacing();
 
         // Display current mouse position
-        ig.igText("X: %.1f pixels", InputPlugin.mouse_position.x);
-        ig.igText("Y: %.1f pixels", InputPlugin.mouse_position.y);
+        ig.igText("X: %.1f pixels", mouse.value.x);
+        ig.igText("Y: %.1f pixels", mouse.value.y);
 
         ig.igSpacing();
         ig.igSeparator();
@@ -46,7 +46,17 @@ fn displayMousePosition() !void {
         // Display as formatted text
         ig.igTextColored(.{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 }, "%s", "Position:");
         ig.igSameLine();
-        ig.igText("(%.1f, %.1f)", InputPlugin.mouse_position.x, InputPlugin.mouse_position.y);
+        ig.igText("(%.1f, %.1f)", mouse.value.x, mouse.value.y);
+
+        ig.igSpacing();
+
+        // Display button states
+        const left_state: [*:0]const u8 = if (mouse.value.left_button) "Pressed" else "Released";
+        const right_state: [*:0]const u8 = if (mouse.value.right_button) "Pressed" else "Released";
+        const middle_state: [*:0]const u8 = if (mouse.value.middle_button) "Pressed" else "Released";
+        ig.igText("Left Button: %s", left_state);
+        ig.igText("Right Button: %s", right_state);
+        ig.igText("Middle Button: %s", middle_state);
 
         ig.igSpacing();
 

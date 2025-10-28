@@ -52,9 +52,9 @@ fn setup(commands: anytype) !void {
     GraphicsPlugin.pass_action.colors[0].clear_value = .{ .r = 1, .g = 1, .b = 1, .a = 1 };
 }
 
-fn movement(movement_query: zenithor.Group(CoordinateGroup)) !void {
+fn movement(time: zenithor.Resource(TimePlugin.Time), movement_query: zenithor.Group(CoordinateGroup)) !void {
     // Use scaled delta time for frame-rate independent movement
-    const dt = TimePlugin.delta_time * TimePlugin.time_scale;
+    const dt = time.value.delta_time * time.value.time_scale;
     const transforms = movement_query.getMutArrayOf(BuiltinPlugin.Transform);
     const velocities = movement_query.getMutArrayOf(Velocity);
 
@@ -79,46 +79,46 @@ fn movement(movement_query: zenithor.Group(CoordinateGroup)) !void {
     }
 }
 
-fn displayTimeInfo() !void {
+fn displayTimeInfo(time: zenithor.Resource(TimePlugin.Time)) !void {
     ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once);
     ig.igSetNextWindowSize(.{ .x = 300, .y = 150 }, ig.ImGuiCond_Once);
 
     if (ig.igBegin("Time Information", null, ig.ImGuiWindowFlags_None)) {
-        ig.igText("FPS: %.1f", TimePlugin.fps);
-        ig.igText("Delta Time: %.4f s (%.2f ms)", TimePlugin.delta_time, TimePlugin.delta_time * 1000.0);
-        ig.igText("Total Time: %.2f s", TimePlugin.total_time);
-        ig.igText("Frame Count: %llu", TimePlugin.frame_count);
+        ig.igText("FPS: %.1f", time.value.fps);
+        ig.igText("Delta Time: %.4f s (%.2f ms)", time.value.delta_time, time.value.delta_time * 1000.0);
+        ig.igText("Total Time: %.2f s", time.value.total_time);
+        ig.igText("Frame Count: %llu", time.value.frame_count);
         ig.igSeparator();
-        ig.igText("Time Scale: %.2fx", TimePlugin.time_scale);
+        ig.igText("Time Scale: %.2fx", time.value.time_scale);
     }
     ig.igEnd();
 }
 
-fn timeControls() !void {
+fn timeControls(time: zenithor.Resource(TimePlugin.Time)) !void {
     ig.igSetNextWindowPos(.{ .x = 10, .y = 170 }, ig.ImGuiCond_Once);
     ig.igSetNextWindowSize(.{ .x = 300, .y = 150 }, ig.ImGuiCond_Once);
 
     if (ig.igBegin("Time Controls", null, ig.ImGuiWindowFlags_None)) {
-        _ = ig.igSliderFloat("Time Scale", &TimePlugin.time_scale, 0.0, 2.0);
+        _ = ig.igSliderFloat("Time Scale", &time.value.time_scale, 0.0, 2.0);
 
         if (ig.igButton("Pause")) {
-            TimePlugin.time_scale = 0.0;
+            time.value.time_scale = 0.0;
         }
         ig.igSameLine();
         if (ig.igButton("Normal")) {
-            TimePlugin.time_scale = 1.0;
+            time.value.time_scale = 1.0;
         }
         ig.igSameLine();
         if (ig.igButton("Fast")) {
-            TimePlugin.time_scale = 2.0;
+            time.value.time_scale = 2.0;
         }
 
         if (ig.igButton("Slow Motion (0.5x)")) {
-            TimePlugin.time_scale = 0.5;
+            time.value.time_scale = 0.5;
         }
         ig.igSameLine();
         if (ig.igButton("Very Slow (0.1x)")) {
-            TimePlugin.time_scale = 0.1;
+            time.value.time_scale = 0.1;
         }
     }
     ig.igEnd();
