@@ -18,38 +18,75 @@ fn containsType(comptime arr: anytype, comptime T: type, comptime n: usize) bool
 }
 
 pub fn buildWorld(comptime plugins: anytype) type {
-    // compute max possible length
-    var total_len: usize = 0;
+    // === Collect and deduplicate Components ===
+
+    // compute max possible length for components
+    var total_component_len: usize = 0;
     inline for (plugins) |P| {
         if (!@hasDecl(P, "Components")) continue;
         inline for (P.Components) |_| {
-            total_len += 1;
+            total_component_len += 1;
         }
     }
 
-    // dedup into temporary list
-    var tmp: [total_len]type = undefined;
-    var count: usize = 0;
+    // dedup components into temporary list
+    var tmp_components: [total_component_len]type = undefined;
+    var component_count: usize = 0;
     inline for (plugins) |P| {
         if (!@hasDecl(P, "Components")) continue;
         inline for (P.Components) |C| {
-            if (!containsType(tmp, C, count)) {
-                tmp[count] = C;
-                count += 1;
+            if (!containsType(tmp_components, C, component_count)) {
+                tmp_components[component_count] = C;
+                component_count += 1;
             }
         }
     }
 
     // finalize exact-sized component list
-    var components: [count]type = undefined;
+    var components: [component_count]type = undefined;
     comptime {
         var i: usize = 0;
-        while (i < count) : (i += 1) {
-            components[i] = tmp[i];
+        while (i < component_count) : (i += 1) {
+            components[i] = tmp_components[i];
         }
     }
     const Components = std.meta.Tuple(&components);
-    return sparze.World(Components);
+
+    // === Collect and deduplicate Resources ===
+
+    // compute max possible length for resources
+    var total_resource_len: usize = 0;
+    inline for (plugins) |P| {
+        if (!@hasDecl(P, "Resources")) continue;
+        inline for (P.Resources) |_| {
+            total_resource_len += 1;
+        }
+    }
+
+    // dedup resources into temporary list
+    var tmp_resources: [total_resource_len]type = undefined;
+    var resource_count: usize = 0;
+    inline for (plugins) |P| {
+        if (!@hasDecl(P, "Resources")) continue;
+        inline for (P.Resources) |R| {
+            if (!containsType(tmp_resources, R, resource_count)) {
+                tmp_resources[resource_count] = R;
+                resource_count += 1;
+            }
+        }
+    }
+
+    // finalize exact-sized resource list
+    var resources: [resource_count]type = undefined;
+    comptime {
+        var i: usize = 0;
+        while (i < resource_count) : (i += 1) {
+            resources[i] = tmp_resources[i];
+        }
+    }
+    const Resources = std.meta.Tuple(&resources);
+
+    return sparze.World(Components, Resources);
 }
 
 pub fn run(comptime plugins: anytype) void {
@@ -131,12 +168,13 @@ pub fn run(comptime plugins: anytype) void {
 
                     // Create a wrapper function to construct args at runtime
                     const wrapper = struct {
-                        fn call(alloc: std.mem.Allocator, reg: system_module.SystemRegistry) !void {
+                        fn call(alloc: std.mem.Allocator, reg: system_module.SystemRegistry, w: *World) !void {
                             // Build tuple type at compile time
                             const ArgsType = comptime blk: {
                                 var fields: [build_fn_info.params.len]std.builtin.Type.StructField = undefined;
                                 for (build_fn_info.params, 0..) |param, i| {
-                                    const ArgType = param.type.?;
+                                    // Handle generic parameters (anytype) - use *World
+                                    const ArgType = param.type orelse *World;
                                     // SystemRegistry contains comptime function pointers
                                     const is_comptime_type = ArgType == system_module.SystemRegistry;
                                     fields[i] = std.builtin.Type.StructField{
@@ -158,11 +196,14 @@ pub fn run(comptime plugins: anytype) void {
                             // Populate the tuple at runtime
                             var args: ArgsType = undefined;
                             inline for (build_fn_info.params, 0..) |param, i| {
-                                const ParamType = param.type.?;
+                                // Handle generic parameters (anytype) - use *World
+                                const ParamType = param.type orelse *World;
                                 if (ParamType == std.mem.Allocator) {
                                     args[i] = alloc;
                                 } else if (ParamType == system_module.SystemRegistry) {
                                     args[i] = reg;
+                                } else if (ParamType == *World) {
+                                    args[i] = w;
                                 }
                             }
 
@@ -170,7 +211,7 @@ pub fn run(comptime plugins: anytype) void {
                         }
                     }.call;
 
-                    try wrapper(allocator, registry);
+                    try wrapper(allocator, registry, &App.world);
                 }
             }
 

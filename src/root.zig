@@ -18,6 +18,7 @@ pub const Query = sparze.Query;
 pub const SingleTag = sparze.SingleTag;
 pub const TagQuery = sparze.TagQuery;
 pub const Group = sparze.Group;
+pub const Resource = sparze.Resource;
 
 test {
     std.testing.refAllDecls(@This());

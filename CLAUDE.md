@@ -68,23 +68,25 @@ The `server.ts` file provides a Deno-based development server with hot reload fu
 
 Zenithor uses a compile-time plugin architecture. A **plugin** is a type that defines:
 
-1. **Components** (required) - Tuple declaration of component types for the ECS
-2. **build() function** (required) - Registers systems with the SystemRegistry
-3. **Groups** (optional) - Tuple declaration for entity groupings in the ECS
+1. **Components** (optional) - Tuple declaration of component types for the ECS
+2. **Resources** (optional) - Tuple declaration of resource types (global singletons) for the ECS
+3. **build() function** (required) - Registers systems with the SystemRegistry and initializes resources
+4. **Groups** (optional) - Tuple declaration for entity groupings in the ECS
 
 Example plugin structure:
 ```zig
 pub const Components = .{ MyComponent };
+pub const Resources = .{ DeltaTime, Score };
 pub const Groups = &.{ MyGroup };
 
-// Option 1: Without allocator parameter
+// Option 1: Basic - registry only
 pub fn build(registry: SystemRegistry) !void {
     registry.registerStartupSystem(initSystem, .first);
     registry.registerSystem(updateSystem, .update);
     registry.registerTerminateSystem(cleanupSystem, .last);
 }
 
-// Option 2: With allocator parameter (optional, order-independent)
+// Option 2: With allocator for plugin initialization
 pub fn build(allocator: std.mem.Allocator, registry: SystemRegistry) !void {
     // Allocator is the World's allocator, useful for plugin initialization
     registry.registerStartupSystem(initSystem, .first);
@@ -92,16 +94,35 @@ pub fn build(allocator: std.mem.Allocator, registry: SystemRegistry) !void {
     registry.registerTerminateSystem(cleanupSystem, .last);
 }
 
-// Option 3: Parameters in any order
-pub fn build(registry: SystemRegistry, allocator: std.mem.Allocator) !void {
+// Option 3: With world pointer for resource initialization
+pub fn build(world: anytype, registry: SystemRegistry) !void {
+    // Initialize resources with default values
+    try world.setResource(DeltaTime, .{ .dt = 0.016 });
+    try world.setResource(Score, .{ .points = 0, .combo = 0 });
+
+    registry.registerStartupSystem(initSystem, .first);
+    registry.registerSystem(updateSystem, .update);
+    registry.registerTerminateSystem(cleanupSystem, .last);
+}
+
+// Option 4: All parameters (order-independent)
+pub fn build(allocator: std.mem.Allocator, world: anytype, registry: SystemRegistry) !void {
     // Parameter order doesn't matter - engine detects types at compile time
+    try world.setResource(DeltaTime, .{ .dt = 0.016 });
+    try world.setResource(Score, .{ .points = 0, .combo = 0 });
+
     registry.registerStartupSystem(initSystem, .first);
     registry.registerSystem(updateSystem, .update);
     registry.registerTerminateSystem(cleanupSystem, .last);
 }
 ```
 
-**Note**: The `build()` function can optionally accept an `allocator` parameter. The engine automatically detects parameter types at compile time and constructs the appropriate argument tuple, so parameter order doesn't matter.
+**Note**: The `build()` function parameters are all optional and order-independent:
+- **`allocator: std.mem.Allocator`** - World's allocator for plugin initialization
+- **`world: *World`** - Mutable world pointer for calling `setResource()`
+- **`registry: SystemRegistry`** - For registering systems and event handlers
+
+The engine automatically detects parameter types at compile time and constructs the appropriate argument tuple.
 
 ### Plugin Categories
 
@@ -118,7 +139,7 @@ pub fn build(registry: SystemRegistry, allocator: std.mem.Allocator) !void {
 
 ### World Building
 
-The `buildWorld()` function in `src/core/application.zig` performs compile-time component deduplication across all plugins. This ensures each component type appears exactly once in the final World type, regardless of how many plugins declare it.
+The `buildWorld()` function in `src/core/application.zig` performs compile-time component and resource deduplication across all plugins. This ensures each component and resource type appears exactly once in the final World type, regardless of how many plugins declare them.
 
 ### System Scheduling
 
@@ -145,14 +166,79 @@ Three system types are available:
 The `run()` function in `src/core/application.zig`:
 
 1. Combines Builtin Plugin with user-provided Default Plugins
-2. Builds deduplicated World type from all plugin components at compile time
+2. Builds deduplicated World type from all plugin components and resources at compile time
 3. Creates SystemScheduler instances for startup/regular/terminate systems
 4. Registers Sokol callbacks (init, frame, cleanup, event)
-5. Calls each plugin's `build()` function to register systems
+5. Calls each plugin's `build()` function to register systems and initialize resources
 6. Initializes Sokol (gfx, gl, imgui)
 7. Runs the application main loop
 
-Note: The ECS World loads component types from all `Components` tuples and executes all `build()` functions at compile time.
+Note: The ECS World loads component and resource types from all `Components` and `Resources` tuples and executes all `build()` functions at compile time.
+
+### Resources
+
+Resources are global singleton values that can be accessed by systems. Unlike components which are attached to entities, resources exist independently and provide shared state across the application.
+
+**Resource Declaration:**
+```zig
+// Define resource types
+const DeltaTime = struct { dt: f32 };
+const Score = struct { points: i32, combo: i32 };
+
+// Declare in plugin
+pub const Resources = .{ DeltaTime, Score };
+```
+
+**Resource Initialization:**
+Resources must be initialized in the plugin's `build()` function using `world.setResource()`:
+
+```zig
+pub fn build(world: anytype, registry: SystemRegistry) !void {
+    // Initialize with default values
+    try world.setResource(DeltaTime, .{ .dt = 0.016 });
+    try world.setResource(Score, .{ .points = 0, .combo = 0 });
+
+    registry.registerSystem(gameSystem, .update);
+}
+```
+
+**Resource Usage in Systems:**
+Systems receive resources via the `zenithor.Resource(T)` filter type:
+
+```zig
+fn physicsSystem(
+    delta: zenithor.Resource(DeltaTime),
+    query: zenithor.SingleQuery(Position)
+) !void {
+    const dt = delta.value.dt;  // Access via .value field
+    for (query.components) |*pos| {
+        pos.y -= 9.8 * dt;
+    }
+}
+
+fn scoreSystem(score: zenithor.Resource(Score)) !void {
+    score.value.points += 100;  // Mutate via .value field
+    score.value.combo += 1;
+}
+```
+
+**Resource Deduplication:**
+Multiple plugins can declare the same resource type. The engine automatically deduplicates resources at compile time, ensuring only one instance exists. This allows plugins to declare their dependencies without conflicts:
+
+```zig
+// TimePlugin declares DeltaTime
+pub const Resources = .{ DeltaTime };
+
+// PhysicsPlugin also declares DeltaTime (safe - deduplicated)
+pub const Resources = .{ DeltaTime, Gravity };
+```
+
+**Key Characteristics:**
+- **Global Singleton**: One instance per resource type per World
+- **Compile-Time Type Safety**: Resource types determined at compile time
+- **Mutable Access**: Systems receive mutable pointers via `.value` field
+- **Required Initialization**: Must call `world.setResource()` before system access
+- **Deduplication**: Automatic deduplication across plugin declarations
 
 ## Development Workflows
 
@@ -166,14 +252,18 @@ Note: The ECS World loads component types from all `Components` tuples and execu
 ### Adding a New Plugin
 
 1. Create plugin file (e.g., `src/plugins/my_plugin/root.zig`)
-2. Define `Components` tuple with component types
-3. Optionally define `Groups` array for entity groupings
-4. Implement `build()` function to register systems:
-   - Without allocator: `build(registry: SystemRegistry) !void`
+2. Define `Components` tuple with component types (optional)
+3. Define `Resources` tuple with resource types (optional)
+4. Optionally define `Groups` array for entity groupings
+5. Implement `build()` function to register systems and initialize resources:
+   - Basic: `build(registry: SystemRegistry) !void`
    - With allocator: `build(allocator: std.mem.Allocator, registry: SystemRegistry) !void`
+   - With world: `build(world: anytype, registry: SystemRegistry) !void`
+   - All parameters: `build(allocator: std.mem.Allocator, world: anytype, registry: SystemRegistry) !void`
    - Parameters can be in any order - the engine detects types at compile time
-5. Add plugin to `src/root.zig` exports
-6. Include plugin in example/application via `zenithor.run(.{ MyPlugin })`
+6. If using resources, call `world.setResource()` in `build()` to initialize them
+7. Add plugin to `src/root.zig` exports
+8. Include plugin in example/application via `zenithor.run(.{ MyPlugin })`
 
 ### Testing
 
