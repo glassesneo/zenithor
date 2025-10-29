@@ -27,7 +27,9 @@ pub const Window = struct {
     }
 };
 
-pub const Components = .{Window};
+pub const Components = .{
+    Window,
+};
 
 fn init() !void {
     sokol.imgui.setup(.{

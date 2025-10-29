@@ -30,7 +30,9 @@ pub const Time = struct {
 };
 
 pub const Components = .{};
-pub const Resources = .{Time};
+pub const Resources = .{
+    Time,
+};
 
 fn init() !void {
     sokol.time.setup();

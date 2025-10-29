@@ -739,7 +739,9 @@ pub fn openLifecycleWindow() void {
     ig.igEnd();
 }
 
-pub const Components = .{Tracked};
+pub const Components = .{
+    Tracked,
+};
 
 pub fn build(registry: SystemRegistry) !void {
     registry.registerSystem(updateDebugSystems, .first);

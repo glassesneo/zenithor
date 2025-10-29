@@ -21,7 +21,9 @@ pub const Mouse = struct {
 };
 
 pub const Components = .{};
-pub const Resources = .{Mouse};
+pub const Resources = .{
+    Mouse,
+};
 
 // Internal storage for event-based input (before ImGui is ready)
 var temp_mouse_x: f32 = 0.0;

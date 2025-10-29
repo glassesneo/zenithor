@@ -58,9 +58,17 @@ pub const Circle = struct {
     }
 };
 
-pub const Components = .{ Point, Line, Triangle, Rectangle, Circle };
+pub const Components = .{
+    Point,
+    Line,
+    Triangle,
+    Rectangle,
+    Circle,
+};
 
-pub const Resources = .{PassAction};
+pub const Resources = .{
+    PassAction,
+};
 
 fn init(pass_action_resource: Resource(PassAction)) !void {
     var pass_action = pass_action_resource.value;
