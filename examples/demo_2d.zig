@@ -14,9 +14,10 @@ fn setup(commands: anytype) !void {
     });
 }
 
-fn changeColor() !void {
-    const g = GraphicsPlugin.pass_action.colors[0].clear_value.g + 0.01;
-    GraphicsPlugin.pass_action.colors[0].clear_value.g = if (g > 1.0) 0.0 else g;
+fn changeColor(pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+    var action = pass_action.value;
+    const g = action.colors[0].clear_value.g + 0.01;
+    action.colors[0].clear_value.g = if (g > 1.0) 0.0 else g;
 }
 
 const Game = struct {

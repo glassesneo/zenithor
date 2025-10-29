@@ -11,6 +11,11 @@ pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, TimePlugin, Game });
 }
 
+fn setupPassAction(pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+    var action = pass_action.value;
+    action.colors[0].clear_value = .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
+}
+
 const Velocity = struct {
     x: f32,
     y: f32,
@@ -49,7 +54,6 @@ fn setup(commands: anytype) !void {
     });
 
     // Set white background
-    GraphicsPlugin.pass_action.colors[0].clear_value = .{ .r = 1, .g = 1, .b = 1, .a = 1 };
 }
 
 fn movement(time: zenithor.Resource(TimePlugin.Time), movement_query: zenithor.Group(CoordinateGroup)) !void {

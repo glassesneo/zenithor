@@ -68,7 +68,7 @@ var spawn_interval: f32 = 3.0; // Spawn every 3 seconds
 var spawn_enabled: bool = true;
 var next_spawn_type: usize = 0;
 
-fn setup(commands: anytype) !void {
+fn setup(commands: anytype, pass_action_resource: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
     // Create initial tracked entities with different configurations
 
     // Rectangle with health - bounces and can "die"
@@ -98,11 +98,12 @@ fn setup(commands: anytype) !void {
     try DebugPlugin.logEntityCreated(point_entity);
 
     // Set background
-    GraphicsPlugin.pass_action.colors[0].clear_value = .{ .r = 0.95, .g = 0.95, .b = 0.95, .a = 1 };
+    var pass_action = pass_action_resource.value;
+    pass_action.colors[0].clear_value = .{ .r = 0.95, .g = 0.95, .b = 0.95, .a = 1 };
 }
 
-fn movement(movement_query: zenithor.Group(CoordinateGroup)) !void {
-    const dt = TimePlugin.delta_time * TimePlugin.time_scale;
+fn movement(time: zenithor.Resource(TimePlugin.Time), movement_query: zenithor.Group(CoordinateGroup)) !void {
+    const dt = time.value.delta_time * time.value.time_scale;
     const transforms = movement_query.getMutArrayOf(BuiltinPlugin.Transform);
     const velocities = movement_query.getMutArrayOf(Velocity);
 
@@ -128,8 +129,8 @@ fn movement(movement_query: zenithor.Group(CoordinateGroup)) !void {
 }
 
 /// Health system - slowly drain health, destroy at 0
-fn healthSystem(commands: anytype, health_query: zenithor.SingleQuery(Health)) !void {
-    const dt = TimePlugin.delta_time * TimePlugin.time_scale;
+fn healthSystem(commands: anytype, time: zenithor.Resource(TimePlugin.Time), health_query: zenithor.SingleQuery(Health)) !void {
+    const dt = time.value.delta_time * time.value.time_scale;
 
     for (health_query.entities, health_query.components) |entity, *health| {
         // health is already a mutable pointer in the for loop
@@ -146,8 +147,8 @@ fn healthSystem(commands: anytype, health_query: zenithor.SingleQuery(Health)) !
 }
 
 /// Lifetime system - destroy entities when their lifetime expires
-fn lifetimeSystem(commands: anytype, lifetime_query: zenithor.SingleQuery(Lifetime)) !void {
-    const dt = TimePlugin.delta_time * TimePlugin.time_scale;
+fn lifetimeSystem(commands: anytype, time: zenithor.Resource(TimePlugin.Time), lifetime_query: zenithor.SingleQuery(Lifetime)) !void {
+    const dt = time.value.delta_time * time.value.time_scale;
 
     for (lifetime_query.entities, lifetime_query.components) |entity, *lifetime| {
         // lifetime is already a mutable pointer in the for loop
@@ -162,10 +163,10 @@ fn lifetimeSystem(commands: anytype, lifetime_query: zenithor.SingleQuery(Lifeti
 }
 
 /// Spawner system - periodically create new entities
-fn spawner(commands: anytype) !void {
+fn spawner(commands: anytype, time: zenithor.Resource(TimePlugin.Time)) !void {
     if (!spawn_enabled) return;
 
-    const dt = TimePlugin.delta_time * TimePlugin.time_scale;
+    const dt = time.value.delta_time * time.value.time_scale;
     spawn_timer += dt;
 
     if (spawn_timer >= spawn_interval) {
@@ -232,7 +233,7 @@ fn debugInfo(commands: anytype, tracked: zenithor.SingleTag(DebugPlugin.Tracked)
 }
 
 /// Control panel for demo features
-fn controlPanel() !void {
+fn controlPanel(time: zenithor.Resource(TimePlugin.Time)) !void {
     const pos = ig.ImVec2{ .x = 10, .y = 720 };
     ig.igSetNextWindowPos(pos, ig.ImGuiCond_Once);
 
@@ -266,7 +267,7 @@ fn controlPanel() !void {
         ig.igText("Time scale:");
         ig.igSameLine();
         ig.igPushItemWidth(100);
-        _ = ig.igSliderFloat("##timescale", &TimePlugin.time_scale, 0.0, 3.0);
+        _ = ig.igSliderFloat("##timescale", &time.value.time_scale, 0.0, 3.0);
         ig.igPopItemWidth();
 
         ig.igSpacing();

@@ -15,26 +15,26 @@ pub const Transform = struct {
 };
 
 pub const Color = struct {
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8 = 255,
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32 = 1.0,
 
     pub fn format(self: Color, writer: anytype) !void {
-        try writer.print("Color(r: {}, g: {}, b: {}, a: {})", .{ self.r, self.g, self.b, self.a });
+        try writer.print("Color(r: {d:.2}, g: {d:.2}, b: {d:.2}, a: {d:.2})", .{ self.r, self.g, self.b, self.a });
     }
 
     // Predefined colors for convenience
-    pub const red = Color{ .r = 255, .g = 0, .b = 0, .a = 255 };
-    pub const green = Color{ .r = 0, .g = 255, .b = 0, .a = 255 };
-    pub const blue = Color{ .r = 0, .g = 0, .b = 255, .a = 255 };
-    pub const yellow = Color{ .r = 255, .g = 255, .b = 0, .a = 255 };
-    pub const cyan = Color{ .r = 0, .g = 255, .b = 255, .a = 255 };
-    pub const magenta = Color{ .r = 255, .g = 0, .b = 255, .a = 255 };
-    pub const white = Color{ .r = 255, .g = 255, .b = 255, .a = 255 };
-    pub const black = Color{ .r = 0, .g = 0, .b = 0, .a = 255 };
-    pub const orange = Color{ .r = 255, .g = 165, .b = 0, .a = 255 };
-    pub const purple = Color{ .r = 128, .g = 0, .b = 128, .a = 255 };
+    pub const red = Color{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 };
+    pub const green = Color{ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 };
+    pub const blue = Color{ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 };
+    pub const yellow = Color{ .r = 1.0, .g = 1.0, .b = 0.0, .a = 1.0 };
+    pub const cyan = Color{ .r = 0.0, .g = 1.0, .b = 1.0, .a = 1.0 };
+    pub const magenta = Color{ .r = 1.0, .g = 0.0, .b = 1.0, .a = 1.0 };
+    pub const white = Color{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
+    pub const black = Color{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 };
+    pub const orange = Color{ .r = 1.0, .g = 0.647, .b = 0.0, .a = 1.0 };
+    pub const purple = Color{ .r = 0.502, .g = 0.0, .b = 0.502, .a = 1.0 };
 };
 
 pub const Components = .{

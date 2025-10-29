@@ -24,15 +24,15 @@ const Game = struct {
 
 var animation_time: f32 = 0.0;
 
-fn setup(commands: anytype) !void {
-    // Set light background
-    GraphicsPlugin.pass_action.colors[0].clear_value = .{ .r = 0.9, .g = 0.9, .b = 0.95, .a = 1 };
+fn setup(commands: anytype, pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+    var action = pass_action.value;
+    action.colors[0].clear_value = .{ .r = 0.9, .g = 0.9, .b = 0.95, .a = 1.0 };
 
     // Create overlapping rectangles at different z-depths
     const rect_back = try commands.createEntityWith(.{
         GraphicsPlugin.Rectangle{ .x = 200, .y = 200 },
         BuiltinPlugin.Transform{ .x = 400, .y = 250, .z = 0.5 },
-        BuiltinPlugin.Color{ .r = 255, .g = 100, .b = 100, .a = 255 },
+        BuiltinPlugin.Color{ .r = 1.0, .g = 0.392, .b = 0.392, .a = 1.0 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(rect_back);
@@ -40,7 +40,7 @@ fn setup(commands: anytype) !void {
     const rect_middle = try commands.createEntityWith(.{
         GraphicsPlugin.Rectangle{ .x = 200, .y = 200 },
         BuiltinPlugin.Transform{ .x = 500, .y = 300, .z = 0.0 },
-        BuiltinPlugin.Color{ .r = 255, .g = 255, .b = 100, .a = 255 },
+        BuiltinPlugin.Color{ .r = 1.0, .g = 1.0, .b = 0.392, .a = 1.0 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(rect_middle);
@@ -48,7 +48,7 @@ fn setup(commands: anytype) !void {
     const rect_front = try commands.createEntityWith(.{
         GraphicsPlugin.Rectangle{ .x = 200, .y = 200 },
         BuiltinPlugin.Transform{ .x = 600, .y = 350, .z = -0.5 },
-        BuiltinPlugin.Color{ .r = 100, .g = 255, .b = 100, .a = 255 },
+        BuiltinPlugin.Color{ .r = 0.392, .g = 1.0, .b = 0.392, .a = 1.0 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(rect_front);
@@ -57,7 +57,7 @@ fn setup(commands: anytype) !void {
     const tri_back = try commands.createEntityWith(.{
         GraphicsPlugin.Triangle{ .x1 = 0, .y1 = -80, .x2 = 80, .y2 = 80, .x3 = -80, .y3 = 80 },
         BuiltinPlugin.Transform{ .x = 200, .y = 200, .z = 0.8 },
-        BuiltinPlugin.Color{ .r = 100, .g = 255, .b = 100, .a = 255 },
+        BuiltinPlugin.Color{ .r = 0.392, .g = 1.0, .b = 0.392, .a = 1.0 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(tri_back);
@@ -65,7 +65,7 @@ fn setup(commands: anytype) !void {
     const tri_front = try commands.createEntityWith(.{
         GraphicsPlugin.Triangle{ .x1 = 0, .y1 = -80, .x2 = 80, .y2 = 80, .x3 = -80, .y3 = 80 },
         BuiltinPlugin.Transform{ .x = 1000, .y = 200, .z = -0.8 },
-        BuiltinPlugin.Color{ .r = 100, .g = 255, .b = 100, .a = 255 },
+        BuiltinPlugin.Color{ .r = 0.392, .g = 1.0, .b = 0.392, .a = 1.0 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(tri_front);
@@ -74,7 +74,7 @@ fn setup(commands: anytype) !void {
     const line_back = try commands.createEntityWith(.{
         GraphicsPlugin.Line{ .x = 300, .y = 0 },
         BuiltinPlugin.Transform{ .x = 300, .y = 600, .z = 0.3 },
-        BuiltinPlugin.Color{ .r = 100, .g = 100, .b = 255, .a = 255 },
+        BuiltinPlugin.Color{ .r = 0.392, .g = 0.392, .b = 1.0, .a = 1.0 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(line_back);
@@ -82,7 +82,7 @@ fn setup(commands: anytype) !void {
     const line_front = try commands.createEntityWith(.{
         GraphicsPlugin.Line{ .x = 300, .y = 0 },
         BuiltinPlugin.Transform{ .x = 700, .y = 600, .z = -0.3 },
-        BuiltinPlugin.Color{ .r = 100, .g = 100, .b = 255, .a = 255 },
+        BuiltinPlugin.Color{ .r = 0.392, .g = 0.392, .b = 1.0, .a = 1.0 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(line_front);
@@ -91,7 +91,7 @@ fn setup(commands: anytype) !void {
     const point_back = try commands.createEntityWith(.{
         GraphicsPlugin.Point{},
         BuiltinPlugin.Transform{ .x = 640, .y = 100, .z = 0.9 },
-        BuiltinPlugin.Color{ .r = 255, .g = 100, .b = 255, .a = 255 },
+        BuiltinPlugin.Color{ .r = 1.0, .g = 0.392, .b = 1.0, .a = 1.0 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(point_back);
@@ -99,14 +99,14 @@ fn setup(commands: anytype) !void {
     const point_front = try commands.createEntityWith(.{
         GraphicsPlugin.Point{},
         BuiltinPlugin.Transform{ .x = 640, .y = 150, .z = -0.9 },
-        BuiltinPlugin.Color{ .r = 255, .g = 100, .b = 255, .a = 255 },
+        BuiltinPlugin.Color{ .r = 1.0, .g = 0.392, .b = 1.0, .a = 1.0 },
         DebugPlugin.Tracked{},
     });
     try DebugPlugin.logEntityCreated(point_front);
 }
 
-fn animate(tracked_query: zenithor.Query(struct { DebugPlugin.Tracked, BuiltinPlugin.Transform })) !void {
-    const dt = TimePlugin.delta_time;
+fn animate(time: zenithor.Resource(TimePlugin.Time), tracked_query: zenithor.Query(struct { DebugPlugin.Tracked, BuiltinPlugin.Transform })) !void {
+    const dt = time.value.delta_time;
     animation_time += dt;
 
     // Animate z-depth of middle entities (sine wave)

@@ -75,9 +75,10 @@ const Game = struct {
 
 // ===== Systems =====
 
-fn setup() !void {
+fn setup(pass_action_resource: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+    var pass_action = pass_action_resource.value;
     // Set white background
-    GraphicsPlugin.pass_action.colors[0].clear_value = .{ .r = 1, .g = 1, .b = 1, .a = 1 };
+    pass_action.colors[0].clear_value = .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
 }
 
 /// Update delta time resource
@@ -122,17 +123,17 @@ fn spawnShapes(
             0 => {
                 // Rectangle (red)
                 try commands.addComponent(entity, GraphicsPlugin.Rectangle, .{ .x = 30, .y = 30 });
-                try commands.addComponent(entity, BuiltinPlugin.Color, .{ .r = 200, .g = 50, .b = 50 });
+                try commands.addComponent(entity, BuiltinPlugin.Color, .{ .r = 0.784, .g = 0.196, .b = 0.196 });
             },
             1 => {
                 // Triangle (green)
                 try commands.addComponent(entity, GraphicsPlugin.Triangle, .{ .x1 = 0, .y1 = -20, .x2 = 20, .y2 = 20, .x3 = -20, .y3 = 20 });
-                try commands.addComponent(entity, BuiltinPlugin.Color, .{ .r = 50, .g = 200, .b = 50 });
+                try commands.addComponent(entity, BuiltinPlugin.Color, .{ .r = 0.196, .g = 0.784, .b = 0.196 });
             },
             else => {
                 // Circle (blue)
                 try commands.addComponent(entity, GraphicsPlugin.Circle, .{ .radius = 20 });
-                try commands.addComponent(entity, BuiltinPlugin.Color, .{ .r = 50, .g = 50, .b = 200 });
+                try commands.addComponent(entity, BuiltinPlugin.Color, .{ .r = 0.196, .g = 0.196, .b = 0.784 });
             },
         }
 

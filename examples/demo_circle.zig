@@ -24,9 +24,9 @@ const Game = struct {
 
 var animation_time: f32 = 0.0;
 
-fn setup(commands: anytype) !void {
-    // Set light background
-    GraphicsPlugin.pass_action.colors[0].clear_value = .{ .r = 0.95, .g = 0.95, .b = 1.0, .a = 1 };
+fn setup(commands: anytype, pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+    var action = pass_action.value;
+    action.colors[0].clear_value = .{ .r = 0.95, .g = 0.95, .b = 1.0, .a = 1.0 };
 
     // SECTION 1: Quality comparison - circles with different segment counts (top left)
     _ = try commands.createEntityWith(.{
@@ -142,8 +142,8 @@ fn setup(commands: anytype) !void {
     });
 }
 
-fn animate(transforms: zenithor.SingleQuery(Transform)) !void {
-    const dt = TimePlugin.delta_time;
+fn animate(time: zenithor.Resource(TimePlugin.Time), transforms: zenithor.SingleQuery(Transform)) !void {
+    const dt = time.value.delta_time;
     animation_time += dt;
 
     // Animate rotating circles (entities around x=1000)

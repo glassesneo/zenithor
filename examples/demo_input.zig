@@ -19,7 +19,11 @@ fn setup(commands: anytype) !void {
     });
 
     // Set a nice background color
-    GraphicsPlugin.pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.15, .b = 0.2, .a = 1.0 };
+}
+
+fn setupPassAction(pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+    var action = pass_action.value;
+    action.colors[0].clear_value = .{ .r = 0.1, .g = 0.15, .b = 0.2, .a = 1.0 };
 }
 
 fn displayMousePosition(mouse: zenithor.Resource(InputPlugin.Mouse)) !void {

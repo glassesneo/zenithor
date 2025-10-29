@@ -1,7 +1,9 @@
 const sparze = @import("sparze");
 const SingleQuery = sparze.SingleQuery;
 const Query = sparze.Query;
+const Resource = sparze.Resource;
 const sokol = @import("sokol");
+pub const PassAction = sokol.gfx.PassAction;
 
 const BuiltinPlugin = @import("../../core/builtin.zig");
 const Transform = BuiltinPlugin.Transform;
@@ -58,9 +60,10 @@ pub const Circle = struct {
 
 pub const Components = .{ Point, Line, Triangle, Rectangle, Circle };
 
-pub var pass_action: sokol.gfx.PassAction = .{};
+pub const Resources = .{PassAction};
 
-fn init() !void {
+fn init(pass_action_resource: Resource(PassAction)) !void {
+    var pass_action = pass_action_resource.value;
     pass_action.colors[0] = .{
         .load_action = .CLEAR,
         .clear_value = .{ .r = 1, .g = 1, .b = 1, .a = 0 },
@@ -81,9 +84,9 @@ fn drawPoint(points: Query(struct { Point, Transform, ?Color })) !void {
     for (points.entities) |entity| {
         if (!points.filter(entity)) continue;
         if (points.getOptional(entity, Color)) |color| {
-            sokol.gl.c4b(color.r, color.g, color.b, color.a);
+            sokol.gl.c4f(color.r, color.g, color.b, color.a);
         } else {
-            sokol.gl.c4b(255, 0, 0, 255);
+            sokol.gl.c4f(1.0, 0.0, 0.0, 1.0);
         }
         const transform = points.getComponentMut(entity, Transform);
         sokol.gl.v3f(transform.x, transform.y, transform.z);
@@ -96,9 +99,9 @@ fn drawLine(lines: Query(struct { Line, Transform, ?Color })) !void {
     for (lines.entities) |entity| {
         if (!lines.filter(entity)) continue;
         if (lines.getOptional(entity, Color)) |color| {
-            sokol.gl.c4b(color.r, color.g, color.b, color.a);
+            sokol.gl.c4f(color.r, color.g, color.b, color.a);
         } else {
-            sokol.gl.c4b(255, 0, 0, 255);
+            sokol.gl.c4f(1.0, 0.0, 0.0, 1.0);
         }
         const transform = lines.getComponentMut(entity, Transform);
         const line = lines.getComponentMut(entity, Line);
@@ -113,9 +116,9 @@ fn drawTriangle(triangles: Query(struct { Triangle, Transform, ?Color })) !void 
     for (triangles.entities) |entity| {
         if (!triangles.filter(entity)) continue;
         if (triangles.getOptional(entity, Color)) |color| {
-            sokol.gl.c4b(color.r, color.g, color.b, color.a);
+            sokol.gl.c4f(color.r, color.g, color.b, color.a);
         } else {
-            sokol.gl.c4b(255, 0, 0, 255);
+            sokol.gl.c4f(1.0, 0.0, 0.0, 1.0);
         }
         const transform = triangles.getComponentMut(entity, Transform);
         const triangle = triangles.getComponentMut(entity, Triangle);
@@ -131,9 +134,9 @@ fn drawRectangle(rectangles: Query(struct { Rectangle, Transform, ?Color })) !vo
     for (rectangles.entities) |entity| {
         if (!rectangles.filter(entity)) continue;
         if (rectangles.getOptional(entity, Color)) |color| {
-            sokol.gl.c4b(color.r, color.g, color.b, color.a);
+            sokol.gl.c4f(color.r, color.g, color.b, color.a);
         } else {
-            sokol.gl.c4b(255, 0, 0, 255);
+            sokol.gl.c4f(1.0, 0.0, 0.0, 1.0);
         }
         const transform = rectangles.getComponentMut(entity, Transform);
         const rectangle = rectangles.getComponentMut(entity, Rectangle);
@@ -153,9 +156,9 @@ fn drawCircle(circles: Query(struct { Circle, Transform, ?Color })) !void {
         const circle = circles.getComponentMut(entity, Circle);
 
         if (circles.getOptional(entity, Color)) |color| {
-            sokol.gl.c4b(color.r, color.g, color.b, color.a);
+            sokol.gl.c4f(color.r, color.g, color.b, color.a);
         } else {
-            sokol.gl.c4b(255, 0, 0, 255);
+            sokol.gl.c4f(1.0, 0.0, 0.0, 1.0);
         }
 
         // Draw circle as triangle fan
@@ -181,7 +184,8 @@ fn drawCircle(circles: Query(struct { Circle, Transform, ?Color })) !void {
     sokol.gl.end();
 }
 
-fn beginPass() !void {
+fn beginPass(pass_action_resource: Resource(PassAction)) !void {
+    const pass_action = pass_action_resource.value.*;
     sokol.gfx.beginPass(.{ .action = pass_action, .swapchain = sokol.glue.swapchain() });
     sokol.gl.draw();
 }
@@ -191,7 +195,8 @@ fn endPass() !void {
     sokol.gfx.commit();
 }
 
-pub fn build(registry: SystemRegistry) !void {
+pub fn build(registry: SystemRegistry, world: anytype) !void {
+    try world.setResource(sokol.gfx.PassAction, .{});
     registry.registerStartupSystem(init, .first);
     registry.registerSystem(setDefaults, .pre_render);
     registry.registerSystem(setup2d, .pre_render);
