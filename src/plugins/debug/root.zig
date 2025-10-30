@@ -743,6 +743,8 @@ pub const Components = .{
     Tracked,
 };
 
+pub const Events = .{};
+
 pub fn build(registry: SystemRegistry) !void {
     registry.registerSystem(updateDebugSystems, .first);
     registry.registerTerminateSystem(cleanup, .last);

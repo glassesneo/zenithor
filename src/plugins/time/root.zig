@@ -34,6 +34,8 @@ pub const Resources = .{
     Time,
 };
 
+pub const Events = .{};
+
 fn init() !void {
     sokol.time.setup();
 }

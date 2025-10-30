@@ -70,13 +70,15 @@ Zenithor uses a compile-time plugin architecture. A **plugin** is a type that de
 
 1. **Components** (optional) - Tuple declaration of component types for the ECS
 2. **Resources** (optional) - Tuple declaration of resource types (global singletons) for the ECS
-3. **build() function** (required) - Registers systems with the SystemRegistry and initializes resources
-4. **Groups** (optional) - Tuple declaration for entity groupings in the ECS
+3. **Events** (optional) - Tuple declaration of event types for frame-delayed communication
+4. **build() function** (required) - Registers systems with the SystemRegistry and initializes resources
+5. **Groups** (optional) - Tuple declaration for entity groupings in the ECS
 
 Example plugin structure:
 ```zig
 pub const Components = .{ MyComponent };
 pub const Resources = .{ DeltaTime, Score };
+pub const Events = .{ CollisionEvent, DamageEvent };
 pub const Groups = &.{ MyGroup };
 
 // Option 1: Basic - registry only
@@ -139,7 +141,7 @@ The engine automatically detects parameter types at compile time and constructs 
 
 ### World Building
 
-The `buildWorld()` function in `src/core/application.zig` performs compile-time component and resource deduplication across all plugins. This ensures each component and resource type appears exactly once in the final World type, regardless of how many plugins declare them.
+The `buildWorld()` function in `src/core/application.zig` performs compile-time component, resource, and event deduplication across all plugins. This ensures each type appears exactly once in the final World type, regardless of how many plugins declare them.
 
 ### System Scheduling
 
@@ -166,14 +168,14 @@ Three system types are available:
 The `run()` function in `src/core/application.zig`:
 
 1. Combines Builtin Plugin with user-provided Default Plugins
-2. Builds deduplicated World type from all plugin components and resources at compile time
+2. Builds deduplicated World type from all plugin components, resources, and events at compile time
 3. Creates SystemScheduler instances for startup/regular/terminate systems
 4. Registers Sokol callbacks (init, frame, cleanup, event)
 5. Calls each plugin's `build()` function to register systems and initialize resources
 6. Initializes Sokol (gfx, gl, imgui)
 7. Runs the application main loop
 
-Note: The ECS World loads component and resource types from all `Components` and `Resources` tuples and executes all `build()` functions at compile time.
+Note: The ECS World loads component, resource, and event types from all `Components`, `Resources`, and `Events` tuples and executes all `build()` functions at compile time.
 
 ### Resources
 
@@ -254,16 +256,17 @@ pub const Resources = .{ DeltaTime, Gravity };
 1. Create plugin file (e.g., `src/plugins/my_plugin/root.zig`)
 2. Define `Components` tuple with component types (optional)
 3. Define `Resources` tuple with resource types (optional)
-4. Optionally define `Groups` array for entity groupings
-5. Implement `build()` function to register systems and initialize resources:
+4. Define `Events` tuple with event types (optional)
+5. Optionally define `Groups` array for entity groupings
+6. Implement `build()` function to register systems and initialize resources:
    - Basic: `build(registry: SystemRegistry) !void`
    - With allocator: `build(allocator: std.mem.Allocator, registry: SystemRegistry) !void`
    - With world: `build(world: anytype, registry: SystemRegistry) !void`
    - All parameters: `build(allocator: std.mem.Allocator, world: anytype, registry: SystemRegistry) !void`
    - Parameters can be in any order - the engine detects types at compile time
-6. If using resources, call `world.setResource()` in `build()` to initialize them
-7. Add plugin to `src/root.zig` exports
-8. Include plugin in example/application via `zenithor.run(.{ MyPlugin })`
+7. If using resources, call `world.setResource()` in `build()` to initialize them
+8. Add plugin to `src/root.zig` exports
+9. Include plugin in example/application via `zenithor.run(.{ MyPlugin })`
 
 ### Testing
 
@@ -517,6 +520,121 @@ fn enemyAISystem(query: TagQuery(struct { Enemy, ?Boss, ?Elite })) !void {
 - **Type Safety**: Explicit `?Component` syntax shows which components are optional at compile time
 - **Cleaner Code**: Avoid multiple separate queries when some components are optional
 
+### Event System
+
+Sparze provides a frame-delayed event system for decoupled communication between systems. Events written in frame N become readable in frame N+1, ensuring stable processing without mid-frame mutations.
+
+**Event Declaration:**
+```zig
+// Define event types
+const CollisionEvent = struct {
+    projectile: Entity,
+    enemy: Entity,
+};
+
+const DamageEvent = struct {
+    entity: Entity,
+    amount: i32,
+};
+
+// Declare in plugin
+pub const Events = .{ CollisionEvent, DamageEvent };
+```
+
+**Event Lifecycle:**
+1. **Frame N**: Systems write events via `EventWriter`
+2. **Frame End**: `world.endFrame()` swaps write/read buffers
+3. **Frame N+1**: Systems read events via `EventReader`
+4. **Next Frame Begin**: `world.beginFrame()` clears old read buffer
+
+**Writing Events:**
+```zig
+fn collisionDetection(
+    projectile_query: Query(struct { Projectile, Transform, Collider }),
+    enemy_query: Query(struct { Enemy, Transform, Collider }),
+    collision_writer: EventWriter(CollisionEvent),
+) !void {
+    for (projectile_query.entities) |proj_entity| {
+        if (!projectile_query.filter(proj_entity)) continue;
+
+        for (enemy_query.entities) |enemy_entity| {
+            if (!enemy_query.filter(enemy_entity)) continue;
+
+            // Check collision...
+            if (collided) {
+                try collision_writer.enqueue(.{
+                    .projectile = proj_entity,
+                    .enemy = enemy_entity,
+                });
+            }
+        }
+    }
+}
+```
+
+**Reading Events:**
+```zig
+fn damageResponse(
+    collision_reader: EventReader(CollisionEvent),
+    damage_writer: EventWriter(DamageEvent),
+    commands: anytype,
+) !void {
+    // Process collisions from previous frame
+    for (collision_reader.queue) |collision| {
+        // Destroy projectile
+        try commands.destroyEntity(collision.projectile);
+
+        // Emit damage event
+        try damage_writer.enqueue(.{
+            .entity = collision.enemy,
+            .amount = 50,
+        });
+    }
+}
+```
+
+**Event Chain Pattern:**
+Systems can form event chains by reading one event type and writing another:
+```zig
+// Frame N: Collision detected → CollisionEvent
+// Frame N+1: Process collision → DamageEvent
+// Frame N+2: Process damage → DeathEvent
+// Frame N+3: Handle death → destroy entity
+
+fn handleDamage(
+    damage_reader: EventReader(DamageEvent),
+    health_query: SingleQuery(Health),
+    death_writer: EventWriter(DeathEvent),
+    commands: anytype,
+) !void {
+    for (damage_reader.queue) |damage_event| {
+        for (health_query.entities, health_query.components) |entity, *health| {
+            if (entity == damage_event.entity) {
+                health.hp -= damage_event.amount;
+
+                if (health.hp <= 0) {
+                    try death_writer.enqueue(.{ .entity = entity });
+                    try commands.destroyEntity(entity);
+                }
+                break;
+            }
+        }
+    }
+}
+```
+
+**Event System API:**
+- **EventWriter.enqueue(event)** - Queue event for next frame
+- **EventReader.queue** - Slice of events from previous frame (read-only)
+
+**Benefits:**
+- **Decoupling**: Systems don't need direct references to each other
+- **Stable Processing**: No mid-frame event mutations
+- **Clear Event Flow**: Frame-delayed model makes timing explicit
+- **Type Safety**: Compile-time event type checking
+
+**Example:** See `examples/demo_events.zig` for a complete demonstration of collision detection, damage, and death events in a simple shooter game.
+
 ### Performance Optimizations
 
 **SparseSet Optimizations**:
@@ -545,9 +663,9 @@ try world.getSparseSetPtr(Position).reserve(expected_capacity);
 ### Integration with Zenithor
 
 Zenithor's `buildWorld()` function (`src/core/application.zig`) creates the ECS World by:
-1. Collecting all `Components` tuples from plugins
-2. Performing compile-time component deduplication
-3. Creating the World type: `World(struct { Component1, Component2, ... })`
+1. Collecting all `Components`, `Resources`, and `Events` tuples from plugins
+2. Performing compile-time deduplication for each type category
+3. Creating the World type: `World(Components, Resources, Events)`
 
 Plugin `Groups` declarations are used to:
 1. Validate groups at compile time

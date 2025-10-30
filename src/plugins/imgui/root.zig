@@ -31,6 +31,8 @@ pub const Components = .{
     Window,
 };
 
+pub const Events = .{};
+
 fn init() !void {
     sokol.imgui.setup(.{
         .logger = .{ .func = sokol.log.func },

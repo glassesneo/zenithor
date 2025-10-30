@@ -86,7 +86,41 @@ pub fn buildWorld(comptime plugins: anytype) type {
     }
     const Resources = std.meta.Tuple(&resources);
 
-    return sparze.World(Components, Resources);
+    // === Collect and deduplicate Events ===
+
+    // compute max possible length for events
+    var total_event_len: usize = 0;
+    inline for (plugins) |P| {
+        if (!@hasDecl(P, "Events")) continue;
+        inline for (P.Events) |_| {
+            total_event_len += 1;
+        }
+    }
+
+    // dedup events into temporary list
+    var tmp_events: [total_event_len]type = undefined;
+    var event_count: usize = 0;
+    inline for (plugins) |P| {
+        if (!@hasDecl(P, "Events")) continue;
+        inline for (P.Events) |E| {
+            if (!containsType(tmp_events, E, event_count)) {
+                tmp_events[event_count] = E;
+                event_count += 1;
+            }
+        }
+    }
+
+    // finalize exact-sized event list
+    var events: [event_count]type = undefined;
+    comptime {
+        var i: usize = 0;
+        while (i < event_count) : (i += 1) {
+            events[i] = tmp_events[i];
+        }
+    }
+    const Events = std.meta.Tuple(&events);
+
+    return sparze.World(Components, Resources, Events);
 }
 
 pub fn run(comptime plugins: anytype) void {
@@ -271,11 +305,13 @@ test "buildWorld: deduplicates components across plugins" {
         pub const A = struct {};
         pub const B = struct {};
         pub const Components = .{ A, B, Duplicate };
+        pub const Events = .{};
     };
     const Plugin2 = struct {
         pub const C = struct { field1: []const u8 };
         pub const D = struct { field1: []const u8 };
         pub const Components = .{ C, D, Duplicate }; // duplicated
+        pub const Events = .{};
     };
 
     const World = buildWorld(.{ Plugin1, Plugin2 });
@@ -295,9 +331,32 @@ test "buildWorld: handles empty plugin list" {
 test "buildWorld: handles single plugin" {
     const Plugin = struct {
         pub const Components = .{struct {}};
+        pub const Events = .{};
     };
 
     const World = buildWorld(.{Plugin});
     var world = World.init(testing.allocator);
     defer world.deinit();
+}
+
+test "buildWorld: deduplicates events across plugins" {
+    const DuplicateEvent = struct { value: u32 };
+    const Plugin1 = struct {
+        pub const EventA = struct {};
+        pub const EventB = struct {};
+        pub const Components = .{};
+        pub const Events = .{ EventA, EventB, DuplicateEvent };
+    };
+    const Plugin2 = struct {
+        pub const EventC = struct { data: []const u8 };
+        pub const EventD = struct { data: []const u8 };
+        pub const Components = .{};
+        pub const Events = .{ EventC, EventD, DuplicateEvent }; // duplicated
+    };
+
+    const World = buildWorld(.{ Plugin1, Plugin2 });
+    var world = World.init(testing.allocator);
+    defer world.deinit();
+
+    // If we got here without compile errors, deduplication worked
 }

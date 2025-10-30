@@ -70,6 +70,8 @@ pub const Resources = .{
     PassAction,
 };
 
+pub const Events = .{};
+
 fn init(pass_action_resource: Resource(PassAction)) !void {
     var pass_action = pass_action_resource.value;
     pass_action.colors[0] = .{

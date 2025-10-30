@@ -13,12 +13,15 @@ pub const InputPlugin = @import("plugins/input/root.zig");
 pub const DebugPlugin = @import("plugins/debug/root.zig");
 
 const sparze = @import("sparze");
+pub const Entity = sparze.Entity;
 pub const SingleQuery = sparze.SingleQuery;
 pub const Query = sparze.Query;
 pub const SingleTag = sparze.SingleTag;
 pub const TagQuery = sparze.TagQuery;
 pub const Group = sparze.Group;
 pub const Resource = sparze.Resource;
+pub const EventWriter = sparze.EventWriter;
+pub const EventReader = sparze.EventReader;
 
 test {
     std.testing.refAllDecls(@This());

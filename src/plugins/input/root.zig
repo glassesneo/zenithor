@@ -25,6 +25,8 @@ pub const Resources = .{
     Mouse,
 };
 
+pub const Events = .{};
+
 // Internal storage for event-based input (before ImGui is ready)
 var temp_mouse_x: f32 = 0.0;
 var temp_mouse_y: f32 = 0.0;

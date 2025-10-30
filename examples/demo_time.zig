@@ -28,6 +28,7 @@ const CoordinateGroup = struct {
 
 const Game = struct {
     pub const Components = .{Velocity};
+    pub const Events = .{};
     pub const Groups = .{CoordinateGroup};
 
     pub fn build(registry: SystemRegistry) !void {

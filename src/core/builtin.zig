@@ -42,4 +42,6 @@ pub const Components = .{
     Color,
 };
 
+pub const Events = .{};
+
 const std = @import("std");

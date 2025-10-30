@@ -54,6 +54,7 @@ const MovementGroup = struct {
 const Game = struct {
     pub const Components = .{ Velocity, Lifetime, Clickable };
     pub const Resources = .{ DeltaTime, Score, GameConfig };
+    pub const Events = .{};
     pub const Groups = .{MovementGroup};
 
     pub fn build(world: anytype, registry: SystemRegistry) !void {

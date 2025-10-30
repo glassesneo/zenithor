@@ -28,6 +28,7 @@ fn setup(commands: anytype) !void {
 
 const Game = struct {
     pub const Components = .{};
+    pub const Events = .{};
 
     pub fn build(registry: SystemRegistry) !void {
         registry.registerStartupSystem(setup, .first);

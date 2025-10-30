@@ -12,6 +12,7 @@ const examples = [_]Example{
     .{ .name = "demo_zindex" },
     .{ .name = "demo_circle" },
     .{ .name = "demo_resources" },
+    .{ .name = "demo_events" },
 };
 
 const Example = struct {
