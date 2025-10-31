@@ -167,9 +167,47 @@ pub fn run(comptime plugins: anytype) void {
         }
 
         pub fn registerEventHandler(comptime handler_fn: anytype) void {
+            const handler_fn_info = @typeInfo(@TypeOf(handler_fn)).@"fn";
+            const AppType = @This(); // Capture the App struct type
+
             const wrapper = struct {
                 fn handle(ev: [*c]const sokol.app.Event) void {
-                    handler_fn(ev.*) catch {};
+                    // Build tuple type at compile time (similar to build() wrapper)
+                    const ArgsType = comptime blk: {
+                        var fields: [handler_fn_info.params.len]std.builtin.Type.StructField = undefined;
+                        for (handler_fn_info.params, 0..) |param, i| {
+                            // First parameter is always Event, second (if present) is *World
+                            const ArgType = if (i == 0)
+                                (param.type orelse sokol.app.Event)
+                            else
+                                (param.type orelse *World);
+                            fields[i] = std.builtin.Type.StructField{
+                                .name = std.fmt.comptimePrint("{d}", .{i}),
+                                .type = ArgType,
+                                .is_comptime = false,
+                                .alignment = @alignOf(ArgType),
+                                .default_value_ptr = null,
+                            };
+                        }
+                        break :blk @Type(.{ .@"struct" = .{
+                            .layout = .auto,
+                            .is_tuple = true,
+                            .decls = &.{},
+                            .fields = &fields,
+                        } });
+                    };
+
+                    // Populate the tuple at runtime
+                    var args: ArgsType = undefined;
+                    inline for (handler_fn_info.params, 0..) |_, i| {
+                        if (i == 0) {
+                            args[i] = ev.*;
+                        } else {
+                            args[i] = &AppType.world;
+                        }
+                    }
+
+                    @call(.auto, handler_fn, args) catch {};
                 }
             }.handle;
             event_handlers[event_handler_count] = wrapper;

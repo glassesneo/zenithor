@@ -4,10 +4,11 @@ const SystemRegistry = zenithor.SystemRegistry;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = zenithor.GraphicsPlugin;
 const ImGuiPlugin = zenithor.ImGuiPlugin;
+const InputPlugin = zenithor.InputPlugin;
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game });
 }
 
 // ===== Resource Definitions =====
@@ -193,18 +194,24 @@ fn updateLifetime(
     }
 }
 
+var was_clicking: bool = false;
+
 /// Handle click events and update score
 fn handleClicks(
+    mouse: zenithor.Resource(InputPlugin.Mouse),
     score: zenithor.Resource(Score),
     config: zenithor.Resource(GameConfig),
     clickable_query: zenithor.Query(struct { Clickable, BuiltinPlugin.Transform }),
     commands: anytype,
 ) !void {
-    // Simple click detection (in real game, would use proper input handling)
-    const io = ig.igGetIO();
-    if (io.*.MouseClicked[0]) {
-        const mouse_x = io.*.MousePos.x;
-        const mouse_y = io.*.MousePos.y;
+    // Detect mouse click (transition from not pressed to pressed)
+    const clicking = mouse.value.left_button;
+    const clicked = clicking and !was_clicking;
+    was_clicking = clicking;
+
+    if (clicked) {
+        const mouse_x = mouse.value.x;
+        const mouse_y = mouse.value.y;
 
         for (clickable_query.entities) |entity| {
             if (clickable_query.filter(entity)) {
@@ -231,7 +238,7 @@ fn handleClicks(
                 }
             }
         }
-    } else if (!io.*.MouseDown[0]) {
+    } else if (!clicking) {
         // Reset combo when not clicking
         score.value.combo = 0;
     }

@@ -1,70 +1,111 @@
 const std = @import("std");
 const sparze = @import("sparze");
-const SingleQuery = sparze.SingleQuery;
-const Query = sparze.Query;
 const sokol = @import("sokol");
-
-const BuiltinPlugin = @import("../../core/builtin.zig");
-const ImGuiPlugin = @import("../imgui/root.zig");
-const ig = ImGuiPlugin.ig;
 
 const system_module = @import("../../core/system.zig");
 const SystemRegistry = system_module.SystemRegistry;
 
-/// Mouse input resource containing mouse position and button states
+/// Mouse input resource containing mouse position, deltas, scroll, and button states
 pub const Mouse = struct {
     x: f32 = 0.0,
     y: f32 = 0.0,
+    dx: f32 = 0.0, // Per-frame mouse delta X
+    dy: f32 = 0.0, // Per-frame mouse delta Y
+    scroll_x: f32 = 0.0, // Per-frame scroll X
+    scroll_y: f32 = 0.0, // Per-frame scroll Y
     left_button: bool = false,
     right_button: bool = false,
     middle_button: bool = false,
 };
 
+/// Keyboard input resource containing key states and modifiers
+pub const Keyboard = struct {
+    keys: std.StaticBitSet(512) = .initEmpty(), // Key states as bit set (64 bytes)
+    modifiers: u32 = 0, // Modifier key bitmask (Shift, Ctrl, Alt, Super)
+    char_buffer: [32]u32 = undefined, // UTF-32 character input buffer
+    char_count: usize = 0, // Number of characters in buffer this frame
+};
+
 pub const Components = .{};
 pub const Resources = .{
     Mouse,
+    Keyboard,
 };
 
 pub const Events = .{};
 
-// Internal storage for event-based input (before ImGui is ready)
-var temp_mouse_x: f32 = 0.0;
-var temp_mouse_y: f32 = 0.0;
+fn handleEvent(event: sokol.app.Event, world: anytype) !void {
+    const mouse = world.getResourcePtrMut(Mouse);
+    const keyboard = world.getResourcePtrMut(Keyboard);
 
-fn handleEvent(event: sokol.app.Event) !void {
-    // Capture mouse events before ImGui is ready
     switch (event.type) {
         .MOUSE_MOVE => {
-            temp_mouse_x = event.mouse_x;
-            temp_mouse_y = event.mouse_y;
+            mouse.x = event.mouse_x;
+            mouse.y = event.mouse_y;
+            mouse.dx = event.mouse_dx;
+            mouse.dy = event.mouse_dy;
+        },
+        .MOUSE_DOWN => {
+            switch (event.mouse_button) {
+                .LEFT => mouse.left_button = true,
+                .RIGHT => mouse.right_button = true,
+                .MIDDLE => mouse.middle_button = true,
+                else => {},
+            }
+        },
+        .MOUSE_UP => {
+            switch (event.mouse_button) {
+                .LEFT => mouse.left_button = false,
+                .RIGHT => mouse.right_button = false,
+                .MIDDLE => mouse.middle_button = false,
+                else => {},
+            }
+        },
+        .MOUSE_SCROLL => {
+            mouse.scroll_x = event.scroll_x;
+            mouse.scroll_y = event.scroll_y;
+        },
+        .KEY_DOWN => {
+            const key_code: i32 = @intFromEnum(event.key_code);
+            if (key_code >= 0 and key_code < 512) {
+                keyboard.keys.set(@intCast(key_code));
+            }
+            keyboard.modifiers = event.modifiers;
+        },
+        .KEY_UP => {
+            const key_code: i32 = @intFromEnum(event.key_code);
+            if (key_code >= 0 and key_code < 512) {
+                keyboard.keys.unset(@intCast(key_code));
+            }
+            keyboard.modifiers = event.modifiers;
+        },
+        .CHAR => {
+            if (keyboard.char_count < keyboard.char_buffer.len) {
+                keyboard.char_buffer[keyboard.char_count] = event.char_code;
+                keyboard.char_count += 1;
+            }
         },
         else => {},
     }
 }
 
-fn updateMouse(mouse: sparze.Resource(Mouse)) !void {
-    // Try to use ImGui IO if available, otherwise use temp storage
-    const io = ig.igGetIO();
-    if (io != null) {
-        mouse.value.x = io.*.MousePos.x;
-        mouse.value.y = io.*.MousePos.y;
-        mouse.value.left_button = io.*.MouseDown[0];
-        mouse.value.right_button = io.*.MouseDown[1];
-        mouse.value.middle_button = io.*.MouseDown[2];
-    } else {
-        // Fallback to event-based tracking
-        mouse.value.x = temp_mouse_x;
-        mouse.value.y = temp_mouse_y;
-    }
+fn resetPerFrameState(mouse: sparze.Resource(Mouse), keyboard: sparze.Resource(Keyboard)) !void {
+    // Reset per-frame deltas and buffers
+    mouse.value.dx = 0.0;
+    mouse.value.dy = 0.0;
+    mouse.value.scroll_x = 0.0;
+    mouse.value.scroll_y = 0.0;
+    keyboard.value.char_count = 0;
 }
 
 pub fn build(world: anytype, registry: SystemRegistry) !void {
-    // Initialize Mouse resource with default values
+    // Initialize resources with default values
     try world.setResource(Mouse, .{});
+    try world.setResource(Keyboard, .{});
 
-    // Register event handler for fallback input
+    // Register event handler for direct Sokol input (with World access)
     registry.registerEventHandler(handleEvent);
 
-    // Register system to update mouse resource from ImGui IO
-    registry.registerSystem(updateMouse, .first);
+    // Register system to reset per-frame state at frame end
+    registry.registerSystem(resetPerFrameState, .last);
 }
