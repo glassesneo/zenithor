@@ -167,22 +167,16 @@ fn getTransform(entity: zenithor.Entity) !?BuiltinPlugin.Transform {
     return .{ .x = 320, .y = 400, .z = 0 };
 }
 
-fn moveEntities(
-    transform_query: zenithor.SingleQuery(BuiltinPlugin.Transform),
-    velocity_query: zenithor.SingleQuery(Velocity),
-) !void {
+fn moveEntities(query: zenithor.Query(struct { BuiltinPlugin.Transform, Velocity })) !void {
     const dt: f32 = 1.0 / 60.0;
 
     // Move all entities with both Transform and Velocity
-    for (transform_query.entities, transform_query.components) |entity, *transform| {
-        // Check if entity also has velocity
-        for (velocity_query.entities, velocity_query.components) |vel_entity, velocity| {
-            if (entity == vel_entity) {
-                transform.x += velocity.x * dt;
-                transform.y += velocity.y * dt;
-                break;
-            }
-        }
+    for (query.entities) |entity| {
+        if (!query.filter(entity)) continue;
+        const transform = query.getComponentMut(entity, BuiltinPlugin.Transform);
+        const velocity = query.getComponent(entity, Velocity);
+        transform.x += velocity.x * dt;
+        transform.y += velocity.y * dt;
     }
 }
 
@@ -201,51 +195,31 @@ fn updateLifetimes(
 }
 
 fn detectCollisions(
-    projectile_tags: zenithor.SingleTag(Projectile),
-    enemy_tags: zenithor.SingleTag(Enemy),
-    transform_query: zenithor.SingleQuery(BuiltinPlugin.Transform),
-    collider_query: zenithor.SingleQuery(Collider),
+    projectiles: zenithor.Query(struct { Projectile, BuiltinPlugin.Transform, Collider }),
+    enemies: zenithor.Query(struct { Enemy, BuiltinPlugin.Transform, Collider }),
     collision_writer: zenithor.EventWriter(CollisionEvent),
 ) !void {
-    // Check each projectile against each enemy
-    for (projectile_tags.entities) |proj_entity| {
-        const proj_transform = findTransform(proj_entity, transform_query);
-        const proj_collider = findCollider(proj_entity, collider_query);
-        if (proj_transform == null or proj_collider == null) continue;
+    var iter = projectiles.crossProduct(&enemies);
+    while (iter.next()) |entry| {
+        const projectile, const enemy = entry;
+        const proj_transform = projectiles.getComponent(projectile, BuiltinPlugin.Transform);
+        const proj_collider = projectiles.getComponent(projectile, Collider);
+        const enemy_transform = enemies.getComponent(enemy, BuiltinPlugin.Transform);
+        const enemy_collider = enemies.getComponent(enemy, Collider);
 
-        for (enemy_tags.entities) |enemy_entity| {
-            const enemy_transform = findTransform(enemy_entity, transform_query);
-            const enemy_collider = findCollider(enemy_entity, collider_query);
-            if (enemy_transform == null or enemy_collider == null) continue;
+        // Check distance between projectile and enemy
+        const dx = proj_transform.x - enemy_transform.x;
+        const dy = proj_transform.y - enemy_transform.y;
+        const dist_sq = dx * dx + dy * dy;
+        const radius_sum = proj_collider.radius + enemy_collider.radius;
 
-            // Check distance
-            const dx = proj_transform.?.x - enemy_transform.?.x;
-            const dy = proj_transform.?.y - enemy_transform.?.y;
-            const dist_sq = dx * dx + dy * dy;
-            const radius_sum = proj_collider.?.radius + enemy_collider.?.radius;
-
-            if (dist_sq < radius_sum * radius_sum) {
-                try collision_writer.enqueue(.{
-                    .projectile = proj_entity,
-                    .enemy = enemy_entity,
-                });
-            }
+        if (dist_sq < radius_sum * radius_sum) {
+            try collision_writer.enqueue(.{
+                .projectile = projectile,
+                .enemy = enemy,
+            });
         }
     }
-}
-
-fn findTransform(entity: zenithor.Entity, query: zenithor.SingleQuery(BuiltinPlugin.Transform)) ?BuiltinPlugin.Transform {
-    for (query.entities, query.components) |e, t| {
-        if (e == entity) return t;
-    }
-    return null;
-}
-
-fn findCollider(entity: zenithor.Entity, query: zenithor.SingleQuery(Collider)) ?Collider {
-    for (query.entities, query.components) |e, c| {
-        if (e == entity) return c;
-    }
-    return null;
 }
 
 fn handleDamage(

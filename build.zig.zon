@@ -41,8 +41,8 @@
             .hash = "sokol-0.1.0-pb1HK3TYLgCx8lOxdLVWIVDcAzacxO8YDfyw2Er-_2nN",
         },
         .sparze = .{
-            .url = "git+https://github.com/glassesneo/sparze.git#2584c07e7cdd14cf7f35b8e270956a5ac866a00e",
-            .hash = "sparze-0.0.0-IVywraRQAwA-Tnki89DjtVWH40GSYy9FzoTeY9cFOmUv",
+            .url = "git+https://github.com/glassesneo/sparze.git#a5deb156dbba29d64f08741ea054d3dc3114566b",
+            .hash = "sparze-0.0.0-IVywrZGPBAAjfKM-CxQ8OGa6DukoXWoQ70V9AoeIQsIY",
         },
         .cimgui = .{
             .url = "git+https://github.com/floooh/dcimgui.git#d5fb4e3d27b79062dc5981db3631dadc4f204654",
