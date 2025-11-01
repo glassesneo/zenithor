@@ -20,6 +20,10 @@ zig build test
 zig build demo_window                              # Native build
 zig build demo_2d -Dtarget=wasm32-emscripten       # WebAssembly build
 
+# Build all examples
+zig build examples                                 # Native: builds all examples
+zig build examples -Dtarget=wasm32-emscripten      # WebAssembly: builds all examples
+
 # Build and run a specific example
 zig build run-demo_window                          # Native: builds and runs executable
 zig build run-demo_2d -Dtarget=wasm32-emscripten   # WebAssembly: builds and starts dev server

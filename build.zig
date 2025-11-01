@@ -45,8 +45,11 @@ const ExampleResult = struct {
 fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
     const is_wasm = options.target.result.cpu.arch.isWasm();
 
+    // Create "examples" step that builds all examples
+    const examples_step = b.step("examples", "Build all examples");
+
     if (is_wasm) {
-        // Create serve-examples step first
+        // Create serve-examples step
         const serve_step = b.step("serve-examples", "Build all examples and serve them");
         const serve_deno = b.addSystemCommand(&.{
             "deno",
@@ -67,7 +70,8 @@ fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
             b.step(example.name, build_desc).dependOn(out.build);
             b.step(b.fmt("run-{s}", .{example.name}), run_desc).dependOn(&out.run.step);
 
-            // Add this example's build to serve-examples dependencies
+            // Add this example's build to aggregate steps
+            examples_step.dependOn(out.build);
             serve_step.dependOn(out.build);
             serve_deno.step.dependOn(out.build);
         }
@@ -82,6 +86,9 @@ fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
 
             b.step(example.name, build_desc).dependOn(out.build);
             b.step(b.fmt("run-{s}", .{example.name}), run_desc).dependOn(&out.run.step);
+
+            // Add this example's build to aggregate step
+            examples_step.dependOn(out.build);
         }
     }
 }
