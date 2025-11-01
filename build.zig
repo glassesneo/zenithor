@@ -45,37 +45,44 @@ const ExampleResult = struct {
 fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
     const is_wasm = options.target.result.cpu.arch.isWasm();
 
-    const native_all = b.step("examples-native", "Build all native examples");
-    const web_all = b.step("examples-web", "Build all web examples");
-    const web_serve_all = b.step("examples-web-serve", "Serve all web examples");
-    const examples_alias = b.step("examples", "Build examples");
-
     if (is_wasm) {
+        // Create serve-examples step first
+        const serve_step = b.step("serve-examples", "Build all examples and serve them");
+        const serve_deno = b.addSystemCommand(&.{
+            "deno",
+            "run",
+            "--allow-net",
+            "--allow-read",
+            "--watch",
+            "server/server.ts",
+        });
+
+        // Build all web examples
         for (examples) |example| {
             const deps = try loadExampleDependencies(b, options);
             const build_desc = b.fmt("Build {s} example", .{example.name});
             const run_desc = b.fmt("Run {s} example", .{example.name});
             const out = try buildWebExample(b, example, options, deps);
-            web_all.dependOn(out.build);
-            web_serve_all.dependOn(&out.run.step);
 
             b.step(example.name, build_desc).dependOn(out.build);
             b.step(b.fmt("run-{s}", .{example.name}), run_desc).dependOn(&out.run.step);
+
+            // Add this example's build to serve-examples dependencies
+            serve_step.dependOn(out.build);
+            serve_deno.step.dependOn(out.build);
         }
-        examples_alias.dependOn(web_all);
-        b.step("serve-examples", "Serve web examples").dependOn(web_serve_all);
+
+        serve_step.dependOn(&serve_deno.step);
     } else {
         for (examples) |example| {
             const deps = try loadExampleDependencies(b, options);
             const build_desc = b.fmt("Build {s} example", .{example.name});
             const run_desc = b.fmt("Run {s} example", .{example.name});
             const out = buildNativeExample(b, example, options, deps);
-            native_all.dependOn(out.build);
 
             b.step(example.name, build_desc).dependOn(out.build);
             b.step(b.fmt("run-{s}", .{example.name}), run_desc).dependOn(&out.run.step);
         }
-        examples_alias.dependOn(native_all);
     }
 }
 
@@ -135,14 +142,7 @@ fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, 
     });
     exe.root_module.addImport("sparze", deps.sparze.module("sparze"));
 
-    const build_step = &exe.step;
-    const build_label = b.fmt("build-{s}-native", .{example.name});
-    const run_label = b.fmt("run-{s}-native", .{example.name});
-
-    b.step(build_label, b.fmt("Build {s} (native)", .{example.name})).dependOn(build_step);
-
     const run = b.addRunArtifact(exe);
-    b.step(run_label, b.fmt("Run {s} (native)", .{example.name})).dependOn(&run.step);
 
     return .{ .build = &exe.step, .run = run };
 }
@@ -186,15 +186,15 @@ fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, dep
 
     b.getInstallStep().dependOn(&link.step);
 
-    const build_label = b.fmt("build-{s}-web", .{example.name});
-    const run_label = b.fmt("run-{s}-web", .{example.name});
-    b.step(build_label, b.fmt("Build {s} (web)", .{example.name})).dependOn(&link.step);
-
     const deno = b.addSystemCommand(&.{
-        "deno", "run", "--allow-net", "--allow-read", "--watch", "server/server.ts",
+        "deno",
+        "run",
+        "--allow-net",
+        "--allow-read",
+        "--watch",
+        "server/server.ts",
     });
     deno.step.dependOn(&link.step);
-    b.step(run_label, b.fmt("Run {s} (web)", .{example.name})).dependOn(&deno.step);
 
     return .{ .build = &link.step, .run = deno };
 }

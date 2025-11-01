@@ -10,24 +10,22 @@ Zenithor is a Zig game engine framework built on a plugin-based Entity Component
 
 ### Common Build Commands
 
+The build system provides simple, consistent commands that work with both native and WebAssembly targets:
+
 ```bash
 # Run unit tests
 zig build test
 
-# Build all native examples
-zig build examples-native
+# Build a specific example (automatically detects native or wasm based on -Dtarget)
+zig build demo_window                              # Native build
+zig build demo_2d -Dtarget=wasm32-emscripten       # WebAssembly build
 
-# Build all web examples (wasm32-emscripten target)
-zig build examples-web -Dtarget=wasm32-emscripten
+# Build and run a specific example
+zig build run-demo_window                          # Native: builds and runs executable
+zig build run-demo_2d -Dtarget=wasm32-emscripten   # WebAssembly: builds and starts dev server
 
-# Build and run specific example (native)
-zig build run-window
-zig build run-2d_shapes
-zig build run-imgui_demo
-
-# Build and run specific example (web with hot reload)
-zig build run-window -Dtarget=wasm32-emscripten
-zig build run-2d_shapes -Dtarget=wasm32-emscripten
+# Build all examples and serve them (WebAssembly only)
+zig build serve-examples -Dtarget=wasm32-emscripten
 
 # Build library
 zig build
@@ -35,6 +33,18 @@ zig build
 # Install library artifact
 zig build install
 ```
+
+**Available examples:**
+- `demo_window` - Basic window with colored background
+- `demo_2d` - 2D shapes rendering (triangle)
+- `demo_imgui` - Dear ImGui integration
+- `demo_input` - Mouse and keyboard input handling
+- `demo_time` - Time and delta time resource usage
+- `demo_debug` - Debug plugin features
+- `demo_zindex` - Z-index layering demonstration
+- `demo_circle` - Circle rendering
+- `demo_resources` - Resource system demonstration
+- `demo_events` - Event system demonstration
 
 ### Graphics Backend Options
 
@@ -61,6 +71,113 @@ The `server.ts` file provides a Deno-based development server with hot reload fu
 - Watches for HTML and WASM file changes
 - Automatically injects hot-reload WebSocket client into HTML
 - Broadcasts reload notifications to connected clients
+
+### Debugging WebAssembly Builds
+
+**IMPORTANT**: When debugging visual issues, rendering problems, or game behavior, you MUST use the WebAssembly build with the chrome-devtools MCP server to inspect the actual game window. Do NOT rely solely on code inspection or console output.
+
+**Build and serve wasm examples:**
+```bash
+# Build all wasm examples and start development server
+zig build serve-examples -Dtarget=wasm32-emscripten
+
+# Server runs at http://localhost:8000
+# Examples: demo_window.html, demo_2d.html, demo_imgui.html, etc.
+```
+
+**Chrome DevTools MCP Debugging Workflow:**
+
+1. **List and navigate to pages:**
+   ```
+   mcp__chrome-devtools__list_pages
+   mcp__chrome-devtools__navigate_page(url: "http://localhost:8000/demo_2d.html")
+   ```
+
+2. **Take screenshots to verify rendering:**
+   ```
+   mcp__chrome-devtools__take_screenshot(fullPage: true)
+   ```
+   This is the PRIMARY method for verifying game rendering, UI layout, and visual correctness.
+
+3. **Check console messages for errors:**
+   ```
+   mcp__chrome-devtools__list_console_messages()
+   mcp__chrome-devtools__get_console_message(msgid: 2)
+   ```
+
+4. **Inspect network requests:**
+   ```
+   mcp__chrome-devtools__list_network_requests()
+   mcp__chrome-devtools__get_network_request(reqid: 1)
+   ```
+
+5. **Evaluate JavaScript for debugging:**
+   ```javascript
+   mcp__chrome-devtools__evaluate_script(function: "() => {
+     const canvas = document.querySelector('canvas');
+     return {
+       width: canvas.width,
+       height: canvas.height
+     };
+   }")
+   ```
+
+6. **Take element snapshots:**
+   ```
+   mcp__chrome-devtools__take_snapshot()
+   ```
+
+**Common Debugging Scenarios:**
+
+- **Visual bugs**: Take screenshots before and after code changes to verify fixes
+- **Performance issues**: Check console for warnings, evaluate JavaScript to inspect frame timing
+- **Resource loading**: Check network requests to verify WASM and asset loading
+- **Canvas rendering**: Evaluate JavaScript to inspect canvas dimensions and WebGL context
+- **UI positioning**: Take screenshots to verify ImGui window layouts and positions
+
+**Example debugging session:**
+```
+1. zig build serve-examples -Dtarget=wasm32-emscripten
+2. mcp__chrome-devtools__navigate_page(url: "http://localhost:8000/demo_2d.html")
+3. mcp__chrome-devtools__take_screenshot(fullPage: true)
+4. mcp__chrome-devtools__list_console_messages()
+5. Make code changes
+6. Wait for hot reload
+7. mcp__chrome-devtools__take_screenshot(fullPage: true)
+8. Compare screenshots to verify fix
+```
+
+**Benefits:**
+- **Visual verification**: Screenshots provide ground truth for rendering correctness
+- **Live debugging**: Hot reload enables rapid iteration with immediate visual feedback
+- **Comprehensive inspection**: Access to console, network, and JavaScript evaluation
+- **No manual browser interaction**: Fully automated debugging workflow through MCP
+
+**Graphics Backend Differences:**
+
+Rendering behavior may differ between graphics backends:
+- **Web (GLES3)**: OpenGL ES 3.0 via WebGL or WebGPU (with `-Dwgpu` flag)
+- **Native macOS (Metal)**: Platform-specific Metal backend (default on macOS)
+- **Native Windows (DirectX)**: Platform-specific DirectX backend (default on Windows)
+- **Native Linux (GL Core)**: OpenGL Core profile (default on Linux)
+
+**Important considerations:**
+- Rendering bugs may be backend-specific and only appear on certain platforms
+- When debugging visual issues, test both web (GLES3/WebGPU) and native (platform backend) builds
+- Use `zig build run-{example}` (without `-Dtarget`) for native testing alongside wasm debugging
+- If a visual issue appears in one backend but not another, specify the backend in bug reports
+
+**Testing both backends:**
+```bash
+# Test native build (Metal on macOS, DirectX on Windows, GL Core on Linux)
+zig build run-demo_2d
+
+# Test web build (GLES3 default)
+zig build serve-examples -Dtarget=wasm32-emscripten
+
+# Test web build with WebGPU backend
+zig build serve-examples -Dtarget=wasm32-emscripten -Dwgpu
+```
 
 ## Architecture
 
