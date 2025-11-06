@@ -35,6 +35,11 @@ const DependencySet = struct {
     cimgui: *std.Build.Dependency,
     sparze: *std.Build.Dependency,
     emsdk: ?*std.Build.Dependency = null,
+    graphics_plugin_mod: *std.Build.Module,
+    time_plugin_mod: *std.Build.Module,
+    imgui_plugin_mod: *std.Build.Module,
+    input_plugin_mod: *std.Build.Module,
+    debug_plugin_mod: *std.Build.Module,
 };
 
 const ExampleResult = struct {
@@ -117,10 +122,70 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
         .optimize = options.optimize,
     });
 
+    // Create plugin modules directly instead of loading via b.dependency()
+    // This avoids circular dependency issues
+    const graphics_plugin = b.createModule(.{
+        .root_source_file = b.path("plugins/graphics/src/root.zig"),
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+    graphics_plugin.addImport("zenithor", options.mod_zenithor);
+    graphics_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    graphics_plugin.addImport("sparze", dep_sparze.module("sparze"));
+
+    const time_plugin = b.createModule(.{
+        .root_source_file = b.path("plugins/time/src/root.zig"),
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+    time_plugin.addImport("zenithor", options.mod_zenithor);
+    time_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    time_plugin.addImport("sparze", dep_sparze.module("sparze"));
+
+    const imgui_build_options = b.addOptions();
+    imgui_build_options.addOption(bool, "docking", options.imgui_docking);
+
+    const imgui_plugin = b.createModule(.{
+        .root_source_file = b.path("plugins/imgui/src/root.zig"),
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+    imgui_plugin.addImport("zenithor", options.mod_zenithor);
+    imgui_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    imgui_plugin.addImport("sparze", dep_sparze.module("sparze"));
+    imgui_plugin.addImport("cimgui", dep_cimgui.module(cimgui_config.module_name));
+    imgui_plugin.addImport("cimgui_docking", dep_cimgui.module(cimgui_config.module_name));
+    imgui_plugin.addImport("build_options", imgui_build_options.createModule());
+
+    const input_plugin = b.createModule(.{
+        .root_source_file = b.path("plugins/input/src/root.zig"),
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+    input_plugin.addImport("zenithor", options.mod_zenithor);
+    input_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    input_plugin.addImport("sparze", dep_sparze.module("sparze"));
+
+    const debug_plugin = b.createModule(.{
+        .root_source_file = b.path("plugins/debug/src/root.zig"),
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+    debug_plugin.addImport("zenithor", options.mod_zenithor);
+    debug_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    debug_plugin.addImport("sparze", dep_sparze.module("sparze"));
+    debug_plugin.addImport("imgui_plugin", imgui_plugin);
+
+    // Return a modified DependencySet structure that holds modules instead of dependencies
     return .{
         .sokol = dep_sokol,
         .cimgui = dep_cimgui,
         .sparze = dep_sparze,
+        .graphics_plugin_mod = graphics_plugin,
+        .time_plugin_mod = time_plugin,
+        .imgui_plugin_mod = imgui_plugin,
+        .input_plugin_mod = input_plugin,
+        .debug_plugin_mod = debug_plugin,
     };
 }
 
@@ -137,6 +202,11 @@ fn createExampleModule(b: *std.Build, example: Example, options: ExampleOptions,
         },
     });
     mod.addImport("zenithor", options.mod_zenithor);
+    mod.addImport("graphics_plugin", deps.graphics_plugin_mod);
+    mod.addImport("time_plugin", deps.time_plugin_mod);
+    mod.addImport("imgui_plugin", deps.imgui_plugin_mod);
+    mod.addImport("input_plugin", deps.input_plugin_mod);
+    mod.addImport("debug_plugin", deps.debug_plugin_mod);
 
     return mod;
 }

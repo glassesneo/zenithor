@@ -2,8 +2,8 @@ const std = @import("std");
 const sparze = @import("sparze");
 const sokol = @import("sokol");
 
-const system_module = @import("../../core/system.zig");
-const SystemRegistry = system_module.SystemRegistry;
+const zenithor = @import("zenithor");
+const SystemRegistry = zenithor.SystemRegistry;
 
 /// Mouse input resource containing mouse position, deltas, scroll, and button states
 pub const Mouse = struct {

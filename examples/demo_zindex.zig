@@ -1,14 +1,15 @@
 const zenithor = @import("zenithor");
 const SystemRegistry = zenithor.SystemRegistry;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
-const GraphicsPlugin = zenithor.GraphicsPlugin;
-const TimePlugin = zenithor.TimePlugin;
-const ImGuiPlugin = zenithor.ImGuiPlugin;
-const DebugPlugin = zenithor.DebugPlugin;
+const GraphicsPlugin = @import("graphics_plugin");
+const TimePlugin = @import("time_plugin");
+const ImGuiPlugin = @import("imgui_plugin");
+const DebugPlugin = @import("debug_plugin");
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, TimePlugin, ImGuiPlugin, DebugPlugin, Game });
+    // ImGuiPlugin automatically included via DebugPlugin dependency
+    zenithor.run(.{ GraphicsPlugin, TimePlugin, DebugPlugin, Game });
 }
 
 const Game = struct {

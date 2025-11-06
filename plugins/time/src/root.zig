@@ -2,8 +2,8 @@ const std = @import("std");
 const sokol = @import("sokol");
 const sparze = @import("sparze");
 
-const system_module = @import("../../core/system.zig");
-const SystemRegistry = system_module.SystemRegistry;
+const zenithor = @import("zenithor");
+const SystemRegistry = zenithor.SystemRegistry;
 
 /// Time resource containing all time-related state
 pub const Time = struct {

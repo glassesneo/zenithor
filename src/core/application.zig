@@ -123,8 +123,9 @@ pub fn buildWorld(comptime plugins: anytype) type {
     return sparze.World(Components, Resources, Events);
 }
 
-pub fn run(comptime plugins: anytype) void {
-    const allPlugins = .{BuiltinPlugin} ++ plugins;
+pub fn run(comptime user_plugins: anytype) void {
+    // Combine user plugins with builtin plugin
+    const allPlugins = .{BuiltinPlugin} ++ user_plugins;
     const World = buildWorld(allPlugins);
     const SystemScheduler = system_module.SystemScheduler(World);
 

@@ -5,12 +5,10 @@ const Resource = sparze.Resource;
 const sokol = @import("sokol");
 pub const PassAction = sokol.gfx.PassAction;
 
-const BuiltinPlugin = @import("../../core/builtin.zig");
-const Transform = BuiltinPlugin.Transform;
-const Color = BuiltinPlugin.Color;
-
-const system_module = @import("../../core/system.zig");
-const SystemRegistry = system_module.SystemRegistry;
+const zenithor = @import("zenithor");
+const Transform = zenithor.Transform;
+const Color = zenithor.Color;
+const SystemRegistry = zenithor.SystemRegistry;
 
 pub const Point = struct {};
 

@@ -3,9 +3,9 @@ const SystemRegistry = zenithor.SystemRegistry;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const Transform = BuiltinPlugin.Transform;
 const Color = BuiltinPlugin.Color;
-const GraphicsPlugin = zenithor.GraphicsPlugin;
-const TimePlugin = zenithor.TimePlugin;
-const ImGuiPlugin = zenithor.ImGuiPlugin;
+const GraphicsPlugin = @import("graphics_plugin");
+const TimePlugin = @import("time_plugin");
+const ImGuiPlugin = @import("imgui_plugin");
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {

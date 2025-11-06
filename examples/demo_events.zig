@@ -2,9 +2,9 @@ const std = @import("std");
 const zenithor = @import("zenithor");
 const SystemRegistry = zenithor.SystemRegistry;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
-const GraphicsPlugin = zenithor.GraphicsPlugin;
-const ImGuiPlugin = zenithor.ImGuiPlugin;
-const InputPlugin = zenithor.InputPlugin;
+const GraphicsPlugin = @import("graphics_plugin");
+const ImGuiPlugin = @import("imgui_plugin");
+const InputPlugin = @import("input_plugin");
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {

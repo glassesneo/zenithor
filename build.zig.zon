@@ -53,6 +53,7 @@
         "build.zig",
         "build.zig.zon",
         "src",
+        "plugins",
         // For example...
         //"LICENSE",
         //"README.md",

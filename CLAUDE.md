@@ -254,11 +254,23 @@ The engine automatically detects parameter types at compile time and constructs 
 - Provides the Transform component used across the engine
 - Always included in the World type
 
-**Default Plugins** (`src/plugins/*`):
+**Default Plugins** (`plugins/*/src/root.zig`):
 - Must be explicitly registered by users in `zenithor.run(.{ Plugin })` to access their features
-- **GraphicsPlugin** (`src/plugins/graphics/root.zig`) - 2D shape rendering (Point, Line, Triangle, Rectangle)
-- **ImGuiPlugin** (`src/plugins/imgui/root.zig`) - Dear ImGui integration with Window component
-- **DebugPlugin** (`src/plugins/debug/root.zig`) - Runtime debugging tools with entity tracking, gizmos, and performance monitoring
+- **GraphicsPlugin** (`plugins/graphics/src/root.zig`) - 2D shape rendering (Point, Line, Triangle, Rectangle)
+- **ImGuiPlugin** (`plugins/imgui/src/root.zig`) - Dear ImGui integration with Window component
+- **InputPlugin** (`plugins/input/src/root.zig`) - Keyboard and mouse input handling
+- **TimePlugin** (`plugins/time/src/root.zig`) - Frame timing and delta time tracking
+- **DebugPlugin** (`plugins/debug/src/root.zig`) - Runtime debugging tools with entity tracking, gizmos, and performance monitoring
+
+**Plugin Structure:**
+Each plugin is organized as a separate package under `plugins/` with its own `build.zig.zon`. The main build system creates plugin modules directly and provides them with necessary imports (zenithor, sokol, sparze). This architecture avoids circular dependencies while maintaining clear plugin boundaries.
+
+**Plugin Loading:**
+Plugins are loaded by the main `build.zig` which:
+1. Creates plugin modules from source files in `plugins/*/src/root.zig`
+2. Provides each plugin with imports: `zenithor`, `sokol`, `sparze`
+3. Adds plugin-specific imports (e.g., `cimgui` for ImGuiPlugin, `imgui_plugin` for DebugPlugin)
+4. Configures build options (e.g., docking support for ImGuiPlugin)
 
 ### World Building
 
@@ -288,7 +300,7 @@ Three system types are available:
 
 The `run()` function in `src/core/application.zig`:
 
-1. Combines Builtin Plugin with user-provided Default Plugins
+1. Combines Builtin Plugin with user-provided plugins
 2. Builds deduplicated World type from all plugin components, resources, and events at compile time
 3. Creates SystemScheduler instances for startup/regular/terminate systems
 4. Registers Sokol callbacks (init, frame, cleanup, event)
@@ -374,20 +386,42 @@ pub const Resources = .{ DeltaTime, Gravity };
 
 ### Adding a New Plugin
 
-1. Create plugin file (e.g., `src/plugins/my_plugin/root.zig`)
-2. Define `Components` tuple with component types (optional)
-3. Define `Resources` tuple with resource types (optional)
-4. Define `Events` tuple with event types (optional)
-5. Optionally define `Groups` array for entity groupings
-6. Implement `build()` function to register systems and initialize resources:
+1. Create plugin directory structure:
+   - `plugins/my_plugin/src/root.zig` - Plugin implementation
+   - `plugins/my_plugin/build.zig.zon` - Package metadata (minimal, typically no dependencies)
+2. In `build.zig.zon`, define package metadata:
+   ```zig
+   .{
+       .name = "zenithor_my_plugin",
+       .version = "0.1.0",
+       .minimum_zig_version = "0.15.1",
+       .dependencies = .{},
+       .paths = .{
+           "build.zig.zon",
+           "src",
+       },
+   }
+   ```
+3. In `src/root.zig`, define `Components` tuple with component types (optional)
+4. Define `Resources` tuple with resource types (optional)
+5. Define `Events` tuple with event types (optional)
+6. Optionally define `Groups` array for entity groupings
+7. Implement `build()` function to register systems and initialize resources:
    - Basic: `build(registry: SystemRegistry) !void`
    - With allocator: `build(allocator: std.mem.Allocator, registry: SystemRegistry) !void`
    - With world: `build(world: anytype, registry: SystemRegistry) !void`
    - All parameters: `build(allocator: std.mem.Allocator, world: anytype, registry: SystemRegistry) !void`
    - Parameters can be in any order - the engine detects types at compile time
-7. If using resources, call `world.setResource()` in `build()` to initialize them
-8. Add plugin to `src/root.zig` exports
-9. Include plugin in example/application via `zenithor.run(.{ MyPlugin })`
+8. If using resources, call `world.setResource()` in `build()` to initialize them
+9. Update `build.zig` to load the plugin:
+   - Add plugin module creation in `loadExampleDependencies()`
+   - Provide necessary imports (zenithor, sokol, sparze, etc.)
+   - Add to `DependencySet` struct
+   - Import in `createExampleModule()`
+10. Add plugin to `src/root.zig` exports
+11. Include plugin in example/application via `zenithor.run(.{ MyPlugin })`
+
+**Note:** Plugins should not declare zenithor as a dependency in their `build.zig.zon` to avoid circular dependencies. The main build system provides all necessary imports to plugins.
 
 ### Testing
 
@@ -807,7 +841,7 @@ This provides sufficient space for debug UI windows and game content without ove
 
 ### Debug Plugin
 
-The Debug plugin (`src/plugins/debug/root.zig`) provides comprehensive debugging tools:
+The Debug plugin (`plugins/debug/src/root.zig`) provides comprehensive debugging tools:
 
 **Features:**
 - **Entity Tracker** - Inspect components and their values with change highlighting
@@ -844,7 +878,7 @@ fn debugSystem(commands: anytype, tracked: zenithor.SingleTag(DebugPlugin.Tracke
 - Access via `sparze.getIndex(entity)` and `sparze.getVersion(entity)`
 - Debug UI displays index by default, with optional version toggle
 
-See `src/plugins/debug/API.md` for complete API documentation.
+See `plugins/debug/API.md` for complete API documentation.
 
 ## Important Notes
 

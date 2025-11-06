@@ -5,12 +5,10 @@ const system_module = @import("core/system.zig");
 pub const Stage = system_module.Stage;
 pub const SystemRegistry = system_module.SystemRegistry;
 
+// Core engine exports
 pub const BuiltinPlugin = @import("core/builtin.zig");
-pub const GraphicsPlugin = @import("plugins/graphics/root.zig");
-pub const TimePlugin = @import("plugins/time/root.zig");
-pub const ImGuiPlugin = @import("plugins/imgui/root.zig");
-pub const InputPlugin = @import("plugins/input/root.zig");
-pub const DebugPlugin = @import("plugins/debug/root.zig");
+pub const Transform = BuiltinPlugin.Transform;
+pub const Color = BuiltinPlugin.Color;
 
 const sparze = @import("sparze");
 pub const Entity = sparze.Entity;

@@ -5,11 +5,9 @@ const sokol = @import("sokol");
 const imgui_docking = @import("build_options").docking;
 pub const ig = if (imgui_docking) @import("cimgui_docking") else @import("cimgui");
 
-const BuiltinPlugin = @import("../../core/builtin.zig");
-const Transform = BuiltinPlugin.Transform;
-
-const system_module = @import("../../core/system.zig");
-const SystemRegistry = system_module.SystemRegistry;
+const zenithor = @import("zenithor");
+const Transform = zenithor.Transform;
+const SystemRegistry = zenithor.SystemRegistry;
 
 pub const Window = struct {
     title: [:0]const u8,
@@ -51,7 +49,7 @@ fn setupFrame() !void {
     });
 }
 
-fn drawWindow(windowQuery: Query(struct { Window, BuiltinPlugin.Transform })) !void {
+fn drawWindow(windowQuery: Query(struct { Window, Transform })) !void {
     for (windowQuery.entities) |entity| {
         if (!windowQuery.filter(entity)) continue;
         const window = windowQuery.getComponentMut(entity, Window);

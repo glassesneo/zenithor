@@ -2,8 +2,8 @@ const std = @import("std");
 const zenithor = @import("zenithor");
 const SystemRegistry = zenithor.SystemRegistry;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
-const GraphicsPlugin = zenithor.GraphicsPlugin;
-const ImGuiPlugin = zenithor.ImGuiPlugin;
+const GraphicsPlugin = @import("graphics_plugin");
+const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, Game });

@@ -4,14 +4,12 @@ const SingleQuery = sparze.SingleQuery;
 const Query = sparze.Query;
 const SingleTag = sparze.SingleTag;
 const sokol = @import("sokol");
-const imgui_docking = @import("build_options").docking;
-pub const ig = if (imgui_docking) @import("cimgui_docking") else @import("cimgui");
+const imgui_plugin = @import("imgui_plugin");
+pub const ig = imgui_plugin.ig;
 
-const BuiltinPlugin = @import("../../core/builtin.zig");
-const Transform = BuiltinPlugin.Transform;
-
-const system_module = @import("../../core/system.zig");
-const SystemRegistry = system_module.SystemRegistry;
+const zenithor = @import("zenithor");
+const Transform = zenithor.Transform;
+const SystemRegistry = zenithor.SystemRegistry;
 
 /// Simple tag component for marking entities to be tracked in debug UI
 pub const Tracked = struct {};
