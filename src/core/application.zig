@@ -288,12 +288,23 @@ pub fn run(comptime user_plugins: anytype) void {
                 }
             }
 
+            // Initialize sokol modules in dependency order:
+            // 1. Graphics backend (gfx + gl) - required by imgui
             sokol.gfx.setup(.{
                 .environment = sokol.glue.environment(),
                 .logger = .{ .func = sokol.log.func },
             });
             sokol.gl.setup(.{});
             std.debug.print("Backend: {}\n", .{sokol.gfx.queryBackend()});
+
+            // 2. Time module - required by time-using plugins
+            sokol.time.setup();
+
+            // 3. ImGui - depends on gfx/gl
+            sokol.imgui.setup(.{
+                .logger = .{ .func = sokol.log.func },
+            });
+
             App.world.beginFrame();
             App.startup_system_scheduler.run(&App.world) catch unreachable;
             App.world.endFrame() catch unreachable;
@@ -311,6 +322,10 @@ pub fn run(comptime user_plugins: anytype) void {
             App.world.endFrame() catch unreachable;
             App.world.deinit();
             App.arena.deinit();
+
+            // Shutdown sokol modules in reverse order of initialization
+            sokol.imgui.shutdown();
+            // sokol.time does not require explicit shutdown
             sokol.gl.shutdown();
             sokol.gfx.shutdown();
         }

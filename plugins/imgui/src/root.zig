@@ -31,14 +31,8 @@ pub const Components = .{
 
 pub const Events = .{};
 
-fn init() !void {
-    sokol.imgui.setup(.{
-        .logger = .{ .func = sokol.log.func },
-    });
-    if (imgui_docking) {
-        ig.igGetIO().*.ConfigFlags |= ig.ImGuiConfigFlags_DockingEnable;
-    }
-}
+// Note: sokol.imgui is initialized centrally in src/core/application.zig
+// Docking is enabled there if -Dimgui-docking build flag is set
 
 fn setupFrame() !void {
     sokol.imgui.newFrame(.{
@@ -71,20 +65,16 @@ fn renderUi() !void {
     sokol.imgui.render();
 }
 
-fn deinit() !void {
-    sokol.imgui.shutdown();
-}
+// Note: sokol.imgui shutdown is handled centrally in src/core/application.zig
 
 fn handleEvent(event: sokol.app.Event) !void {
     _ = sokol.imgui.handleEvent(event);
 }
 
 pub fn build(registry: SystemRegistry) !void {
-    registry.registerStartupSystem(init, .first);
     registry.registerSystem(setupFrame, .first);
     registry.registerSystem(drawWindow, .render);
     registry.registerSystem(renderUi, .render_submit);
-    registry.registerTerminateSystem(deinit, .post_process);
     registry.registerEventHandler(handleEvent);
 }
 

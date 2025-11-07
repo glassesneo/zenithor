@@ -36,9 +36,7 @@ pub const Resources = .{
 
 pub const Events = .{};
 
-fn init() !void {
-    sokol.time.setup();
-}
+// Note: sokol.time is initialized centrally in src/core/application.zig
 
 fn update(time: sparze.Resource(Time)) !void {
     // Measure frame time using sokol_time's laptime
@@ -63,6 +61,5 @@ pub fn build(world: anytype, registry: SystemRegistry) !void {
     // Initialize Time resource with default values
     try world.setResource(Time, .{});
 
-    registry.registerStartupSystem(init, .first);
     registry.registerSystem(update, .first);
 }

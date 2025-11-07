@@ -310,6 +310,34 @@ The `run()` function in `src/core/application.zig`:
 
 Note: The ECS World loads component, resource, and event types from all `Components`, `Resources`, and `Events` tuples and executes all `build()` functions at compile time.
 
+### Sokol Module Initialization
+
+All Sokol module initialization (`sokol.*.setup()`) and shutdown (`sokol.*.shutdown()`) calls are centralized in `src/core/application.zig` for clear ownership and initialization ordering.
+
+**Initialization order in `appInit()`:**
+1. `sokol.gfx.setup()` - Graphics backend initialization
+2. `sokol.gl.setup()` - OpenGL context initialization
+3. `sokol.time.setup()` - High-resolution timer initialization
+4. `sokol.imgui.setup()` - Dear ImGui integration (depends on GL/GFX)
+
+**Shutdown order in `appCleanup()` (reverse of initialization):**
+1. `sokol.imgui.shutdown()` - Dear ImGui cleanup
+2. `sokol.gl.shutdown()` - OpenGL context cleanup
+3. `sokol.gfx.shutdown()` - Graphics backend cleanup
+
+Note: `sokol.time` does not require explicit shutdown.
+
+**Plugin assumptions:**
+- Plugins should **never** call `sokol.*.setup()` or `sokol.*.shutdown()` directly
+- Plugins can assume all Sokol modules are pre-initialized before their systems run
+- Plugin source files should include comments indicating central initialization (e.g., `// Note: sokol.time is initialized centrally in src/core/application.zig`)
+
+**Rationale:**
+- **Prevents duplicate initialization**: Multiple plugins may depend on the same module (e.g., both Time and Debug plugins use `sokol.time`)
+- **Explicit ordering**: Dependencies between modules (e.g., ImGui depends on GL/GFX) are documented in code
+- **Clear ownership**: Single source of truth for initialization lifecycle
+- **Simplified plugins**: Plugins focus on game logic without managing low-level initialization
+
 ### Resources
 
 Resources are global singleton values that can be accessed by systems. Unlike components which are attached to entities, resources exist independently and provide shared state across the application.

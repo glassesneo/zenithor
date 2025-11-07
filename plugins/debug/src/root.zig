@@ -76,8 +76,8 @@ fn initDebugState(allocator: std.mem.Allocator) !void {
             .highlight_timers = std.AutoHashMap(u64, u32).init(allocator),
             .allocator = allocator,
         };
+        // Note: sokol.time is initialized centrally in src/core/application.zig
         debug_state.start_time = sokol.time.sec(sokol.time.now());
-        sokol.time.setup();
         debug_state_initialized = true;
     }
 }
