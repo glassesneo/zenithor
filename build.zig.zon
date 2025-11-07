@@ -37,12 +37,12 @@
     // internet connectivity.
     .dependencies = .{
         .sokol = .{
-            .url = "git+https://github.com/floooh/sokol-zig.git#76d4afd25adfae9666d76a0d324cdb70ad178a88",
+            .url = "git+https://github.com/floooh/sokol-zig.git#1c217971533e3aa634ecbfbe13ff776e05701e0a",
             .hash = "sokol-0.1.0-pb1HK3TYLgCx8lOxdLVWIVDcAzacxO8YDfyw2Er-_2nN",
         },
         .sparze = .{
-            .url = "git+https://github.com/glassesneo/sparze.git#a5deb156dbba29d64f08741ea054d3dc3114566b",
-            .hash = "sparze-0.0.0-IVywrZGPBAAjfKM-CxQ8OGa6DukoXWoQ70V9AoeIQsIY",
+            .url = "git+https://github.com/glassesneo/sparze.git#475083a2f0865ab6c57fc19f5407da1dc6a1fda3",
+            .hash = "sparze-0.0.0-IVywrf6OBADqy2rzPdCmCFwHjAO2jmFdIvKM5QS6V9Mo",
         },
         .cimgui = .{
             .url = "git+https://github.com/floooh/dcimgui.git#d5fb4e3d27b79062dc5981db3631dadc4f204654",
