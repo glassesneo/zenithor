@@ -5,19 +5,11 @@ const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const InputPlugin = @import("input_plugin");
+const sokol = @import("sokol");
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game });
-}
-
-fn setup(commands: anytype) !void {
-    const window = commands.createEntity();
-    try commands.addComponent(
-        window,
-        ImGuiPlugin.Window,
-        ImGuiPlugin.Window.init("Input Demo"),
-    );
 }
 
 fn setupPassAction(pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
@@ -49,48 +41,38 @@ fn displayInputState(
         ig.igText("Delta: (%.1f, %.1f)", mouse.value.dx, mouse.value.dy);
         if (mouse.value.dx != 0 or mouse.value.dy != 0) {
             ig.igSameLine();
-            ig.igTextColored(.{ .x = 1.0, .y = 1.0, .z = 0.0, .w = 1.0 }, "%s", "[MOVING]");
+            ig.igTextColored(.{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }, "%s", "MOVING");
         }
-
-        ig.igSpacing();
 
         // Buttons
-        const left_color = if (mouse.value.left_button)
-            ig.ImVec4{ .x = 0.0, .y = 1.0, .z = 0.0, .w = 1.0 }
-        else
-            ig.ImVec4{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 };
-        const right_color = if (mouse.value.right_button)
-            ig.ImVec4{ .x = 0.0, .y = 1.0, .z = 0.0, .w = 1.0 }
-        else
-            ig.ImVec4{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 };
-        const middle_color = if (mouse.value.middle_button)
-            ig.ImVec4{ .x = 0.0, .y = 1.0, .z = 0.0, .w = 1.0 }
-        else
-            ig.ImVec4{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 };
-
-        const left_text: [*:0]const u8 = if (mouse.value.left_button) "[LEFT]" else "LEFT";
-        const right_text: [*:0]const u8 = if (mouse.value.right_button) "[RIGHT]" else "RIGHT";
-        const middle_text: [*:0]const u8 = if (mouse.value.middle_button) "[MIDDLE]" else "MIDDLE";
-
-        ig.igTextColored(left_color, "%s", left_text);
-        ig.igSameLine();
-        ig.igTextColored(right_color, "%s", right_text);
-        ig.igSameLine();
-        ig.igTextColored(middle_color, "%s", middle_text);
-
-        ig.igSpacing();
+        ig.igText("Buttons:");
+        ig.igIndent();
+        if (mouse.value.left_button) {
+            ig.igText("Left:   PRESSED");
+        } else {
+            ig.igText("Left:   released");
+        }
+        if (mouse.value.right_button) {
+            ig.igText("Right:  PRESSED");
+        } else {
+            ig.igText("Right:  released");
+        }
+        if (mouse.value.middle_button) {
+            ig.igText("Middle: PRESSED");
+        } else {
+            ig.igText("Middle: released");
+        }
+        ig.igUnindent();
 
         // Scroll
-        ig.igText("Scroll: (%.1f, %.1f)", mouse.value.scroll_x, mouse.value.scroll_y);
-        if (mouse.value.scroll_y > 0) {
-            ig.igSameLine();
-            ig.igTextColored(.{ .x = 0.0, .y = 1.0, .z = 1.0, .w = 1.0 }, "%s", "[SCROLL UP]");
-        } else if (mouse.value.scroll_y < 0) {
-            ig.igSameLine();
-            ig.igTextColored(.{ .x = 0.0, .y = 1.0, .z = 1.0, .w = 1.0 }, "%s", "[SCROLL DOWN]");
+        if (mouse.value.scroll_y != 0) {
+            ig.igText("Scroll Y: %+.1f", mouse.value.scroll_y);
+        } else {
+            ig.igText("Scroll Y: 0");
         }
 
         ig.igSpacing();
+        ig.igSeparator();
         ig.igSpacing();
 
         // === KEYBOARD SECTION ===
@@ -98,66 +80,143 @@ fn displayInputState(
         ig.igSeparator();
         ig.igSpacing();
 
-        // Count pressed keys
-        const pressed_count = keyboard.value.keys.count();
-        ig.igText("Keys Pressed: %d", pressed_count);
-
-        ig.igSpacing();
-
-        // Modifiers
-        const has_shift = (keyboard.value.modifiers & 0x1) != 0;
-        const has_ctrl = (keyboard.value.modifiers & 0x2) != 0;
-        const has_alt = (keyboard.value.modifiers & 0x4) != 0;
-        const has_super = (keyboard.value.modifiers & 0x8) != 0;
-
-        ig.igText("Modifiers:");
-        ig.igSameLine();
-        if (has_shift) ig.igTextColored(.{ .x = 1.0, .y = 1.0, .z = 0.0, .w = 1.0 }, "%s", "[SHIFT]");
-        if (has_shift) ig.igSameLine();
-        if (has_ctrl) ig.igTextColored(.{ .x = 1.0, .y = 1.0, .z = 0.0, .w = 1.0 }, "%s", "[CTRL]");
-        if (has_ctrl) ig.igSameLine();
-        if (has_alt) ig.igTextColored(.{ .x = 1.0, .y = 1.0, .z = 0.0, .w = 1.0 }, "%s", "[ALT]");
-        if (has_alt) ig.igSameLine();
-        if (has_super) ig.igTextColored(.{ .x = 1.0, .y = 1.0, .z = 0.0, .w = 1.0 }, "%s", "[SUPER]");
-        if (!has_shift and !has_ctrl and !has_alt and !has_super) {
-            ig.igTextColored(.{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 }, "%s", "None");
-        }
-
-        ig.igSpacing();
-
-        // Character input
-        ig.igText("Character Input:");
-        if (keyboard.value.char_count > 0) {
-            ig.igSameLine();
-            ig.igTextColored(.{ .x = 0.0, .y = 1.0, .z = 0.0, .w = 1.0 }, "%s", "[TYPING]");
-            for (0..keyboard.value.char_count) |i| {
-                const char_code = keyboard.value.char_buffer[i];
-                if (char_code < 128) {
-                    ig.igText("  '%c' (U+%04X)", @as(u8, @intCast(char_code)), char_code);
-                } else {
-                    ig.igText("  U+%04X", char_code);
-                }
-            }
+        // Special keys
+        ig.igText("Special Keys:");
+        ig.igIndent();
+        if (keyboard.value.modifiers & 0x1 != 0) {
+            ig.igText("Shift:  DOWN");
         } else {
-            ig.igSameLine();
-            ig.igTextColored(.{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 }, "%s", "None this frame");
+            ig.igText("Shift:  up");
         }
+        if (keyboard.value.modifiers & 0x2 != 0) {
+            ig.igText("Ctrl:   DOWN");
+        } else {
+            ig.igText("Ctrl:   up");
+        }
+        if (keyboard.value.modifiers & 0x4 != 0) {
+            ig.igText("Alt:    DOWN");
+        } else {
+            ig.igText("Alt:    up");
+        }
+        if (keyboard.value.modifiers & 0x8 != 0) {
+            ig.igText("Super:  DOWN");
+        } else {
+            ig.igText("Super:  up");
+        }
+        ig.igUnindent();
 
         ig.igSpacing();
+
+        // Letter keys (A-Z)
+        ig.igText("Letter Keys:");
+        ig.igIndent();
+        var letter_count: usize = 0;
+        inline for ('A'..'Z') |key| {
+            const key_code: usize = @intCast(key);
+            if (keyboard.value.keys.isSet(key_code)) {
+                ig.igText("%c: DOWN", key);
+                letter_count += 1;
+            }
+        }
+        if (letter_count == 0) {
+            ig.igTextColored(.{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 }, "%s", "(none)");
+        }
+        ig.igUnindent();
+
         ig.igSpacing();
 
-        // === INSTRUCTIONS ===
-        ig.igTextColored(.{ .x = 0.7, .y = 0.7, .z = 1.0, .w = 1.0 }, "%s", "INSTRUCTIONS");
-        ig.igSeparator();
+        // Number keys (0-9)
+        ig.igText("Number Keys:");
+        ig.igIndent();
+        var number_count: usize = 0;
+        inline for ('0'..'9') |key| {
+            const key_code: usize = @intCast(key);
+            if (keyboard.value.keys.isSet(key_code)) {
+                ig.igText("%c: DOWN", key);
+                number_count += 1;
+            }
+        }
+        if (number_count == 0) {
+            ig.igTextColored(.{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 }, "%s", "(none)");
+        }
+        ig.igUnindent();
+
         ig.igSpacing();
-        ig.igTextWrapped("%s", "Move your mouse, click buttons, scroll, and press keys to see live input updates!");
+
+        // Function keys (F1-F12)
+        ig.igText("Function Keys:");
+        ig.igIndent();
+        var function_count: usize = 0;
+        inline for (1..13) |key_num| {
+            const key_code = @intFromEnum(sokol.app.Keycode.F1) + (key_num - 1);
+            if (key_code < 512 and keyboard.value.keys.isSet(key_code)) {
+                ig.igText("F%d: DOWN", key_num);
+                function_count += 1;
+            }
+        }
+        if (function_count == 0) {
+            ig.igTextColored(.{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 }, "%s", "(none)");
+        }
+        ig.igUnindent();
+
         ig.igSpacing();
-        ig.igBulletText("%s", "Mouse movement shows position and delta");
-        ig.igBulletText("%s", "Click left/right/middle mouse buttons");
-        ig.igBulletText("%s", "Scroll with mouse wheel");
-        ig.igBulletText("%s", "Press any keys (shows count)");
-        ig.igBulletText("%s", "Hold Shift/Ctrl/Alt/Super modifiers");
-        ig.igBulletText("%s", "Type characters to see input buffer");
+
+        // Arrow keys
+        ig.igText("Arrow Keys:");
+        ig.igIndent();
+        if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.UP))) {
+            ig.igText("Up:    DOWN");
+        } else {
+            ig.igText("Up:    up");
+        }
+        if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.DOWN))) {
+            ig.igText("Down:  DOWN");
+        } else {
+            ig.igText("Down:  up");
+        }
+        if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.LEFT))) {
+            ig.igText("Left:  DOWN");
+        } else {
+            ig.igText("Left:  up");
+        }
+        if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.RIGHT))) {
+            ig.igText("Right: DOWN");
+        } else {
+            ig.igText("Right: up");
+        }
+        ig.igUnindent();
+
+        ig.igSpacing();
+
+        // Other keys
+        ig.igText("Other Keys:");
+        ig.igIndent();
+        if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.SPACE))) {
+            ig.igText("Space:     DOWN");
+        } else {
+            ig.igText("Space:     up");
+        }
+        if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.ENTER))) {
+            ig.igText("Enter:     DOWN");
+        } else {
+            ig.igText("Enter:     up");
+        }
+        if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.BACKSPACE))) {
+            ig.igText("Backspace: DOWN");
+        } else {
+            ig.igText("Backspace: up");
+        }
+        if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.TAB))) {
+            ig.igText("Tab:       DOWN");
+        } else {
+            ig.igText("Tab:       up");
+        }
+        if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.ESCAPE))) {
+            ig.igText("Escape:    DOWN");
+        } else {
+            ig.igText("Escape:    up");
+        }
+        ig.igUnindent();
     }
     ig.igEnd();
 }
@@ -167,7 +226,7 @@ const Game = struct {
     pub const Events = .{};
 
     pub fn build(registry: SystemRegistry) !void {
-        registry.registerStartupSystem(setup, .first);
+        registry.registerStartupSystem(setupPassAction, .first);
         registry.registerSystem(displayInputState, .render);
     }
 };

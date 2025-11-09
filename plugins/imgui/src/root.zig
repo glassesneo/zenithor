@@ -9,38 +9,8 @@ const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const SystemRegistry = zenithor.SystemRegistry;
 
-pub const Window = struct {
-    title: [256:0]u8 = [_:0]u8{0} ** 256,
-    title_len: usize = 0,
-    open: bool = true,
-
-    pub fn init(title: [:0]const u8) Window {
-        var window = Window{};
-        const len = @min(title.len, 255);
-        @memcpy(window.title[0..len], title[0..len]);
-        window.title[len] = 0;
-        window.title_len = len;
-        return window;
-    }
-
-    pub fn getTitle(self: *const Window) [:0]const u8 {
-        return self.title[0..self.title_len :0];
-    }
-
-    pub fn format(
-        self: Window,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        writer: anytype,
-    ) !void {
-        _ = fmt;
-        _ = options;
-        try writer.print("Window(title: \"{s}\", open: {any})", .{ self.getTitle(), self.open });
-    }
-};
-
 pub const Components = .{
-    Window,
+    // Empty - no components needed for ImGui plugin itself
 };
 
 pub const Events = .{};
@@ -57,22 +27,23 @@ fn setupFrame() !void {
     });
 }
 
-fn drawWindow(windowQuery: Query(struct { Window, Transform })) !void {
-    for (windowQuery.entities) |entity| {
-        if (!windowQuery.filter(entity)) continue;
-        const window = windowQuery.getComponentMut(entity, Window);
-        if (!window.open) continue;
+// New function to allow ECS-based UI rendering
+pub fn begin(name: [:0]const u8, open: ?*bool, flags: c_int) bool {
+    return ig.igBegin(name, open, @intCast(flags));
+}
 
-        const transform = windowQuery.getComponentMut(entity, Transform);
-        ig.igSetNextWindowPos(.{ .x = transform.x, .y = transform.y }, ig.ImGuiCond_Once);
-        ig.igSetNextWindowSize(.{ .x = 400, .y = 100 }, ig.ImGuiCond_Once);
-        if (ig.igBegin(&window.title, &window.open, ig.ImGuiWindowFlags_None)) {
-            const vec = ig.igGetWindowPos();
-            transform.x = vec.x;
-            transform.y = vec.y;
-        }
-        ig.igEnd();
-    }
+pub fn end() void {
+    ig.igEnd();
+}
+
+pub fn text(text_content: [:0]const u8) void {
+    ig.igText("%s", text_content.ptr);
+}
+
+pub fn textFmt(comptime fmt: []const u8, args: anytype) void {
+    var buf: [256]u8 = undefined;
+    const formatted_text = std.fmt.bufPrintZ(&buf, fmt, args) catch "Error";
+    ig.igText("%s", formatted_text.ptr);
 }
 
 fn renderUi() !void {
@@ -87,9 +58,9 @@ fn handleEvent(event: sokol.app.Event) !void {
 
 pub fn build(registry: SystemRegistry) !void {
     registry.registerSystem(setupFrame, .first);
-    registry.registerSystem(drawWindow, .render);
     registry.registerSystem(renderUi, .render_submit);
     registry.registerEventHandler(handleEvent);
 }
 
 const std = @import("std");
+
