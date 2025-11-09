@@ -288,6 +288,7 @@ fn nextLevel(
 
 fn drawUI(
     commands: anytype,
+    player_query: zenithor.Query(struct { Player, BuiltinPlugin.Transform, Velocity }),
     game_status: zenithor.Resource(GameStatus),
     game_settings: zenithor.Resource(GameSettings),
     save_file: zenithor.Resource(SerializationPlugin.SaveFile),
@@ -344,10 +345,19 @@ fn drawUI(
 
     // Instructions
     ig.igSetNextWindowPos(.{ .x = 10, .y = 380 }, ig.ImGuiCond_Once);
-    ig.igSetNextWindowSize(.{ .x = 300, .y = 120 }, ig.ImGuiCond_Once);
+    ig.igSetNextWindowSize(.{ .x = 300, .y = 150 }, ig.ImGuiCond_Once);
 
     if (ig.igBegin("Instructions", null, ig.ImGuiWindowFlags_None)) {
         ig.igTextWrapped("Move with WASD\nF5 - Save Game\nF9 - Load Game\n\nCollect colored circles to score points!\nDon't let the timer run out.");
+        for (player_query.entities) |entity| {
+            if (!player_query.filter(entity)) continue;
+
+            const transform = player_query.getComponentMut(entity, BuiltinPlugin.Transform);
+            var buf: [256]u8 = undefined;
+            const path_text = std.fmt.bufPrintZ(&buf, "Player position:\n{f}", .{transform}) catch "Error";
+            ig.igText("%s", path_text.ptr);
+            break; // Only process first player
+        }
     }
     ig.igEnd();
 }

@@ -27,6 +27,9 @@ pub const Time = struct {
 
     /// FPS smoothing factor (lower = smoother, higher = more responsive)
     fps_smoothing_factor: f32 = 0.1,
+
+    /// Mark as non-serializable - time state should not be saved/loaded
+    pub const serialized = false;
 };
 
 pub const Components = .{};
@@ -43,8 +46,13 @@ fn update(time: sparze.Resource(Time)) !void {
     const frame_ticks = sokol.time.laptime(&time.value.last_frame_ticks);
     const raw_delta_time = sokol.time.sec(frame_ticks);
 
+    // Clamp delta time to prevent physics explosions on lag spikes or time jumps
+    // This caps at 100ms (10 FPS minimum), preventing huge movements on deserialize or lag
+    const MAX_DELTA = 0.1;
+    const clamped_delta_time = @min(raw_delta_time, MAX_DELTA);
+
     // Update time state
-    time.value.delta_time = @floatCast(raw_delta_time);
+    time.value.delta_time = @floatCast(clamped_delta_time);
     time.value.total_time += raw_delta_time;
     time.value.frame_count += 1;
 
