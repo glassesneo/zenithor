@@ -12,11 +12,12 @@ pub fn main() !void {
 }
 
 fn setup(commands: anytype) !void {
-    // Create ImGui windows to display input state
-    _ = try commands.createEntityWith(.{
-        BuiltinPlugin.Transform{ .x = 10, .y = 10, .z = 0 },
-        ImGuiPlugin.Window{ .title = "Input Demo", .open = true },
-    });
+    const window = commands.createEntity();
+    try commands.addComponent(
+        window,
+        ImGuiPlugin.Window,
+        ImGuiPlugin.Window.init("Input Demo"),
+    );
 }
 
 fn setupPassAction(pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {

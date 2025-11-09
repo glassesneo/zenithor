@@ -10,14 +10,19 @@ pub fn main() !void {
 }
 
 fn setup(commands: anytype) !void {
-    _ = try commands.createEntityWith(.{
-        BuiltinPlugin.Transform{ .x = 150, .y = 150, .z = 0 },
-        ImGuiPlugin.Window{ .title = "Hello ImGui!", .open = true },
-    });
-    _ = try commands.createEntityWith(.{
-        BuiltinPlugin.Transform{ .x = 250, .y = 150, .z = 0 },
-        ImGuiPlugin.Window{ .title = "Another window", .open = true },
-    });
+    const entity1 = commands.createEntity();
+    try commands.addComponent(
+        entity1,
+        ImGuiPlugin.Window,
+        ImGuiPlugin.Window.init("Hello ImGui!"),
+    );
+
+    const entity2 = commands.createEntity();
+    try commands.addComponent(
+        entity2,
+        ImGuiPlugin.Window,
+        ImGuiPlugin.Window.init("Another window"),
+    );
 }
 
 // fn printTransform(transforms: zenithor.SingleQuery(BuiltinPlugin.Transform)) !void {

@@ -13,6 +13,7 @@ const examples = [_]Example{
     .{ .name = "demo_circle" },
     .{ .name = "demo_resources" },
     .{ .name = "demo_events" },
+    .{ .name = "demo_serialization" },
 };
 
 const Example = struct {
@@ -40,6 +41,7 @@ const DependencySet = struct {
     imgui_plugin_mod: *std.Build.Module,
     input_plugin_mod: *std.Build.Module,
     debug_plugin_mod: *std.Build.Module,
+    serialization_plugin_mod: *std.Build.Module,
 };
 
 const ExampleResult = struct {
@@ -176,6 +178,14 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
     debug_plugin.addImport("sparze", dep_sparze.module("sparze"));
     debug_plugin.addImport("imgui_plugin", imgui_plugin);
 
+    const serialization_plugin = b.createModule(.{
+        .root_source_file = b.path("plugins/serialization/src/root.zig"),
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+    serialization_plugin.addImport("zenithor", options.mod_zenithor);
+    serialization_plugin.addImport("sparze", dep_sparze.module("sparze"));
+
     // Return a modified DependencySet structure that holds modules instead of dependencies
     return .{
         .sokol = dep_sokol,
@@ -186,6 +196,7 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
         .imgui_plugin_mod = imgui_plugin,
         .input_plugin_mod = input_plugin,
         .debug_plugin_mod = debug_plugin,
+        .serialization_plugin_mod = serialization_plugin,
     };
 }
 
@@ -207,6 +218,7 @@ fn createExampleModule(b: *std.Build, example: Example, options: ExampleOptions,
     mod.addImport("imgui_plugin", deps.imgui_plugin_mod);
     mod.addImport("input_plugin", deps.input_plugin_mod);
     mod.addImport("debug_plugin", deps.debug_plugin_mod);
+    mod.addImport("serialization_plugin", deps.serialization_plugin_mod);
 
     return mod;
 }

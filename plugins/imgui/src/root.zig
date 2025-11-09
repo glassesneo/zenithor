@@ -10,8 +10,22 @@ const Transform = zenithor.Transform;
 const SystemRegistry = zenithor.SystemRegistry;
 
 pub const Window = struct {
-    title: [:0]const u8,
+    title: [256:0]u8 = [_:0]u8{0} ** 256,
+    title_len: usize = 0,
     open: bool = true,
+
+    pub fn init(title: [:0]const u8) Window {
+        var window = Window{};
+        const len = @min(title.len, 255);
+        @memcpy(window.title[0..len], title[0..len]);
+        window.title[len] = 0;
+        window.title_len = len;
+        return window;
+    }
+
+    pub fn getTitle(self: *const Window) [:0]const u8 {
+        return self.title[0..self.title_len :0];
+    }
 
     pub fn format(
         self: Window,
@@ -21,7 +35,7 @@ pub const Window = struct {
     ) !void {
         _ = fmt;
         _ = options;
-        try writer.print("Window(title: \"{s}\", open: {any})", .{ self.title, self.open });
+        try writer.print("Window(title: \"{s}\", open: {any})", .{ self.getTitle(), self.open });
     }
 };
 
@@ -52,7 +66,7 @@ fn drawWindow(windowQuery: Query(struct { Window, Transform })) !void {
         const transform = windowQuery.getComponentMut(entity, Transform);
         ig.igSetNextWindowPos(.{ .x = transform.x, .y = transform.y }, ig.ImGuiCond_Once);
         ig.igSetNextWindowSize(.{ .x = 400, .y = 100 }, ig.ImGuiCond_Once);
-        if (ig.igBegin(window.title, &window.open, ig.ImGuiWindowFlags_None)) {
+        if (ig.igBegin(&window.title, &window.open, ig.ImGuiWindowFlags_None)) {
             const vec = ig.igGetWindowPos();
             transform.x = vec.x;
             transform.y = vec.y;

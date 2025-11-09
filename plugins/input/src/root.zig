@@ -16,14 +16,18 @@ pub const Mouse = struct {
     left_button: bool = false,
     right_button: bool = false,
     middle_button: bool = false,
+
+    pub const serialized = false;
 };
 
 /// Keyboard input resource containing key states and modifiers
 pub const Keyboard = struct {
-    keys: std.StaticBitSet(512) = .initEmpty(), // Key states as bit set (64 bytes)
+    keys: std.bit_set.ArrayBitSet(usize, 512) = .initEmpty(), // Key states as bit set (64 bytes)
     modifiers: u32 = 0, // Modifier key bitmask (Shift, Ctrl, Alt, Super)
     char_buffer: [32]u32 = undefined, // UTF-32 character input buffer
     char_count: usize = 0, // Number of characters in buffer this frame
+
+    pub const serialized = false;
 };
 
 pub const Components = .{};
