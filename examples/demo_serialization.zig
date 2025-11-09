@@ -7,7 +7,6 @@ const ImGuiPlugin = @import("imgui_plugin");
 const InputPlugin = @import("input_plugin");
 const TimePlugin = @import("time_plugin");
 const SerializationPlugin = @import("serialization_plugin");
-const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, TimePlugin, SerializationPlugin, Game });
@@ -84,7 +83,7 @@ const Game = struct {
         registry.registerSystem(checkCollisions, .update);
         registry.registerSystem(updateLifetimes, .update);
         registry.registerSystem(nextLevel, .update);
-        registry.registerSystem(drawUI, .render);
+        registry.registerSystem(displayGameUI, .render);
     }
 };
 
@@ -286,78 +285,65 @@ fn nextLevel(
     }
 }
 
-fn drawUI(
+fn displayGameUI(
     commands: anytype,
-    player_query: zenithor.Query(struct { Player, BuiltinPlugin.Transform, Velocity }),
     game_status: zenithor.Resource(GameStatus),
     game_settings: zenithor.Resource(GameSettings),
     save_file: zenithor.Resource(SerializationPlugin.SaveFile),
+    player_query: zenithor.SingleQuery(BuiltinPlugin.Transform),
 ) !void {
     // Game status window
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once);
-    ig.igSetNextWindowSize(.{ .x = 300, .y = 200 }, ig.ImGuiCond_Once);
+    ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 10 }, .Once);
+    ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 200 }, .Once);
 
-    if (ig.igBegin("Game Status", null, ig.ImGuiWindowFlags_None)) {
-        var buf: [128]u8 = undefined;
-        const text = std.fmt.bufPrintZ(&buf, "State: {s}", .{@tagName(game_status.value.state)}) catch "Error";
-        ig.igText("%s", text.ptr);
-        ig.igText("Level: %u", game_status.value.level);
-        ig.igText("Score: %u", game_status.value.score);
-        ig.igText("Lives: %u", game_status.value.lives);
-        ig.igText("Time: %.1fs", game_status.value.timer);
-        ig.igText("Spawn Rate: %.1f/s", game_settings.value.spawn_rate);
+    if (ImGuiPlugin.begin("Game Status", null, .None)) {
+        ImGuiPlugin.textFmt("State: {s}", .{@tagName(game_status.value.state)});
+        ImGuiPlugin.textFmt("Level: {d}", .{game_status.value.level});
+        ImGuiPlugin.textFmt("Score: {d}", .{game_status.value.score});
+        ImGuiPlugin.textFmt("Lives: {d}", .{game_status.value.lives});
+        ImGuiPlugin.textFmt("Time: {d:.1}s", .{game_status.value.timer});
+        ImGuiPlugin.textFmt("Spawn Rate: {d:.1}/s", .{game_settings.value.spawn_rate});
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 
     // Save/Load controls
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 220 }, ig.ImGuiCond_Once);
-    ig.igSetNextWindowSize(.{ .x = 300, .y = 150 }, ig.ImGuiCond_Once);
+    ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 220 }, .Once);
+    ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 150 }, .Once);
 
-    if (ig.igBegin("Save/Load", null, ig.ImGuiWindowFlags_None)) {
-        var buf: [256]u8 = undefined;
-        const path_text = std.fmt.bufPrintZ(&buf, "Save File: {s}", .{save_file.value.getPath()}) catch "Error";
-        ig.igText("%s", path_text.ptr);
+    if (ImGuiPlugin.begin("Save/Load", null, .None)) {
+        ImGuiPlugin.text("Save File: savegame.spze");
 
-        if (ig.igButton("Save Game (F5)")) {
+        if (ImGuiPlugin.button("Save Game (F5)")) {
             try SerializationPlugin.saveGame(commands, save_file);
         }
-        ig.igSameLine();
-        if (ig.igButton("Load Game (F9)")) {
+        ImGuiPlugin.sameLine();
+        if (ImGuiPlugin.button("Load Game (F9)")) {
             try SerializationPlugin.loadGame(commands, save_file);
         }
 
-        if (ig.igButton("New Game")) {
+        if (ImGuiPlugin.button("New Game")) {
             // Reset game state
             game_status.value.state = .Playing;
             game_status.value.level = 1;
             game_status.value.score = 0;
             game_status.value.lives = 3;
-            game_status.value.timer = 60.0;
-
-            game_settings.value.spawn_rate = 1.0;
-            game_settings.value.point_multiplier = 1.0;
-            game_settings.value.difficulty_scale = 1.0;
+            game_status.value.timer = 0.0;
 
             std.debug.print("New game started!\n", .{});
         }
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 
     // Instructions
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 380 }, ig.ImGuiCond_Once);
-    ig.igSetNextWindowSize(.{ .x = 300, .y = 150 }, ig.ImGuiCond_Once);
+    ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 380 }, .Once);
+    ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 150 }, .Once);
 
-    if (ig.igBegin("Instructions", null, ig.ImGuiWindowFlags_None)) {
-        ig.igTextWrapped("Move with WASD\nF5 - Save Game\nF9 - Load Game\n\nCollect colored circles to score points!\nDon't let the timer run out.");
-        for (player_query.entities) |entity| {
-            if (!player_query.filter(entity)) continue;
-
-            const transform = player_query.getComponentMut(entity, BuiltinPlugin.Transform);
-            var buf: [256]u8 = undefined;
-            const path_text = std.fmt.bufPrintZ(&buf, "Player position:\n{f}", .{transform}) catch "Error";
-            ig.igText("%s", path_text.ptr);
+    if (ImGuiPlugin.begin("Instructions", null, .None)) {
+        ImGuiPlugin.textWrapped("Move with WASD\nF5 - Save Game\nF9 - Load Game\n\nCollect colored circles to score points!\nDon't let the timer run out.");
+        for (player_query.entities, player_query.components) |_, transform| {
+            ImGuiPlugin.textFmt("Player position:\n{d:.0}, {d:.0}", .{ transform.x, transform.y });
             break; // Only process first player
         }
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 }

@@ -6,7 +6,6 @@ const Color = BuiltinPlugin.Color;
 const GraphicsPlugin = @import("graphics_plugin");
 const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
-const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, TimePlugin, ImGuiPlugin, Game });
@@ -180,39 +179,38 @@ fn animate(time: zenithor.Resource(TimePlugin.Time), transforms: zenithor.Single
 }
 
 fn infoWindow() !void {
-    const pos = ig.ImVec2{ .x = 10, .y = 10 };
-    ig.igSetNextWindowPos(pos, ig.ImGuiCond_Once);
+    const pos = ImGuiPlugin.ImVec2{ .x = 10, .y = 10 };
+    ImGuiPlugin.setNextWindowPos(pos, ImGuiPlugin.ImGuiCond.Once);
 
-    const size = ig.ImVec2{ .x = 400, .y = 200 };
-    ig.igSetNextWindowSize(size, ig.ImGuiCond_Once);
+    const size = ImGuiPlugin.ImVec2{ .x = 400, .y = 200 };
+    ImGuiPlugin.setNextWindowSize(size, ImGuiPlugin.ImGuiCond.Once);
 
     var window_open = true;
-    if (ig.igBegin("Circle & Z-Index Demo", &window_open, ig.ImGuiWindowFlags_None)) {
-        ig.igTextColored(.{ .x = 0.2, .y = 0.8, .z = 1.0, .w = 1.0 }, "%s", "2D Circle Rendering & Z-Index Demo");
-        ig.igSeparator();
-        ig.igSpacing();
+    if (ImGuiPlugin.begin("Circle & Z-Index Demo", &window_open, .None)) {
+        ImGuiPlugin.textColored(ImGuiPlugin.ImVec4{ .x = 0.2, .y = 0.8, .z = 1.0, .w = 1.0 }, "2D Circle Rendering & Z-Index Demo");
+        ImGuiPlugin.separator();
+        ImGuiPlugin.spacing();
 
-        ig.igText("%s", "Demonstrations:");
-        ig.igBulletText("%s", "Top row: Circle quality (8, 16, 32, 64 segments)");
-        ig.igBulletText("%s", "Center: Mixed shapes at different z-depths");
-        ig.igTextWrapped("%s", "  (Circle, Rectangle, Triangle, Circle, Rectangle)");
-        ig.igTextWrapped("%s", "  Note how shapes layer based on z-value!");
-        ig.igBulletText("%s", "Right: Rotating circles at various depths");
-        ig.igBulletText("%s", "Bottom-left: Oscillating overlapping circles");
-        ig.igSpacing();
+        ImGuiPlugin.text("Demonstrations:");
+        ImGuiPlugin.bulletText("Top row: Circle quality (8, 16, 32, 64 segments)");
+        ImGuiPlugin.bulletText("Center: Mixed shapes at different z-depths");
+        ImGuiPlugin.textWrapped("  (Circle, Rectangle, Triangle, Circle, Rectangle)");
+        ImGuiPlugin.textWrapped("  Note how shapes layer based on z-value!");
+        ImGuiPlugin.bulletText("Right: Rotating circles at various depths");
+        ImGuiPlugin.bulletText("Bottom-left: Oscillating overlapping circles");
+        ImGuiPlugin.spacing();
 
-        ig.igText("Animation time:");
-        ig.igSameLine();
-        var time_buf: [32]u8 = undefined;
-        const time_text = std.fmt.bufPrintZ(&time_buf, "{d:.2}s", .{animation_time}) catch "N/A";
-        ig.igText("%s", time_text.ptr);
+        ImGuiPlugin.text("Animation time:");
+        ImGuiPlugin.sameLine();
+        ImGuiPlugin.textFmt("{d:.2}s", .{animation_time});
 
-        ig.igSpacing();
-        ig.igTextColored(.{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }, "%s", "Z-Index Legend:");
-        ig.igTextWrapped("%s", "Lower z (more negative) = In front (closer)");
-        ig.igTextWrapped("%s", "Higher z (more positive) = Behind (farther)");
+        ImGuiPlugin.spacing();
+        ImGuiPlugin.textColored(ImGuiPlugin.ImVec4{ .x = 0.8, .y = 0.8, .z = 0.2, .w = 1.0 }, "Z-Index Legend:");
+        ImGuiPlugin.textWrapped("Lower z (more negative) = In front (closer)");
+        ImGuiPlugin.textWrapped("Higher z (more positive) = Behind (farther)");
+        ImGuiPlugin.spacing();
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 }
 
 const std = @import("std");

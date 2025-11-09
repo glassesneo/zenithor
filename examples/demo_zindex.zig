@@ -5,11 +5,9 @@ const GraphicsPlugin = @import("graphics_plugin");
 const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const DebugPlugin = @import("debug_plugin");
-const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
-    // ImGuiPlugin automatically included via DebugPlugin dependency
-    zenithor.run(.{ GraphicsPlugin, TimePlugin, DebugPlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, TimePlugin, ImGuiPlugin, DebugPlugin, Game });
 }
 
 const Game = struct {
@@ -134,34 +132,32 @@ fn debugInfo(commands: anytype, tracked: zenithor.SingleTag(DebugPlugin.Tracked)
 }
 
 fn infoWindow() !void {
-    const pos = ig.ImVec2{ .x = 10, .y = 720 };
-    ig.igSetNextWindowPos(pos, ig.ImGuiCond_Once);
+    const pos = ImGuiPlugin.ImVec2{ .x = 10, .y = 720 };
+    ImGuiPlugin.setNextWindowPos(pos, ImGuiPlugin.ImGuiCond.Once);
 
-    const size = ig.ImVec2{ .x = 420, .y = 70 };
-    ig.igSetNextWindowSize(size, ig.ImGuiCond_Once);
+    const size = ImGuiPlugin.ImVec2{ .x = 420, .y = 70 };
+    ImGuiPlugin.setNextWindowSize(size, ImGuiPlugin.ImGuiCond.Once);
 
     var window_open = true;
-    if (ig.igBegin("Z-Index Demo", &window_open, ig.ImGuiWindowFlags_None)) {
-        ig.igTextColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "%s", "Z-Index Depth Ordering Demo");
-        ig.igSeparator();
-        ig.igSpacing();
+    if (ImGuiPlugin.begin("Z-Index Demo", &window_open, .None)) {
+        ImGuiPlugin.textColored(ImGuiPlugin.ImVec4{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Z-Index Depth Ordering Demo");
+        ImGuiPlugin.separator();
+        ImGuiPlugin.spacing();
 
-        ig.igText("%s", "This demo shows 2D shapes at different z-depths:");
-        ig.igBulletText("%s", "Lower z values render in front (closer)");
-        ig.igBulletText("%s", "Higher z values render behind (farther)");
-        ig.igBulletText("%s", "Middle entities animate between depths");
-        ig.igSpacing();
+        ImGuiPlugin.text("This demo shows 2D shapes at different z-depths:");
+        ImGuiPlugin.bulletText("Lower z values render in front (closer)");
+        ImGuiPlugin.bulletText("Higher z values render behind (farther)");
+        ImGuiPlugin.bulletText("Middle entities animate between depths");
+        ImGuiPlugin.spacing();
 
-        ig.igText("Animation time:");
-        ig.igSameLine();
-        var time_buf: [32]u8 = undefined;
-        const time_text = std.fmt.bufPrintZ(&time_buf, "{d:.2}s", .{animation_time}) catch "N/A";
-        ig.igText("%s", time_text.ptr);
+        ImGuiPlugin.text("Animation time:");
+        ImGuiPlugin.sameLine();
+        ImGuiPlugin.textFmt("{d:.2}s", .{animation_time});
 
-        ig.igSpacing();
-        ig.igTextColored(.{ .x = 0.6, .y = 0.6, .z = 0.6, .w = 1.0 }, "%s", "Check Entity Tracker to see z values change!");
+        ImGuiPlugin.spacing();
+        ImGuiPlugin.textColored(ImGuiPlugin.ImVec4{ .x = 0.6, .y = 0.6, .z = 0.6, .w = 1.0 }, "Check Entity Tracker to see z values change!");
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 }
 
 const std = @import("std");

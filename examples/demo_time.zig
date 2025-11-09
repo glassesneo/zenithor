@@ -5,7 +5,6 @@ const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const TimePlugin = @import("time_plugin");
-const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, TimePlugin, Game });
@@ -85,46 +84,46 @@ fn movement(time: zenithor.Resource(TimePlugin.Time), movement_query: zenithor.G
 }
 
 fn displayTimeInfo(time: zenithor.Resource(TimePlugin.Time)) !void {
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once);
-    ig.igSetNextWindowSize(.{ .x = 300, .y = 150 }, ig.ImGuiCond_Once);
+    ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 10 }, ImGuiPlugin.ImGuiCond.Once);
+    ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 150 }, ImGuiPlugin.ImGuiCond.Once);
 
-    if (ig.igBegin("Time Information", null, ig.ImGuiWindowFlags_None)) {
-        ig.igText("FPS: %.1f", time.value.fps);
-        ig.igText("Delta Time: %.4f s (%.2f ms)", time.value.delta_time, time.value.delta_time * 1000.0);
-        ig.igText("Total Time: %.2f s", time.value.total_time);
-        ig.igText("Frame Count: %llu", time.value.frame_count);
-        ig.igSeparator();
-        ig.igText("Time Scale: %.2fx", time.value.time_scale);
+    if (ImGuiPlugin.begin("Time Information", null, .None)) {
+        ImGuiPlugin.textFmt("FPS: {d:.1}", .{1.0 / time.value.delta_time});
+        ImGuiPlugin.textFmt("Delta Time: {d:.4} s ({d:.2} ms)", .{time.value.delta_time, time.value.delta_time * 1000.0});
+        ImGuiPlugin.textFmt("Total Time: {d:.2} s", .{time.value.total_time});
+        ImGuiPlugin.textFmt("Frame Count: {d}", .{time.value.frame_count});
+        ImGuiPlugin.separator();
+        ImGuiPlugin.textFmt("Time Scale: {d:.2}x", .{time.value.time_scale});
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 }
 
 fn timeControls(time: zenithor.Resource(TimePlugin.Time)) !void {
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 170 }, ig.ImGuiCond_Once);
-    ig.igSetNextWindowSize(.{ .x = 300, .y = 150 }, ig.ImGuiCond_Once);
+    ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 170 }, ImGuiPlugin.ImGuiCond.Once);
+    ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 150 }, ImGuiPlugin.ImGuiCond.Once);
 
-    if (ig.igBegin("Time Controls", null, ig.ImGuiWindowFlags_None)) {
-        _ = ig.igSliderFloat("Time Scale", &time.value.time_scale, 0.0, 2.0);
+    if (ImGuiPlugin.begin("Time Controls", null, .None)) {
+        _ = ImGuiPlugin.sliderFloat("Time Scale", &time.value.time_scale, 0.0, 2.0);
 
-        if (ig.igButton("Pause")) {
+        if (ImGuiPlugin.button("Pause")) {
             time.value.time_scale = 0.0;
         }
-        ig.igSameLine();
-        if (ig.igButton("Normal")) {
+        ImGuiPlugin.sameLine();
+        if (ImGuiPlugin.button("Normal")) {
             time.value.time_scale = 1.0;
         }
-        ig.igSameLine();
-        if (ig.igButton("Fast")) {
+        ImGuiPlugin.sameLine();
+        if (ImGuiPlugin.button("Fast")) {
             time.value.time_scale = 2.0;
         }
 
-        if (ig.igButton("Slow Motion (0.5x)")) {
+        if (ImGuiPlugin.button("Slow Motion (0.5x)")) {
             time.value.time_scale = 0.5;
         }
-        ig.igSameLine();
-        if (ig.igButton("Very Slow (0.1x)")) {
+        ImGuiPlugin.sameLine();
+        if (ImGuiPlugin.button("Very Slow (0.1x)")) {
             time.value.time_scale = 0.1;
         }
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 }

@@ -5,7 +5,6 @@ const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const InputPlugin = @import("input_plugin");
-const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game });
@@ -251,57 +250,57 @@ fn displayUI(
     config: zenithor.Resource(GameConfig),
 ) !void {
     // Score display
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once);
-    ig.igSetNextWindowSize(.{ .x = 300, .y = 150 }, ig.ImGuiCond_Once);
+    ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 10 }, ImGuiPlugin.ImGuiCond.Once);
+    ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 150 }, ImGuiPlugin.ImGuiCond.Once);
 
-    if (ig.igBegin("Score", null, ig.ImGuiWindowFlags_None)) {
-        ig.igText("Points: %d", score.value.points);
-        ig.igText("Combo: %dx", score.value.combo);
-        ig.igText("High Score: %d", score.value.high_score);
+    if (ImGuiPlugin.begin("Score", null, .None)) {
+        ImGuiPlugin.textFmt("Points: {d}", .{score.value.points});
+        ImGuiPlugin.textFmt("Combo: {d}x", .{score.value.combo});
+        ImGuiPlugin.textFmt("High Score: {d}", .{score.value.high_score});
 
-        if (ig.igButton("Reset Score")) {
+        if (ImGuiPlugin.button("Reset Score")) {
             score.value.points = 0;
             score.value.combo = 0;
         }
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 
     // Game controls
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 170 }, ig.ImGuiCond_Once);
-    ig.igSetNextWindowSize(.{ .x = 300, .y = 200 }, ig.ImGuiCond_Once);
+    ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 170 }, ImGuiPlugin.ImGuiCond.Once);
+    ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 200 }, ImGuiPlugin.ImGuiCond.Once);
 
-    if (ig.igBegin("Game Controls", null, ig.ImGuiWindowFlags_None)) {
-        ig.igText("Time Scale: %.2fx", delta.value.scale);
-        _ = ig.igSliderFloat("##timescale", &delta.value.scale, 0.0, 2.0);
+    if (ImGuiPlugin.begin("Game Controls", null, .None)) {
+        ImGuiPlugin.textFmt("Time Scale: {d:.2}x", .{delta.value.scale});
+        _ = ImGuiPlugin.sliderFloat("##timescale", &delta.value.scale, 0.0, 2.0);
 
-        if (ig.igButton("Pause")) {
+        if (ImGuiPlugin.button("Pause")) {
             delta.value.scale = 0.0;
         }
-        ig.igSameLine();
-        if (ig.igButton("Normal")) {
+        ImGuiPlugin.sameLine();
+        if (ImGuiPlugin.button("Normal")) {
             delta.value.scale = 1.0;
         }
-        ig.igSameLine();
-        if (ig.igButton("Fast")) {
+        ImGuiPlugin.sameLine();
+        if (ImGuiPlugin.button("Fast")) {
             delta.value.scale = 2.0;
         }
 
-        ig.igSeparator();
+        ImGuiPlugin.separator();
 
-        ig.igText("Spawn Rate: %.1f shapes/s", config.value.spawn_rate);
-        _ = ig.igSliderFloat("##spawnrate", &config.value.spawn_rate, 0.1, 10.0);
+        ImGuiPlugin.textFmt("Spawn Rate: {d:.1} shapes/s", .{config.value.spawn_rate});
+        _ = ImGuiPlugin.sliderFloat("##spawnrate", &config.value.spawn_rate, 0.1, 10.0);
 
-        ig.igText("Point Value: %d", config.value.point_value);
-        _ = ig.igSliderInt("##pointvalue", &config.value.point_value, 1, 100);
+        ImGuiPlugin.textFmt("Point Value: {d}", .{config.value.point_value});
+        _ = ImGuiPlugin.sliderInt("##pointvalue", &config.value.point_value, 1, 100);
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 
     // Instructions
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 380 }, ig.ImGuiCond_Once);
-    ig.igSetNextWindowSize(.{ .x = 300, .y = 100 }, ig.ImGuiCond_Once);
+    ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 380 }, ImGuiPlugin.ImGuiCond.Once);
+    ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 100 }, ImGuiPlugin.ImGuiCond.Once);
 
-    if (ig.igBegin("Instructions", null, ig.ImGuiWindowFlags_None)) {
-        ig.igTextWrapped("Click on the moving shapes to score points!\nCombo multiplier increases while clicking.\nShapes disappear after 5 seconds.");
+    if (ImGuiPlugin.begin("Instructions", null, .None)) {
+        ImGuiPlugin.textWrapped("Click on the moving shapes to score points!\nCombo multiplier increases while clicking.\nShapes disappear after 5 seconds.");
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 }

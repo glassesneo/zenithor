@@ -5,7 +5,6 @@ const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const InputPlugin = @import("input_plugin");
-const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game });
@@ -264,27 +263,23 @@ fn handleDeath(
 }
 
 fn displayUI(stats: zenithor.Resource(GameStats)) !void {
-    const pos = ig.ImVec2{ .x = 10, .y = 10 };
-    ig.igSetNextWindowPos(pos, ig.ImGuiCond_Once);
+    const pos = ImGuiPlugin.ImVec2{ .x = 10, .y = 10 };
+    ImGuiPlugin.setNextWindowPos(pos, .Once);
 
-    const size = ig.ImVec2{ .x = 300, .y = 120 };
-    ig.igSetNextWindowSize(size, ig.ImGuiCond_Once);
+    const size = ImGuiPlugin.ImVec2{ .x = 300, .y = 120 };
+    ImGuiPlugin.setNextWindowSize(size, .Once);
 
     var window_open = true;
-    if (ig.igBegin("Event System Demo", &window_open, ig.ImGuiWindowFlags_None)) {
-        ig.igTextColored(.{ .x = 0.3, .y = 1.0, .z = 0.3, .w = 1.0 }, "%s", "Event System Demo");
-        ig.igSeparator();
-        ig.igSpacing();
+    if (ImGuiPlugin.begin("Event System Demo", &window_open, .None)) {
+        ImGuiPlugin.textColored(ImGuiPlugin.ImVec4{ .x = 0.3, .y = 1.0, .z = 0.3, .w = 1.0 }, "Event System Demo");
+        ImGuiPlugin.separator();
+        ImGuiPlugin.spacing();
 
-        var buf: [64]u8 = undefined;
-        var text = std.fmt.bufPrintZ(&buf, "Shots Fired: {d}", .{stats.value.shots_fired}) catch "N/A";
-        ig.igText("%s", text.ptr);
+        ImGuiPlugin.textFmt("Shots Fired: {d}", .{stats.value.shots_fired});
+        ImGuiPlugin.textFmt("Enemies Killed: {d}", .{stats.value.enemies_killed});
 
-        text = std.fmt.bufPrintZ(&buf, "Enemies Killed: {d}", .{stats.value.enemies_killed}) catch "N/A";
-        ig.igText("%s", text.ptr);
-
-        ig.igSpacing();
-        ig.igTextWrapped("%s", "Click to shoot enemies!");
+        ImGuiPlugin.spacing();
+        ImGuiPlugin.textWrapped("Click to shoot enemies!");
     }
-    ig.igEnd();
+    ImGuiPlugin.end();
 }
