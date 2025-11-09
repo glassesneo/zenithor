@@ -130,31 +130,34 @@ fn handleInput(
     save_file: zenithor.Resource(SerializationPlugin.SaveFile),
     player_query: zenithor.Query(struct { Player, BuiltinPlugin.Transform, Velocity }),
 ) !void {
-    const sokol = @import("sokol");
-
-    // Save/Load input (F5 and F9 keys)
-    if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.F5))) {
+    // Save/Load input (F5 and F9 keys) - edge detection prevents spam
+    if (keyboard.value.isPressed(.F5)) {
         try SerializationPlugin.saveGame(commands, save_file);
     }
-    if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.F9))) {
+    if (keyboard.value.isPressed(.F9)) {
         try SerializationPlugin.loadGame(commands, save_file);
     }
 
     if (game_status.value.state != .Playing) return;
-    if (player_query.entities.len == 0) return;
 
-    const player_entity = player_query.entities[0];
-    const velocity = player_query.getComponentMut(player_entity, Velocity);
+    // Find player entity (may have been recreated after load)
+    for (player_query.entities) |entity| {
+        if (!player_query.filter(entity)) continue;
 
-    const speed: f32 = 300.0;
-    velocity.x = 0;
-    velocity.y = 0;
+        const velocity = player_query.getComponentMut(entity, Velocity);
 
-    // WASD movement
-    if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.W))) velocity.y = -speed;
-    if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.A))) velocity.x = -speed;
-    if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.S))) velocity.y = speed;
-    if (keyboard.value.keys.isSet(@intFromEnum(sokol.app.Keycode.D))) velocity.x = speed;
+        const speed: f32 = 300.0;
+        velocity.x = 0;
+        velocity.y = 0;
+
+        // WASD movement - continuous input while held
+        if (keyboard.value.isHeld(.W)) velocity.y = -speed;
+        if (keyboard.value.isHeld(.A)) velocity.x = -speed;
+        if (keyboard.value.isHeld(.S)) velocity.y = speed;
+        if (keyboard.value.isHeld(.D)) velocity.x = speed;
+
+        break; // Only process first player
+    }
 }
 
 fn spawnCollectibles(
