@@ -54,8 +54,8 @@
         "build.zig.zon",
         "src",
         "plugins",
-        // For example...
-        //"LICENSE",
-        //"README.md",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+        "README.md",
     },
 }
