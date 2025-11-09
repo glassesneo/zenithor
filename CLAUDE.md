@@ -1,595 +1,132 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for working with the Zenithor repository (concise).
 
-## Project Overview
+## What Zenithor Is
 
-Zenithor is a Zig game engine framework built on a plugin-based Entity Component System (ECS) architecture. It uses Sokol for graphics/windowing, Sparze for ECS functionality, and Dear ImGui for UI. The project supports both native and WebAssembly compilation targets.
+Zenithor is a Zig-based, plugin-driven game engine framework using Sokol for graphics/windowing, Sparze for ECS, and Dear ImGui for UI. It supports native and WebAssembly targets and exposes small example programs under `examples/`.
 
-## Build System
+## Quick Build & Run
 
-### Common Build Commands
+- Run tests: `zig build test`
+- Build a native example: `zig build demo_window`
+- Build a wasm example: `zig build demo_2d -Dtarget=wasm32-emscripten`
+- Run a native example: `zig build run-demo_window`
+- Serve wasm examples (dev server): `zig build serve-examples -Dtarget=wasm32-emscripten`
+- Build library: `zig build`
+- Install: `zig build install`
 
-The build system provides simple, consistent commands that work with both native and WebAssembly targets:
+Examples include: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_debug`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`.
 
-```bash
-# Run unit tests
-zig build test
+Graphics backend overrides:
+- `-Dgl` (OpenGL), `-Dgles3` (OpenGL ES3), `-Dwgpu` (WebGPU), `-Dimgui-docking` (ImGui docking)
 
-# Build a specific example (automatically detects native or wasm based on -Dtarget)
-zig build demo_window                              # Native build
-zig build demo_2d -Dtarget=wasm32-emscripten       # WebAssembly build
+## Web Dev & Debugging (WASM)
 
-# Build all examples
-zig build examples                                 # Native: builds all examples
-zig build examples -Dtarget=wasm32-emscripten      # WebAssembly: builds all examples
+- Use `zig build serve-examples -Dtarget=wasm32-emscripten` to build and run the dev server (serves `zig-out/web`).
+- Use the provided MCP chrome-devtools helpers for automated debugging (screenshots, console, network, evaluate scripts).
+- Primary workflow: build+serve, navigate page, take screenshots, inspect console/network, iterate with hot reload.
 
-# Build and run a specific example
-zig build run-demo_window                          # Native: builds and runs executable
-zig build run-demo_2d -Dtarget=wasm32-emscripten   # WebAssembly: builds and starts dev server
+## Plugin System
 
-# Build all examples and serve them (WebAssembly only)
-zig build serve-examples -Dtarget=wasm32-emscripten
-
-# Build library
-zig build
-
-# Install library artifact
-zig build install
-```
-
-**Available examples:**
-- `demo_window` - Basic window with colored background
-- `demo_2d` - 2D shapes rendering (triangle)
-- `demo_imgui` - Dear ImGui integration
-- `demo_input` - Mouse and keyboard input handling
-- `demo_time` - Time and delta time resource usage
-- `demo_debug` - Debug plugin features
-- `demo_zindex` - Z-index layering demonstration
-- `demo_circle` - Circle rendering
-- `demo_resources` - Resource system demonstration
-- `demo_events` - Event system demonstration
-
-### Graphics Backend Options
-
-By default, the build uses the platform-specific backend. Override with:
-
-```bash
-# Use OpenGL backend
-zig build -Dgl
-
-# Use OpenGL ES3 backend
-zig build -Dgles3
-
-# Use WebGPU backend (for wasm target)
-zig build -Dwgpu -Dtarget=wasm32-emscripten
-
-# Enable ImGui docking support
-zig build -Dimgui-docking
-```
-
-### Web Development Server
-
-The `server.ts` file provides a Deno-based development server with hot reload functionality for web builds. It:
-- Serves files from `./zig-out/web` (or custom path via first argument)
-- Watches for HTML and WASM file changes
-- Automatically injects hot-reload WebSocket client into HTML
-- Broadcasts reload notifications to connected clients
-
-### Debugging WebAssembly Builds
-
-**IMPORTANT**: When debugging visual issues, rendering problems, or game behavior, you MUST use the WebAssembly build with the chrome-devtools MCP server to inspect the actual game window. Do NOT rely solely on code inspection or console output.
-
-**Build and serve wasm examples:**
-```bash
-# Build all wasm examples and start development server
-zig build serve-examples -Dtarget=wasm32-emscripten
-
-# Server runs at http://localhost:8000
-# Examples: demo_window.html, demo_2d.html, demo_imgui.html, etc.
-```
-
-**Chrome DevTools MCP Debugging Workflow:**
-
-1. **List and navigate to pages:**
-   ```
-   mcp__chrome-devtools__list_pages
-   mcp__chrome-devtools__navigate_page(url: "http://localhost:8000/demo_2d.html")
-   ```
-
-2. **Take screenshots to verify rendering:**
-   ```
-   mcp__chrome-devtools__take_screenshot(fullPage: true)
-   ```
-   This is the PRIMARY method for verifying game rendering, UI layout, and visual correctness.
-
-3. **Check console messages for errors:**
-   ```
-   mcp__chrome-devtools__list_console_messages()
-   mcp__chrome-devtools__get_console_message(msgid: 2)
-   ```
-
-4. **Inspect network requests:**
-   ```
-   mcp__chrome-devtools__list_network_requests()
-   mcp__chrome-devtools__get_network_request(reqid: 1)
-   ```
-
-5. **Evaluate JavaScript for debugging:**
-   ```javascript
-   mcp__chrome-devtools__evaluate_script(function: "() => {
-     const canvas = document.querySelector('canvas');
-     return {
-       width: canvas.width,
-       height: canvas.height
-     };
-   }")
-   ```
-
-6. **Take element snapshots:**
-   ```
-   mcp__chrome-devtools__take_snapshot()
-   ```
-
-**Common Debugging Scenarios:**
-
-- **Visual bugs**: Take screenshots before and after code changes to verify fixes
-- **Performance issues**: Check console for warnings, evaluate JavaScript to inspect frame timing
-- **Resource loading**: Check network requests to verify WASM and asset loading
-- **Canvas rendering**: Evaluate JavaScript to inspect canvas dimensions and WebGL context
-- **UI positioning**: Take screenshots to verify ImGui window layouts and positions
-
-**Example debugging session:**
-```
-1. zig build serve-examples -Dtarget=wasm32-emscripten
-2. mcp__chrome-devtools__navigate_page(url: "http://localhost:8000/demo_2d.html")
-3. mcp__chrome-devtools__take_screenshot(fullPage: true)
-4. mcp__chrome-devtools__list_console_messages()
-5. Make code changes
-6. Wait for hot reload
-7. mcp__chrome-devtools__take_screenshot(fullPage: true)
-8. Compare screenshots to verify fix
-```
-
-**Benefits:**
-- **Visual verification**: Screenshots provide ground truth for rendering correctness
-- **Live debugging**: Hot reload enables rapid iteration with immediate visual feedback
-- **Comprehensive inspection**: Access to console, network, and JavaScript evaluation
-- **No manual browser interaction**: Fully automated debugging workflow through MCP
-
-**Graphics Backend Differences:**
-
-Rendering behavior may differ between graphics backends:
-- **Web (GLES3)**: OpenGL ES 3.0 via WebGL or WebGPU (with `-Dwgpu` flag)
-- **Native macOS (Metal)**: Platform-specific Metal backend (default on macOS)
-- **Native Windows (DirectX)**: Platform-specific DirectX backend (default on Windows)
-- **Native Linux (GL Core)**: OpenGL Core profile (default on Linux)
-
-**Important considerations:**
-- Rendering bugs may be backend-specific and only appear on certain platforms
-- When debugging visual issues, test both web (GLES3/WebGPU) and native (platform backend) builds
-- Use `zig build run-{example}` (without `-Dtarget`) for native testing alongside wasm debugging
-- If a visual issue appears in one backend but not another, specify the backend in bug reports
-
-**Testing both backends:**
-```bash
-# Test native build (Metal on macOS, DirectX on Windows, GL Core on Linux)
-zig build run-demo_2d
-
-# Test web build (GLES3 default)
-zig build serve-examples -Dtarget=wasm32-emscripten
-
-# Test web build with WebGPU backend
-zig build serve-examples -Dtarget=wasm32-emscripten -Dwgpu
-```
-
-## Architecture
-
-### Plugin System
-
-Zenithor uses a compile-time plugin architecture. A **plugin** is a type that defines:
-
-1. **Components** (optional) - Tuple declaration of component types for the ECS
-2. **Resources** (optional) - Tuple declaration of resource types (global singletons) for the ECS
-3. **Events** (optional) - Tuple declaration of event types for frame-delayed communication
-4. **build() function** (required) - Registers systems with the SystemRegistry and initializes resources
-5. **Groups** (optional) - Tuple declaration for entity groupings in the ECS
-
-Example plugin structure:
+**Plugin Structure:**
 ```zig
 pub const Components = .{ MyComponent };
 pub const Resources = .{ DeltaTime, Score };
-pub const Events = .{ CollisionEvent, DamageEvent };
+pub const Events = .{ CollisionEvent };
 pub const Groups = &.{ MyGroup };
 
-// Option 1: Basic - registry only
-pub fn build(registry: SystemRegistry) !void {
-    registry.registerStartupSystem(initSystem, .first);
-    registry.registerSystem(updateSystem, .update);
-    registry.registerTerminateSystem(cleanupSystem, .last);
-}
-
-// Option 2: With allocator for plugin initialization
-pub fn build(allocator: std.mem.Allocator, registry: SystemRegistry) !void {
-    // Allocator is the World's allocator, useful for plugin initialization
-    registry.registerStartupSystem(initSystem, .first);
-    registry.registerSystem(updateSystem, .update);
-    registry.registerTerminateSystem(cleanupSystem, .last);
-}
-
-// Option 3: With world pointer for resource initialization
 pub fn build(world: anytype, registry: SystemRegistry) !void {
-    // Initialize resources with default values
+    // Initialize resources
     try world.setResource(DeltaTime, .{ .dt = 0.016 });
-    try world.setResource(Score, .{ .points = 0, .combo = 0 });
-
+    
+    // Register systems
     registry.registerStartupSystem(initSystem, .first);
     registry.registerSystem(updateSystem, .update);
-    registry.registerTerminateSystem(cleanupSystem, .last);
-}
-
-// Option 4: All parameters (order-independent)
-pub fn build(allocator: std.mem.Allocator, world: anytype, registry: SystemRegistry) !void {
-    // Parameter order doesn't matter - engine detects types at compile time
-    try world.setResource(DeltaTime, .{ .dt = 0.016 });
-    try world.setResource(Score, .{ .points = 0, .combo = 0 });
-
-    registry.registerStartupSystem(initSystem, .first);
-    registry.registerSystem(updateSystem, .update);
-    registry.registerTerminateSystem(cleanupSystem, .last);
 }
 ```
 
-**Note**: The `build()` function parameters are all optional and order-independent:
-- **`allocator: std.mem.Allocator`** - World's allocator for plugin initialization
-- **`world: *World`** - Mutable world pointer for calling `setResource()`
-- **`registry: SystemRegistry`** - For registering systems and event handlers
+- Plugins are compile-time types that may declare `Components`, `Resources`, `Events`, `Groups` and must expose a `build()` function to register systems and initialize resources.
+- `build()` may accept `allocator: std.mem.Allocator`, `world: anytype`, and/or `registry: SystemRegistry` in any order; the engine detects and supplies parameters at compile time.
+- Builtin plugin (`src/core/builtin.zig`) is always included (provides `Transform`).
+- Default plugins live under `plugins/*/src/root.zig` and must be registered by examples via `zenithor.run(.{ PluginA, PluginB })`.
+- The main `build.zig` creates plugin modules and supplies imports (zenithor, sokol, sparze).
 
-The engine automatically detects parameter types at compile time and constructs the appropriate argument tuple.
+## World, Systems & Resources
 
-### Plugin Categories
+**System Stages:**
+- `first` (startup), `update` (main loop), `render` (drawing), `last` (cleanup)
+- Startup systems run once, regular systems every frame, terminate systems on shutdown
 
-**Builtin Plugin** (`src/core/builtin.zig`):
-- Automatically loaded by the engine without user configuration
-- Provides the Transform component used across the engine
-- Always included in the World type
-
-**Default Plugins** (`plugins/*/src/root.zig`):
-- Must be explicitly registered by users in `zenithor.run(.{ Plugin })` to access their features
-- **GraphicsPlugin** (`plugins/graphics/src/root.zig`) - 2D shape rendering (Point, Line, Triangle, Rectangle)
-- **ImGuiPlugin** (`plugins/imgui/src/root.zig`) - Dear ImGui integration with Window component
-- **InputPlugin** (`plugins/input/src/root.zig`) - Keyboard and mouse input handling
-- **TimePlugin** (`plugins/time/src/root.zig`) - Frame timing and delta time tracking
-- **DebugPlugin** (`plugins/debug/src/root.zig`) - Runtime debugging tools with entity tracking, gizmos, and performance monitoring
-
-**Plugin Structure:**
-Each plugin is organized as a separate package under `plugins/` with its own `build.zig.zon`. The main build system creates plugin modules directly and provides them with necessary imports (zenithor, sokol, sparze). This architecture avoids circular dependencies while maintaining clear plugin boundaries.
-
-**Plugin Loading:**
-Plugins are loaded by the main `build.zig` which:
-1. Creates plugin modules from source files in `plugins/*/src/root.zig`
-2. Provides each plugin with imports: `zenithor`, `sokol`, `sparze`
-3. Adds plugin-specific imports (e.g., `cimgui` for ImGuiPlugin, `imgui_plugin` for DebugPlugin)
-4. Configures build options (e.g., docking support for ImGuiPlugin)
-
-### World Building
-
-The `buildWorld()` function in `src/core/application.zig` performs compile-time component, resource, and event deduplication across all plugins. This ensures each type appears exactly once in the final World type, regardless of how many plugins declare them.
-
-### System Scheduling
-
-Systems execute in a fixed stage order defined in `src/core/system.zig`:
-
-1. `first` - Initialization tasks
-2. `pre_update` - Pre-frame logic
-3. `update` - Main game logic
-4. `post_update` - Post-frame logic
-5. `pre_render` - Render setup (e.g., camera, projection)
-6. `render` - Drawing operations
-7. `render_submit` - Submit rendering commands
-8. `post_render` - Cleanup after rendering
-9. `last` - Final frame tasks
-10. `post_process` - Post-processing effects
-
-Three system types are available:
-- **Startup systems** - Run once during initialization
-- **Regular systems** - Run every frame
-- **Terminate systems** - Run once during shutdown
-
-### Entry Point Flow
-
-The `run()` function in `src/core/application.zig`:
-
-1. Combines Builtin Plugin with user-provided plugins
-2. Builds deduplicated World type from all plugin components, resources, and events at compile time
-3. Creates SystemScheduler instances for startup/regular/terminate systems
-4. Registers Sokol callbacks (init, frame, cleanup, event)
-5. Calls each plugin's `build()` function to register systems and initialize resources
-6. Initializes Sokol (gfx, gl, imgui)
-7. Runs the application main loop
-
-Note: The ECS World loads component, resource, and event types from all `Components`, `Resources`, and `Events` tuples and executes all `build()` functions at compile time.
-
-### Sokol Module Initialization
-
-All Sokol module initialization (`sokol.*.setup()`) and shutdown (`sokol.*.shutdown()`) calls are centralized in `src/core/application.zig` for clear ownership and initialization ordering.
-
-**Initialization order in `appInit()`:**
-1. `sokol.gfx.setup()` - Graphics backend initialization
-2. `sokol.gl.setup()` - OpenGL context initialization
-3. `sokol.time.setup()` - High-resolution timer initialization
-4. `sokol.imgui.setup()` - Dear ImGui integration (depends on GL/GFX)
-
-**Shutdown order in `appCleanup()` (reverse of initialization):**
-1. `sokol.imgui.shutdown()` - Dear ImGui cleanup
-2. `sokol.gl.shutdown()` - OpenGL context cleanup
-3. `sokol.gfx.shutdown()` - Graphics backend cleanup
-
-Note: `sokol.time` does not require explicit shutdown.
-
-**Plugin assumptions:**
-- Plugins should **never** call `sokol.*.setup()` or `sokol.*.shutdown()` directly
-- Plugins can assume all Sokol modules are pre-initialized before their systems run
-- Plugin source files should include comments indicating central initialization (e.g., `// Note: sokol.time is initialized centrally in src/core/application.zig`)
-
-**Rationale:**
-- **Prevents duplicate initialization**: Multiple plugins may depend on the same module (e.g., both Time and Debug plugins use `sokol.time`)
-- **Explicit ordering**: Dependencies between modules (e.g., ImGui depends on GL/GFX) are documented in code
-- **Clear ownership**: Single source of truth for initialization lifecycle
-- **Simplified plugins**: Plugins focus on game logic without managing low-level initialization
-
-### Resources
-
-Resources are global singleton values that can be accessed by systems. Unlike components which are attached to entities, resources exist independently and provide shared state across the application.
-
-**Resource Declaration:**
+**System Parameters (Query Filters):**
 ```zig
-// Define resource types
-const DeltaTime = struct { dt: f32 };
-const Score = struct { points: i32, combo: i32 };
-
-// Declare in plugin
-pub const Resources = .{ DeltaTime, Score };
-```
-
-**Resource Initialization:**
-Resources must be initialized in the plugin's `build()` function using `world.setResource()`:
-
-```zig
-pub fn build(world: anytype, registry: SystemRegistry) !void {
-    // Initialize with default values
-    try world.setResource(DeltaTime, .{ .dt = 0.016 });
-    try world.setResource(Score, .{ .points = 0, .combo = 0 });
-
-    registry.registerSystem(gameSystem, .update);
-}
-```
-
-**Resource Usage in Systems:**
-Systems receive resources via the `zenithor.Resource(T)` filter type:
-
-```zig
-fn physicsSystem(
-    delta: zenithor.Resource(DeltaTime),
-    query: zenithor.SingleQuery(Position)
-) !void {
-    const dt = delta.value.dt;  // Access via .value field
-    for (query.components) |*pos| {
-        pos.y -= 9.8 * dt;
-    }
+// Single component/tag iteration (fast)
+fn movementSystem(query: SingleQuery(Position)) !void {
+    for (query.components) |*pos| { /* ... */ }
 }
 
-fn scoreSystem(score: zenithor.Resource(Score)) !void {
-    score.value.points += 100;  // Mutate via .value field
-    score.value.combo += 1;
-}
-```
-
-**Resource Deduplication:**
-Multiple plugins can declare the same resource type. The engine automatically deduplicates resources at compile time, ensuring only one instance exists. This allows plugins to declare their dependencies without conflicts:
-
-```zig
-// TimePlugin declares DeltaTime
-pub const Resources = .{ DeltaTime };
-
-// PhysicsPlugin also declares DeltaTime (safe - deduplicated)
-pub const Resources = .{ DeltaTime, Gravity };
-```
-
-**Key Characteristics:**
-- **Global Singleton**: One instance per resource type per World
-- **Compile-Time Type Safety**: Resource types determined at compile time
-- **Mutable Access**: Systems receive mutable pointers via `.value` field
-- **Required Initialization**: Must call `world.setResource()` before system access
-- **Deduplication**: Automatic deduplication across plugin declarations
-
-## Development Workflows
-
-### Creating a New Example
-
-1. Add example definition to `examples` array in `build.zig`
-2. Create `examples/{name}.zig` with a `main()` function
-3. Call `zenithor.run(.{ PluginA, PluginB })` with desired plugins
-4. Build automatically generates individual and aggregate build steps
-
-### Adding a New Plugin
-
-1. Create plugin directory structure:
-   - `plugins/my_plugin/src/root.zig` - Plugin implementation
-   - `plugins/my_plugin/build.zig.zon` - Package metadata (minimal, typically no dependencies)
-2. In `build.zig.zon`, define package metadata:
-   ```zig
-   .{
-       .name = "zenithor_my_plugin",
-       .version = "0.1.0",
-       .minimum_zig_version = "0.15.1",
-       .dependencies = .{},
-       .paths = .{
-           "build.zig.zon",
-           "src",
-       },
-   }
-   ```
-3. In `src/root.zig`, define `Components` tuple with component types (optional)
-4. Define `Resources` tuple with resource types (optional)
-5. Define `Events` tuple with event types (optional)
-6. Optionally define `Groups` array for entity groupings
-7. Implement `build()` function to register systems and initialize resources:
-   - Basic: `build(registry: SystemRegistry) !void`
-   - With allocator: `build(allocator: std.mem.Allocator, registry: SystemRegistry) !void`
-   - With world: `build(world: anytype, registry: SystemRegistry) !void`
-   - All parameters: `build(allocator: std.mem.Allocator, world: anytype, registry: SystemRegistry) !void`
-   - Parameters can be in any order - the engine detects types at compile time
-8. If using resources, call `world.setResource()` in `build()` to initialize them
-9. Update `build.zig` to load the plugin:
-   - Add plugin module creation in `loadExampleDependencies()`
-   - Provide necessary imports (zenithor, sokol, sparze, etc.)
-   - Add to `DependencySet` struct
-   - Import in `createExampleModule()`
-10. Add plugin to `src/root.zig` exports
-11. Include plugin in example/application via `zenithor.run(.{ MyPlugin })`
-
-**Note:** Plugins should not declare zenithor as a dependency in their `build.zig.zon` to avoid circular dependencies. The main build system provides all necessary imports to plugins.
-
-### Testing
-
-Unit tests are co-located with source files using Zig's `test` blocks. The build system automatically discovers and runs all tests:
-
-```bash
-zig build test
-```
-
-## Environment Configuration
-
-### Nix Development Shell
-
-The `flake.nix` provides a reproducible development environment with:
-- Zig 0.15.1 (via zig-overlay)
-- ZLS 0.15.0 (Zig Language Server)
-- zon2nix (for dependency management)
-- Deno (for web development server)
-
-### macOS-Specific Requirements
-
-On macOS, the build requires CUPS headers for Sokol. The Nix shell sets `CUPS_INCLUDE_DIR` environment variable, which `build.zig` uses to add the include path to sokol_clib.
-
-```bash
-# The flake.nix handles this automatically
-nix develop
-```
-
-### CI Configuration
-
-GitHub Actions CI (`.github/workflows/zig-ci.yml`):
-- Runs on Ubuntu with manual Zig installation
-- Installs Mesa and X11 development libraries
-- Executes tests, builds native examples, and builds wasm examples
-- Tests both default backend and WebGPU backend for wasm
-
-## Dependencies
-
-Managed via `build.zig.zon`:
-
-- **sokol-zig** - Cross-platform graphics/windowing library
-- **sparze** - Entity Component System framework
-- **dcimgui** - Dear ImGui C bindings with docking support
-
-Sokol transitively depends on emsdk for WebAssembly compilation.
-
-## Sparze ECS Integration
-
-Zenithor uses Sparze as its underlying ECS framework. Understanding Sparze's architecture is essential for writing systems and plugins.
-
-### Core ECS Concepts
-
-**Entity** (`sparze.Entity`):
-- 32-bit identifier: 16 bits for index, 16 bits for version
-- Version-based recycling prevents stale references
-- Managed by internal EntityRegistry with implicit free list
-
-**Component Storage**:
-- **SparseSet**: Default storage for regular components
-  - Paginated sparse array (4096 entities per page) for O(1) entity→component lookup
-  - Packed dense arrays for cache-friendly iteration
-  - Group support: entities in groups stored at beginning of packed array
-- **TagStorage**: Specialized storage for tag components (empty structs)
-  - Uses DynamicBitSet for O(1) presence checking
-  - Only 1 bit per entity index (memory-efficient)
-  - Automatically used for `struct {}` components
-
-**Tag Components**:
-Tag components are zero-sized marker components used for entity categorization or state flags. They are defined as empty structs and automatically use optimized `TagStorage`.
-
-```zig
-// Define tag components as empty structs
-const Player = struct {};
-const Enemy = struct {};
-const Active = struct {};
-
-// Use tag-specific methods
-try world.addTag(entity, Player);
-if (world.hasComponent(entity, Player)) { /* ... */ }
-world.removeTag(entity, Active);
-
-// Systems with tag filters
-fn playerSystem(query: SingleTag(Player)) !void {
+// Multi-component query (flexible)
+fn combatSystem(query: Query(struct { Position, Health })) !void {
     for (query.entities) |entity| {
-        // Process all player entities
+        const pos = query.getComponent(entity, Position);
+        const health = query.getComponentMut(entity, Health);
     }
 }
 
-fn bossEnemySystem(query: TagQuery(struct { Enemy, Boss })) !void {
-    for (query.entities) |entity| {
-        if (query.filter(entity)) {
-            // Process entities that are both enemies and bosses
-        }
-    }
-}
-```
-
-**Tag Component Usage**:
-- **Marker components**: `Player`, `Enemy`, `NPC` - entity categorization
-- **State flags**: `Active`, `Disabled`, `Selected` - entity state tracking
-- **Group membership**: `UI`, `Renderable`, `Collidable` - system filtering
-- **Events**: `Damaged`, `Died`, `LeveledUp` - single-frame event markers
-
-### Query Filters and System Parameters
-
-Systems receive query filters as parameters. These filters determine which entities the system operates on:
-
-| Filter Type | Component Types | Count | Setup Required | Performance | Use Case |
-|-------------|----------------|-------|----------------|-------------|----------|
-| `SingleQuery(C)` | Regular | 1 | None | O(n) - Fast | Single component iteration |
-| `SingleTag(T)` | Tag | 1 | None | O(n) - Fast | Single tag iteration |
-| `Query(struct { A, B, ... })` | Mixed | 2+ | None | O(n) - Moderate | Ad-hoc multi-query (tags + components) |
-| `TagQuery(struct { A, B, ... })` | Tag only | 2+ | None | O(n) - Moderate | Ad-hoc multi-tag queries |
-| `Group(struct { A, B })` | Regular | 2+ | `createGroup()` required | O(n) - Fastest | Hot-path multi-component queries |
-
-**When to use each**:
-- **SingleQuery**: Iterating over entities with one regular component
-- **SingleTag**: Iterating over entities with one tag component
-- **Query**: Multi-component queries used occasionally or with varying component combinations (can mix tags and regular components)
-- **TagQuery**: Multi-tag queries (tag components only, explicit type safety)
-- **Group**: Hot-path multi-component queries (e.g., movement, rendering) where performance is critical
-
-**Key differences**:
-- **SingleQuery** and **SingleTag**: Direct iteration over packed arrays (SingleQuery) or bit sets (SingleTag)
-- **Query** and **TagQuery**: Perform runtime intersection, iterating smallest set and checking for others
-- **Query** works with mixed tags and regular components; **TagQuery** enforces tag-only at compile time
-- **Group** has pre-organized memory layout with entities stored at start of all component arrays
-- **Group** requires upfront `createGroup()` call and validation; **Query** and **TagQuery** have no setup overhead
-
-### Writing Systems
-
-Systems are plain functions that accept query filter parameters:
-
-```zig
-// Declare group type constants for readability
+// Optimized hot-path grouping
 const MovementGroup = struct { Position, Velocity };
-const CombatGroup = struct { Health, Armor };
+fn physicsSystem(movement: Group(MovementGroup)) !void {
+    const positions = movement.getMutArrayOf(Position);
+    const velocities = movement.getArrayOf(Velocity);
+    for (positions, velocities) |*pos, vel| { /* ... */ }
+}
+```
 
-// System with Group (optimized, requires createGroup)
-fn movementSystem(movement: Group(MovementGroup)) !void {
+**Resources Usage:**
+```zig
+fn systemWithResources(dt: zenithor.Resource(DeltaTime), score: zenithor.Resource(Score)) !void {
+    const delta = dt.value.dt;        // Access via .value
+    score.value.points += 100;         // Mutate via .value
+}
+```
+
+- `buildWorld()` deduplicates `Components`, `Resources`, and `Events` from all plugins at compile time
+- Resources are global singletons; initialize in `build()` with `world.setResource(...)`
+- Groups require `world.createGroup()` and are most efficient for hot paths
+- Query types: `SingleQuery`, `SingleTag`, `Query`, `TagQuery`, `Group` (fastest)
+
+## Events (Brief)
+
+- Events are frame-delayed: write with `EventWriter` in frame N, read with `EventReader` in frame N+1.
+- Use event chains for multi-frame workflows (collision → damage → death).
+
+## Development Workflow
+
+**Create New Example:**
+1. Add to `examples` array in `build.zig`
+2. Create `examples/{name}.zig` with `main()` that calls `zenithor.run(.{ PluginA, PluginB })`
+
+**Add New Plugin:**
+1. Create `plugins/your_plugin/src/root.zig` and `build.zig.zon` (no zenithor dependency)
+2. Define `Components`, `Resources`, `Events`, `Groups` tuples and `build()` function
+3. Update `build.zig` to load plugin module and add imports
+4. Export plugin in `src/root.zig`
+
+**Common Plugin Example:**
+```zig
+// plugins/physics/src/root.zig
+const Position = struct { x: f32, y: f32 };
+const Velocity = struct { x: f32, y: f32 };
+
+pub const Components = .{ Position, Velocity };
+
+pub fn build(world: anytype, registry: SystemRegistry) !void {
+    // Setup group for efficient physics queries
+    try world.createGroup(struct { Position, Velocity });
+    registry.registerSystem(physicsSystem, .update);
+}
+
+fn physicsSystem(movement: Group(struct { Position, Velocity })) !void {
     const positions = movement.getMutArrayOf(Position);
     const velocities = movement.getArrayOf(Velocity);
     for (positions, velocities) |*pos, vel| {
@@ -597,323 +134,22 @@ fn movementSystem(movement: Group(MovementGroup)) !void {
         pos.y += vel.y;
     }
 }
-
-// System with Query (flexible, no group setup required)
-fn combatSystem(query: Query(struct { Position, Health })) !void {
-    for (query.entities) |entity| {
-        if (query.filter(entity)) {
-            const pos = query.getComponent(entity, Position);
-            const health = getComponentMut(entity, Health);
-            // Process entity
-        }
-    }
-}
-
-// System with multiple query filters
-fn complexSystem(
-    movement: Group(MovementGroup),
-    health: SingleQuery(Health),
-    combat: Query(struct { Position, Armor }),
-) !void {
-    // Use multiple query filters in one system
-}
-
-// System with tag filters
-fn playerSystem(query: SingleTag(Player)) !void {
-    for (query.entities) |entity| {
-        // Process all player entities
-    }
-}
 ```
 
-**Group Validation**:
-Groups must be validated at compile time to ensure no overlapping components:
+- Unit tests use Zig's `test` blocks and run via `zig build test`
+- All Sokol modules initialized centrally in `src/core/application.zig` — plugins must NOT call `sokol.*.setup()`
 
-```zig
-// In plugin build() function
-World.validateGroups(.{
-    MovementGroup,
-    CombatGroup,
-});
+## Environment & CI
 
-try world.createGroup(MovementGroup);
-try world.createGroup(CombatGroup);
-```
+- Use the provided Nix flake (`flake.nix`) for a reproducible dev shell (`nix develop`) with Zig 0.15.1, ZLS, zon2nix and Deno.
+- On macOS, CUPS headers are required for Sokol; the Nix shell sets `CUPS_INCLUDE_DIR`.
+- CI (`.github/workflows/`) runs tests and builds native and wasm examples (including WebGPU).
 
-**System Best Practices**:
-1. **Declare group type constants** for readability and maintainability
-2. **Define systems as plain functions** that accept query filter parameters
-3. **Use Groups for hot-path queries** (e.g., movement, rendering)
-4. **Use Query/TagQuery for occasional queries** with varying component combinations
-5. **Validate all groups upfront** for compile-time safety
-
-### Optional Components and Tags
-
-Both `Query` and `TagQuery` support optional components/tags using the `?Component` or `?Tag` syntax. This allows queries to match entities based on required components while optionally checking for additional components.
-
-```zig
-// Query with optional components
-fn combatSystem(query: Query(struct { Health, ?Shield })) !void {
-    const damage = 15;
-
-    for (query.entities) |entity| {
-        if (query.filter(entity)) {
-            const health = query.getComponentMut(entity, Health);
-            var actual_damage = damage;
-
-            // Shield absorbs some damage if present
-            if (query.getOptionalMut(entity, Shield)) |shield| {
-                const absorbed = @min(shield.value, actual_damage);
-                shield.value -= absorbed;
-                actual_damage -= absorbed;
-            }
-
-            health.hp -= actual_damage;
-        }
-    }
-}
-
-// TagQuery with optional tags
-fn enemyAISystem(query: TagQuery(struct { Enemy, ?Boss, ?Elite })) !void {
-    for (query.entities) |entity| {
-        if (query.filter(entity)) {
-            // Base enemy AI
-
-            if (query.hasTag(entity, Boss)) {
-                // Enhanced boss AI
-            }
-
-            if (query.hasTag(entity, Elite)) {
-                // Elite enemy behavior
-            }
-        }
-    }
-}
-```
-
-**Optional Component/Tag API**:
-- **Required components**: Use `getComponent()` / `getComponentMut()` - asserts component exists
-- **Optional components**: Use `getOptional()` / `getOptionalMut()` - returns `?C` or `?*C`
-- **Optional tags**: Use `hasTag(entity, Tag)` - returns `bool`
-- **Filtering**: `filter()` only check required (non-optional) fields
-
-**Benefits**:
-- **Flexibility**: Match entities with required components while optionally checking others
-- **Performance**: Query optimization only considers required components/tags for iteration
-- **Type Safety**: Explicit `?Component` syntax shows which components are optional at compile time
-- **Cleaner Code**: Avoid multiple separate queries when some components are optional
-
-### Event System
-
-Sparze provides a frame-delayed event system for decoupled communication between systems. Events written in frame N become readable in frame N+1, ensuring stable processing without mid-frame mutations.
-
-**Event Declaration:**
-```zig
-// Define event types
-const CollisionEvent = struct {
-    projectile: Entity,
-    enemy: Entity,
-};
-
-const DamageEvent = struct {
-    entity: Entity,
-    amount: i32,
-};
-
-// Declare in plugin
-pub const Events = .{ CollisionEvent, DamageEvent };
-```
-
-**Event Lifecycle:**
-1. **Frame N**: Systems write events via `EventWriter`
-2. **Frame End**: `world.endFrame()` swaps write/read buffers
-3. **Frame N+1**: Systems read events via `EventReader`
-4. **Next Frame Begin**: `world.beginFrame()` clears old read buffer
-
-**Writing Events:**
-```zig
-fn collisionDetection(
-    projectile_query: Query(struct { Projectile, Transform, Collider }),
-    enemy_query: Query(struct { Enemy, Transform, Collider }),
-    collision_writer: EventWriter(CollisionEvent),
-) !void {
-    for (projectile_query.entities) |proj_entity| {
-        if (!projectile_query.filter(proj_entity)) continue;
-
-        for (enemy_query.entities) |enemy_entity| {
-            if (!enemy_query.filter(enemy_entity)) continue;
-
-            // Check collision...
-            if (collided) {
-                try collision_writer.enqueue(.{
-                    .projectile = proj_entity,
-                    .enemy = enemy_entity,
-                });
-            }
-        }
-    }
-}
-```
-
-**Reading Events:**
-```zig
-fn damageResponse(
-    collision_reader: EventReader(CollisionEvent),
-    damage_writer: EventWriter(DamageEvent),
-    commands: anytype,
-) !void {
-    // Process collisions from previous frame
-    for (collision_reader.queue) |collision| {
-        // Destroy projectile
-        try commands.destroyEntity(collision.projectile);
-
-        // Emit damage event
-        try damage_writer.enqueue(.{
-            .entity = collision.enemy,
-            .amount = 50,
-        });
-    }
-}
-```
-
-**Event Chain Pattern:**
-Systems can form event chains by reading one event type and writing another:
-```zig
-// Frame N: Collision detected → CollisionEvent
-// Frame N+1: Process collision → DamageEvent
-// Frame N+2: Process damage → DeathEvent
-// Frame N+3: Handle death → destroy entity
-
-fn handleDamage(
-    damage_reader: EventReader(DamageEvent),
-    health_query: SingleQuery(Health),
-    death_writer: EventWriter(DeathEvent),
-    commands: anytype,
-) !void {
-    for (damage_reader.queue) |damage_event| {
-        for (health_query.entities, health_query.components) |entity, *health| {
-            if (entity == damage_event.entity) {
-                health.hp -= damage_event.amount;
-
-                if (health.hp <= 0) {
-                    try death_writer.enqueue(.{ .entity = entity });
-                    try commands.destroyEntity(entity);
-                }
-                break;
-            }
-        }
-    }
-}
-```
-
-**Event System API:**
-- **EventWriter.enqueue(event)** - Queue event for next frame
-- **EventReader.queue** - Slice of events from previous frame (read-only)
-
-**Benefits:**
-- **Decoupling**: Systems don't need direct references to each other
-- **Stable Processing**: No mid-frame event mutations
-- **Clear Event Flow**: Frame-delayed model makes timing explicit
-- **Type Safety**: Compile-time event type checking
-
-**Example:** See `examples/demo_events.zig` for a complete demonstration of collision detection, damage, and death events in a simple shooter game.
-
-### Performance Optimizations
-
-**SparseSet Optimizations**:
-- Bit-shift indexing: `sparse_index >> 12` for page, `sparse_index & 0xFFF` for slot
-- Direct `swapRemove()` on arrays to reduce memory copies
-- ~20% faster component lookups, ~17% faster removes
-
-**Reserve API**:
-Pre-allocate capacity to avoid reallocations during bulk inserts:
-```zig
-try world.getSparseSetPtr(Position).reserve(expected_capacity);
-```
-
-**Command Buffer Optimizations**:
-- Commands use inline array `[max_component_size]u8` instead of heap allocation
-- Eliminates `allocator.dupe()` call per command
-- 77.8x faster command buffer operations (98.7% speedup)
-
-### Memory Management
-
-- **Component pools**: Owned by World and deinitialized automatically
-- **Command buffer**: Uses inline storage (no per-command allocation)
-- **Tag storage**: Uses bit sets (1 bit per entity) for minimal memory overhead
-- **Entity versioning**: Always use entity handles returned by create/destroy operations
-
-### Integration with Zenithor
-
-Zenithor's `buildWorld()` function (`src/core/application.zig`) creates the ECS World by:
-1. Collecting all `Components`, `Resources`, and `Events` tuples from plugins
-2. Performing compile-time deduplication for each type category
-3. Creating the World type: `World(Components, Resources, Events)`
-
-Plugin `Groups` declarations are used to:
-1. Validate groups at compile time
-2. Create groups during initialization
-3. Enable optimized group-based queries in systems
-
-## Application Configuration
-
-### Window Settings
-
-Default window size is configured in `src/core/application.zig`:
-```zig
-.width = 1280,
-.height = 800,
-```
-
-This provides sufficient space for debug UI windows and game content without overlapping.
-
-### Debug Plugin
-
-The Debug plugin (`plugins/debug/src/root.zig`) provides comprehensive debugging tools:
-
-**Features:**
-- **Entity Tracker** - Inspect components and their values with change highlighting
-- **Gizmos** - Visual crosshair markers at entity positions
-- **Entity ID Labels** - Display entity index next to gizmos (e.g., "42" or "42:v1")
-- **Performance Metrics** - FPS, frame time graphs, and statistics
-- **Lifecycle Log** - Track entity creation/destruction events
-
-**Window Layout (1280x800):**
-- Entity Tracker: (10, 10) - 420x700
-- Performance Metrics: (440, 10) - 350x250
-- Lifecycle Log: (440, 270) - 350x520
-
-**Usage:**
-```zig
-// Mark entities for tracking
-const entity = try commands.createEntityWith(.{
-    Transform{ .x = 100, .y = 100, .z = 0 },
-    DebugPlugin.Tracked{}, // Tag for debug tracking
-});
-
-// Display debug UI
-fn debugSystem(commands: anytype, tracked: zenithor.SingleTag(DebugPlugin.Tracked)) !void {
-    try DebugPlugin.openDebugWindow(.{
-        Transform,
-        Velocity,
-        Health,
-    }, commands, tracked.entities);
-}
-```
-
-**Entity Structure:**
-- Entities consist of a 16-bit **index** (slot identifier) and 16-bit **version** (generation counter)
-- Access via `sparze.getIndex(entity)` and `sparze.getVersion(entity)`
-- Debug UI displays index by default, with optional version toggle
-
-See `plugins/debug/API.md` for complete API documentation.
-
-## Important Notes
+## Key References & Constraints
 
 - Minimum Zig version: 0.15.1
-- The build system automatically handles cimgui configuration based on `-Dimgui-docking` flag
-- Web examples use Emscripten with specific memory and safety flags (see `buildWebExample()`)
-- The build system clears various Nix environment variables in the shell hook to prevent build interference
-- **Entity versioning**: Always use the entity handles returned by create/destroy operations. Stale entity handles will fail version checks.
-- **Group ownership**: Groups use "full-owning" model where entities in the group are stored at the start of the packed array in all component sparse sets. This enables cache-friendly iteration but means groups cannot overlap (enforced at compile time).
-- **Tag components**: Empty structs (`struct {}`) are automatically treated as tag components and use `TagStorage` instead of `SparseSet`. Use `world.addTag()` and `world.removeTag()` for tag-specific operations.
+- Plugins must not call `sokol.*.setup()`/`shutdown()`; Sokol modules are initialized centrally in `src/core/application.zig`.
+- Groups are full-owning and may not overlap (validated at compile time).
+- Tag components are empty structs (`struct {}`) and use `TagStorage`.
+
+For more detailed usage examples (systems, queries, events, debug plugin APIs), see `examples/` and `plugins/debug/API.md`.
