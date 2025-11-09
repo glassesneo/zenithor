@@ -8,7 +8,6 @@ const examples = [_]Example{
     .{ .name = "demo_imgui" },
     .{ .name = "demo_input" },
     .{ .name = "demo_time" },
-    .{ .name = "demo_debug" },
     .{ .name = "demo_zindex" },
     .{ .name = "demo_circle" },
     .{ .name = "demo_resources" },
@@ -42,7 +41,6 @@ const DependencySet = struct {
     time_plugin_mod: *std.Build.Module,
     imgui_plugin_mod: *std.Build.Module,
     input_plugin_mod: *std.Build.Module,
-    debug_plugin_mod: *std.Build.Module,
     serialization_plugin_mod: *std.Build.Module,
 };
 
@@ -170,16 +168,6 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
     input_plugin.addImport("sokol", dep_sokol.module("sokol"));
     input_plugin.addImport("sparze", dep_sparze.module("sparze"));
 
-    const debug_plugin = b.createModule(.{
-        .root_source_file = b.path("plugins/debug/src/root.zig"),
-        .target = options.target,
-        .optimize = options.optimize,
-    });
-    debug_plugin.addImport("zenithor", options.mod_zenithor);
-    debug_plugin.addImport("sokol", dep_sokol.module("sokol"));
-    debug_plugin.addImport("sparze", dep_sparze.module("sparze"));
-    debug_plugin.addImport("imgui_plugin", imgui_plugin);
-
     const serialization_plugin = b.createModule(.{
         .root_source_file = b.path("plugins/serialization/src/root.zig"),
         .target = options.target,
@@ -197,7 +185,6 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
         .time_plugin_mod = time_plugin,
         .imgui_plugin_mod = imgui_plugin,
         .input_plugin_mod = input_plugin,
-        .debug_plugin_mod = debug_plugin,
         .serialization_plugin_mod = serialization_plugin,
     };
 }
@@ -219,7 +206,6 @@ fn createExampleModule(b: *std.Build, example: Example, options: ExampleOptions,
     mod.addImport("time_plugin", deps.time_plugin_mod);
     mod.addImport("imgui_plugin", deps.imgui_plugin_mod);
     mod.addImport("input_plugin", deps.input_plugin_mod);
-    mod.addImport("debug_plugin", deps.debug_plugin_mod);
     mod.addImport("serialization_plugin", deps.serialization_plugin_mod);
 
     return mod;

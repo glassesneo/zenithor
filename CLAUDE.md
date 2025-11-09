@@ -17,7 +17,7 @@ Zenithor is a Zig-based, plugin-driven game engine framework using Sokol for gra
 - Build library: `zig build`
 - Install: `zig build install`
 
-Examples include: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_debug`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`.
+Examples include: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`.
 
 Graphics backend overrides:
 - `-Dgl` (OpenGL), `-Dgles3` (OpenGL ES3), `-Dwgpu` (WebGPU), `-Dimgui-docking` (ImGui docking)
@@ -159,4 +159,4 @@ fn physicsSystem(movement: Group(struct { Position, Velocity })) !void {
 - Groups are full-owning and may not overlap (validated at compile time).
 - Tag components are empty structs (`struct {}`) and use `TagStorage`.
 
-For more detailed usage examples (systems, queries, events, debug plugin APIs), see `examples/` and `plugins/debug/API.md`.
+For more detailed usage examples (systems, queries, events), see `examples/`.
