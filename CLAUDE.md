@@ -53,7 +53,7 @@ WASM stack size configuration:
 - ✅ iOS framework discovery and linking configuration
 - ✅ Automatic iOS vs simulator target detection
 
-**Potential Solutions (未 tested):**
+**Potential Solutions (not yet tested):**
 - Upgrade to Zig 0.16.x or newer when available (may have improved iOS support)
 - Use Xcode's native build system instead of Zig for iOS targets
 - Investigate custom libc++ configuration or patches for iOS
