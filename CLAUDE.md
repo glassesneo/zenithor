@@ -28,6 +28,43 @@ WASM filesystem support (required for serialization/save files):
 WASM stack size configuration:
 - `-Dstack-size=<MB>` (default: 5MB, range: 1-16MB, increase if experiencing stack overflow with large save files)
 
+## iOS Builds (Experimental - Known Limitations)
+
+**Current Status:** iOS build infrastructure is partially configured but **not fully functional** due to Zig 0.15.1 limitations.
+
+**Prerequisites:**
+- Install Xcode from the App Store (provides iOS SDK and frameworks)
+- Run: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`
+- Restart your Nix shell after installation
+
+**Build commands (currently broken):**
+- iOS Simulator (Apple Silicon): `zig build demo_window -Dtarget=aarch64-ios-simulator`
+- iOS Simulator (Intel Mac): `zig build demo_window -Dtarget=x86_64-ios-simulator`
+- iOS Device (ARM64): `zig build demo_window -Dtarget=aarch64-ios`
+
+**Known Issues:**
+- **Blocker:** Zig 0.15.1's bundled libc++ has compatibility issues with iOS cross-compilation
+- Error occurs during final executable linking when Zig's libc++ tries to compile for iOS target
+- C libraries (cimgui, sokol) compile successfully, but linking fails with libc++ type errors
+
+**What Works:**
+- ✅ iOS SDK detection via `xcrun` and `DEVELOPER_DIR`
+- ✅ C/C++ compilation with iOS system headers
+- ✅ iOS framework discovery and linking configuration
+- ✅ Automatic iOS vs simulator target detection
+
+**Potential Solutions (未 tested):**
+- Upgrade to Zig 0.16.x or newer when available (may have improved iOS support)
+- Use Xcode's native build system instead of Zig for iOS targets
+- Investigate custom libc++ configuration or patches for iOS
+
+**Notes:**
+- iOS builds use system Xcode SDKs (not managed by Nix due to Apple licensing restrictions)
+- macOS builds continue using Nix-managed SDK for reproducibility
+- The Nix shell automatically detects and configures iOS SDK paths when Xcode is installed
+- Metal backend is used by default for iOS (Sokol's default)
+- Building for physical devices requires additional code signing configuration (not covered here)
+
 ## Web Dev & Debugging (WASM)
 
 - Use `zig build serve-examples -Dtarget=wasm32-emscripten` to build and run the dev server (serves `zig-out/web`).

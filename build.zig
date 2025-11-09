@@ -219,6 +219,31 @@ fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, 
     });
     exe.root_module.addImport("sparze", deps.sparze.module("sparze"));
 
+    // Add iOS framework paths for linking
+    if (options.target.result.os.tag == .ios) {
+        const allocator = b.allocator;
+        const sdk_name = if (options.target.result.abi == .simulator) "iphonesimulator" else "iphoneos";
+        const xcrun_result = std.process.Child.run(.{
+            .allocator = allocator,
+            .argv = &.{ "xcrun", "--sdk", sdk_name, "--show-sdk-path" },
+        }) catch |err| {
+            std.debug.print("Warning: Failed to get iOS SDK path: {}\n", .{err});
+            const run = b.addRunArtifact(exe);
+            return .{ .build = &exe.step, .run = run };
+        };
+        defer allocator.free(xcrun_result.stdout);
+        defer allocator.free(xcrun_result.stderr);
+
+        if (xcrun_result.term == .Exited and xcrun_result.term.Exited == 0) {
+            const sdk_path = std.mem.trim(u8, xcrun_result.stdout, &std.ascii.whitespace);
+            if (sdk_path.len > 0) {
+                const framework_path = b.fmt("{s}/System/Library/Frameworks", .{sdk_path});
+                const framework_lazy: std.Build.LazyPath = .{ .cwd_relative = framework_path };
+                exe.root_module.addFrameworkPath(framework_lazy);
+            }
+        }
+    }
+
     const run = b.addRunArtifact(exe);
 
     return .{ .build = &exe.step, .run = run };
@@ -356,6 +381,37 @@ pub fn build(b: *std.Build) !void {
         dep_sokol.artifact("sokol_clib").addIncludePath(cups_include_path);
     }
 
+    // iOS SDK configuration: add sysroot for C/C++ compilation
+    if (mod_target.os.tag == .ios) for_ios: {
+        // Get iOS SDK path via xcrun (requires DEVELOPER_DIR pointing to Xcode)
+        const sdk_name = if (mod_target.abi == .simulator) "iphonesimulator" else "iphoneos";
+        const xcrun_result = std.process.Child.run(.{
+            .allocator = allocator,
+            .argv = &.{ "xcrun", "--sdk", sdk_name, "--show-sdk-path" },
+        }) catch break :for_ios;
+        defer allocator.free(xcrun_result.stdout);
+        defer allocator.free(xcrun_result.stderr);
+
+        if (xcrun_result.term == .Exited and xcrun_result.term.Exited == 0) {
+            const sdk_path = std.mem.trim(u8, xcrun_result.stdout, &std.ascii.whitespace);
+            if (sdk_path.len > 0) {
+                // Add both SDK root and usr/include for C standard library headers
+                const sdk_lazy_path: std.Build.LazyPath = .{ .cwd_relative = sdk_path };
+                const usr_include_path = b.fmt("{s}/usr/include", .{sdk_path});
+                const usr_include_lazy: std.Build.LazyPath = .{ .cwd_relative = usr_include_path };
+                const framework_path = b.fmt("{s}/System/Library/Frameworks", .{sdk_path});
+                const framework_lazy: std.Build.LazyPath = .{ .cwd_relative = framework_path };
+
+                // Configure both sokol and cimgui with iOS SDK paths
+                dep_sokol.artifact("sokol_clib").addSystemIncludePath(sdk_lazy_path);
+                dep_sokol.artifact("sokol_clib").addSystemIncludePath(usr_include_lazy);
+                dep_sokol.artifact("sokol_clib").addFrameworkPath(framework_lazy);
+                dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(sdk_lazy_path);
+                dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(usr_include_lazy);
+            }
+        }
+    }
+
     try buildExamples(b, .{
         .target = target,
         .optimize = optimize,
@@ -393,3 +449,4 @@ fn createShaderModule(b: *std.Build, dep_sokol: *std.Build.Dependency) !*std.Bui
 
     return mod_shd;
 }
+
