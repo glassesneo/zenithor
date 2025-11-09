@@ -13,6 +13,7 @@ Zenithor is a Zig-based, plugin-driven game engine framework using Sokol for gra
 - Build a wasm example: `zig build demo_2d -Dtarget=wasm32-emscripten`
 - Run a native example: `zig build run-demo_window`
 - Serve wasm examples (dev server): `zig build serve-examples -Dtarget=wasm32-emscripten`
+- Serve with filesystem support: `zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem`
 - Build library: `zig build`
 - Install: `zig build install`
 
@@ -20,6 +21,12 @@ Examples include: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_ti
 
 Graphics backend overrides:
 - `-Dgl` (OpenGL), `-Dgles3` (OpenGL ES3), `-Dwgpu` (WebGPU), `-Dimgui-docking` (ImGui docking)
+
+WASM filesystem support (required for serialization/save files):
+- `-Dfilesystem` (enables Emscripten IDBFS, increases binary ~50KB, allows file I/O in browser)
+
+WASM stack size configuration:
+- `-Dstack-size=<MB>` (default: 5MB, range: 1-16MB, increase if experiencing stack overflow with large save files)
 
 ## Web Dev & Debugging (WASM)
 

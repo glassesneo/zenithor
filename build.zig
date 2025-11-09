@@ -27,6 +27,8 @@ const ExampleOptions = struct {
     gles3: bool,
     wgpu: bool,
     imgui_docking: bool,
+    filesystem: bool,
+    stack_size_mb: u32,
     dep_cimgui: *std.Build.Dependency,
     mod_zenithor: *std.Build.Module,
 };
@@ -249,6 +251,22 @@ fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, dep
     });
     lib.root_module.addImport("sparze", deps.sparze.module("sparze"));
 
+    // Build Emscripten linker arguments
+    const stack_arg = b.fmt("-sSTACK_SIZE={d}MB", .{options.stack_size_mb});
+
+    const base_args = &[_][]const u8{
+        "-sSHARED_MEMORY=0",
+        "-sEXIT_RUNTIME=0",
+        stack_arg,
+        "-sSTACK_OVERFLOW_CHECK=2",
+        "-sINITIAL_MEMORY=64MB",
+        "-sALLOW_MEMORY_GROWTH=1",
+        "-sASSERTIONS=2",
+        "-sSAFE_HEAP=1",
+        "-sUSE_PTHREADS=0",
+        "--bind",
+    };
+
     const link = try sokol.emLinkStep(b, .{
         .lib_main = lib,
         .target = options.target,
@@ -257,20 +275,9 @@ fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, dep
         .use_webgpu = options.wgpu,
         .use_webgl2 = !options.wgpu,
         .use_emmalloc = true,
-        .use_filesystem = false,
+        .use_filesystem = options.filesystem,
         .shell_file_path = deps.sokol.path("src/sokol/web/shell.html"),
-        .extra_args = &.{
-            "-sSHARED_MEMORY=0",
-            "-sEXIT_RUNTIME=0",
-            "-sSTACK_SIZE=1MB",
-            "-sSTACK_OVERFLOW_CHECK=2",
-            "-sINITIAL_MEMORY=64MB",
-            "-sALLOW_MEMORY_GROWTH=1",
-            "-sASSERTIONS=2",
-            "-sSAFE_HEAP=1",
-            "-sUSE_PTHREADS=0",
-            "--bind",
-        },
+        .extra_args = base_args,
     });
 
     b.getInstallStep().dependOn(&link.step);
@@ -299,6 +306,8 @@ pub fn build(b: *std.Build) !void {
     const gles3 = b.option(bool, "gles3", "Whether to use OpenGL ES3 backend") orelse false;
     const wgpu = b.option(bool, "wgpu", "Whether to use WebGPU backend") orelse false;
     const imgui_docking = b.option(bool, "imgui-docking", "Whether to build with imgui docking support") orelse false;
+    const filesystem = b.option(bool, "filesystem", "Enable Emscripten filesystem support (WASM only, increases binary size)") orelse false;
+    const stack_size_mb = b.option(u32, "stack-size", "WASM stack size in MB (default: 5, min: 1, max: 16)") orelse 5;
 
     const cimgui_config = cimgui.getConfig(imgui_docking);
 
@@ -368,6 +377,8 @@ pub fn build(b: *std.Build) !void {
         .gles3 = gles3,
         .wgpu = wgpu,
         .imgui_docking = imgui_docking,
+        .filesystem = filesystem,
+        .stack_size_mb = stack_size_mb,
         .dep_cimgui = dep_cimgui,
         .mod_zenithor = lib_mod,
     });

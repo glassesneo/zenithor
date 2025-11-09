@@ -241,6 +241,123 @@ plugins/serialization/
 └── build.zig.zon         # Package metadata
 ```
 
+## WASM/Browser Support
+
+### Filesystem Requirements
+
+**Important:** Save/load functionality requires filesystem support in WASM builds. By default, Zenithor's WASM builds **do not** enable filesystem support to minimize binary size.
+
+To enable save/load in browser environments, build with the `-Dfilesystem` flag:
+
+```bash
+# Build with filesystem support
+zig build demo_serialization -Dtarget=wasm32-emscripten -Dfilesystem
+
+# Serve examples with filesystem support
+zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem
+```
+
+### How Browser Filesystem Works
+
+When `-Dfilesystem` is enabled:
+
+1. **Emscripten IDBFS** - Uses browser's IndexedDB for persistence
+2. **Virtual Filesystem** - Emscripten mounts a virtual filesystem at runtime
+3. **Persistence** - Save files persist across browser sessions
+4. **Storage Limits** - Subject to browser storage quotas (typically 50MB+)
+
+### Trade-offs
+
+| Configuration | Binary Size | File I/O | Save Persistence |
+|--------------|-------------|----------|------------------|
+| Default (`-Dfilesystem=false`) | ~1.2MB | ❌ Fails | N/A |
+| Filesystem enabled (`-Dfilesystem=true`) | ~1.25MB | ✅ Works | ✅ Across sessions |
+
+### Browser Compatibility
+
+IDBFS is supported on all modern browsers:
+- ✅ Chrome/Edge 23+
+- ✅ Firefox 10+
+- ✅ Safari 10+
+- ✅ Opera 15+
+
+### Example: WASM Build with Serialization
+
+```bash
+# 1. Build with filesystem support
+zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem
+
+# 2. Open browser to http://localhost:8000
+# 3. Select demo_serialization.html
+# 4. Press F5 to save, F9 to load
+# 5. Refresh page - save persists!
+```
+
+### Limitations
+
+- **Async operations** - IndexedDB is asynchronous; Emscripten handles synchronization
+- **Storage quota** - Browser may prompt user to grant storage permission
+- **Private browsing** - IndexedDB may not persist in incognito/private mode
+- **Cross-origin** - Files don't persist across different domains/origins
+
+### Stack Size Considerations
+
+**WASM builds** have limited stack space. Large save files (>1000 entities with many components) may trigger stack overflow during deserialization.
+
+**Symptoms:**
+```
+Aborted(stack overflow (Attempt to set SP to 0x..., with stack limits [0x... - 0x...]))
+```
+
+**Solutions:**
+
+1. **Increase stack size** (recommended): Build with `-Dstack-size=<MB>`
+   ```bash
+   # Default is 5MB
+   zig build demo_serialization -Dtarget=wasm32-emscripten -Dstack-size=8
+
+   # For very large games
+   zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem -Dstack-size=16
+   ```
+
+   **Stack Size Guidelines:**
+   - **1-2MB**: Small games with <500 entities
+   - **5MB** (default): Most games, handles 1000+ entities safely
+   - **8-16MB**: Very large games with complex state (2000+ entities)
+
+2. **Reduce save file size**: Implement partial saves or compress component data
+
+3. **Profile save files**: Check entity/component counts in SaveFile metadata before loading
+
+**Note:** Native builds are unaffected; stack size only applies to WASM builds. The default 5MB provides a safe balance between memory usage and capacity.
+
+### Alternative: In-Memory Only
+
+For WASM builds without `-Dfilesystem`, you can implement in-memory save/load:
+
+```zig
+const InMemorySave = struct {
+    data: []u8,
+    allocator: std.mem.Allocator,
+
+    pub fn save(self: *InMemorySave, commands: anytype) !void {
+        // Serialize to memory buffer instead of file
+        var list = std.ArrayList(u8).init(self.allocator);
+        defer list.deinit();
+
+        try commands.serialize(list.writer());
+        self.data = try list.toOwnedSlice();
+    }
+
+    pub fn load(self: *InMemorySave, commands: anytype) !void {
+        var fbs = std.io.fixedBufferStream(self.data);
+        try commands.deserialize(fbs.reader());
+    }
+};
+```
+
+**Note:** This approach loses data on page refresh but works without filesystem support.
+
 ## Performance Considerations
 
 The serialization system is optimized for speed and minimal memory overhead:
@@ -298,7 +415,7 @@ fn handleSaveError(err: anyerror, save_file: zenithor.Resource(SerializationPlug
 
 ## Next Steps
 
-1. **Run the demo** - `zig build run-demo_serialization` (native) or `zig build serve-examples -Dtarget=wasm32-emscripten` (web)
+1. **Run the demo** - `zig build run-demo_serialization` (native) or `zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem` (web)
 2. **Integrate into your game** - Add SerializationPlugin to `zenithor.run()`
 3. **Implement save/load systems** - Add input handlers and UI
 4. **Custom serializers** - Implement for complex, non-POD component types
