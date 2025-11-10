@@ -126,7 +126,7 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
 
     // Create plugin modules directly instead of loading via b.dependency()
     // This avoids circular dependency issues
-    const graphics_plugin = b.createModule(.{
+    const graphics_plugin = b.addModule("graphics_plugin", .{
         .root_source_file = b.path("plugins/graphics/src/root.zig"),
         .target = options.target,
         .optimize = options.optimize,
@@ -135,7 +135,7 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
     graphics_plugin.addImport("sokol", dep_sokol.module("sokol"));
     graphics_plugin.addImport("sparze", dep_sparze.module("sparze"));
 
-    const time_plugin = b.createModule(.{
+    const time_plugin = b.addModule("time_plugin", .{
         .root_source_file = b.path("plugins/time/src/root.zig"),
         .target = options.target,
         .optimize = options.optimize,
@@ -147,7 +147,7 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
     const imgui_build_options = b.addOptions();
     imgui_build_options.addOption(bool, "docking", options.imgui_docking);
 
-    const imgui_plugin = b.createModule(.{
+    const imgui_plugin = b.addModule("imgui_plugin", .{
         .root_source_file = b.path("plugins/imgui/src/root.zig"),
         .target = options.target,
         .optimize = options.optimize,
@@ -159,7 +159,7 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
     imgui_plugin.addImport("cimgui_docking", dep_cimgui.module(cimgui_config.module_name));
     imgui_plugin.addImport("build_options", imgui_build_options.createModule());
 
-    const input_plugin = b.createModule(.{
+    const input_plugin = b.addModule("input_plugin", .{
         .root_source_file = b.path("plugins/input/src/root.zig"),
         .target = options.target,
         .optimize = options.optimize,
@@ -168,7 +168,7 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
     input_plugin.addImport("sokol", dep_sokol.module("sokol"));
     input_plugin.addImport("sparze", dep_sparze.module("sparze"));
 
-    const serialization_plugin = b.createModule(.{
+    const serialization_plugin = b.addModule("serialization_plugin", .{
         .root_source_file = b.path("plugins/serialization/src/root.zig"),
         .target = options.target,
         .optimize = options.optimize,
@@ -344,7 +344,7 @@ pub fn build(b: *std.Build) !void {
     });
     const sparze_mod = dep_sparze.module("sparze");
 
-    const lib_mod = b.createModule(.{
+    const lib_mod = b.addModule("zenithor", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
@@ -449,4 +449,3 @@ fn createShaderModule(b: *std.Build, dep_sokol: *std.Build.Dependency) !*std.Bui
 
     return mod_shd;
 }
-
