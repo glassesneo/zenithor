@@ -19,6 +19,26 @@ const Example = struct {
     name: []const u8,
 };
 
+// Public API for external users building cross-platform apps
+pub const CustomPlugin = struct {
+    name: []const u8,
+    module: *std.Build.Module,
+};
+
+pub const AppOptions = struct {
+    name: []const u8,
+    root_source_file: std.Build.LazyPath,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    gl: bool = false,
+    gles3: bool = false,
+    wgpu: bool = false,
+    imgui_docking: bool = false,
+    filesystem: bool = false,
+    stack_size_mb: u32 = 5,
+    custom_plugins: []const CustomPlugin = &.{},
+};
+
 const ExampleOptions = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
@@ -209,6 +229,280 @@ fn createExampleModule(b: *std.Build, example: Example, options: ExampleOptions,
     mod.addImport("serialization_plugin", deps.serialization_plugin_mod);
 
     return mod;
+}
+
+/// Create an application module with all built-in and custom plugins
+fn createAppModule(
+    b: *std.Build,
+    root_source_file: std.Build.LazyPath,
+    zenithor_mod: *std.Build.Module,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    imgui_docking: bool,
+    deps: DependencySet,
+    custom_plugins: []const CustomPlugin,
+) *std.Build.Module {
+    const cimgui_config = cimgui.getConfig(imgui_docking);
+
+    const mod = b.createModule(.{
+        .root_source_file = root_source_file,
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "sokol", .module = deps.sokol.module("sokol") },
+            .{ .name = cimgui_config.module_name, .module = deps.cimgui.module(cimgui_config.module_name) },
+        },
+    });
+    mod.addImport("zenithor", zenithor_mod);
+    mod.addImport("sparze", deps.sparze.module("sparze"));
+    
+    // Add built-in plugins
+    mod.addImport("graphics_plugin", deps.graphics_plugin_mod);
+    mod.addImport("time_plugin", deps.time_plugin_mod);
+    mod.addImport("imgui_plugin", deps.imgui_plugin_mod);
+    mod.addImport("input_plugin", deps.input_plugin_mod);
+    mod.addImport("serialization_plugin", deps.serialization_plugin_mod);
+    
+    // Add custom plugins
+    for (custom_plugins) |plugin| {
+        mod.addImport(plugin.name, plugin.module);
+    }
+
+    return mod;
+}
+
+/// Load dependencies for an app build from the zenithor dependency
+fn loadAppDependencies(
+    zenithor_dep: *std.Build.Dependency,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    gl: bool,
+    gles3: bool,
+    wgpu: bool,
+    imgui_docking: bool,
+) !DependencySet {
+    const b = zenithor_dep.builder;
+    
+    const dep_sokol = zenithor_dep.builder.dependency("sokol", .{
+        .target = target,
+        .optimize = optimize,
+        .with_sokol_imgui = true,
+        .gl = gl,
+        .gles3 = gles3,
+        .wgpu = wgpu,
+    });
+
+    const cimgui_config = cimgui.getConfig(imgui_docking);
+
+    const dep_cimgui = zenithor_dep.builder.dependency("cimgui", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
+
+    const dep_sparze = zenithor_dep.builder.dependency("sparze", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    
+    const zenithor_mod = zenithor_dep.module("zenithor");
+
+    // Create plugin modules
+    const graphics_plugin = b.addModule("graphics_plugin", .{
+        .root_source_file = zenithor_dep.path("plugins/graphics/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    graphics_plugin.addImport("zenithor", zenithor_mod);
+    graphics_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    graphics_plugin.addImport("sparze", dep_sparze.module("sparze"));
+
+    const time_plugin = b.addModule("time_plugin", .{
+        .root_source_file = zenithor_dep.path("plugins/time/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    time_plugin.addImport("zenithor", zenithor_mod);
+    time_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    time_plugin.addImport("sparze", dep_sparze.module("sparze"));
+
+    const imgui_build_options = b.addOptions();
+    imgui_build_options.addOption(bool, "docking", imgui_docking);
+
+    const imgui_plugin = b.addModule("imgui_plugin", .{
+        .root_source_file = zenithor_dep.path("plugins/imgui/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    imgui_plugin.addImport("zenithor", zenithor_mod);
+    imgui_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    imgui_plugin.addImport("sparze", dep_sparze.module("sparze"));
+    imgui_plugin.addImport("cimgui", dep_cimgui.module(cimgui_config.module_name));
+    imgui_plugin.addImport("cimgui_docking", dep_cimgui.module(cimgui_config.module_name));
+    imgui_plugin.addImport("build_options", imgui_build_options.createModule());
+
+    const input_plugin = b.addModule("input_plugin", .{
+        .root_source_file = zenithor_dep.path("plugins/input/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    input_plugin.addImport("zenithor", zenithor_mod);
+    input_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    input_plugin.addImport("sparze", dep_sparze.module("sparze"));
+
+    const serialization_plugin = b.addModule("serialization_plugin", .{
+        .root_source_file = zenithor_dep.path("plugins/serialization/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    serialization_plugin.addImport("zenithor", zenithor_mod);
+    serialization_plugin.addImport("sparze", dep_sparze.module("sparze"));
+
+    return .{
+        .sokol = dep_sokol,
+        .cimgui = dep_cimgui,
+        .sparze = dep_sparze,
+        .graphics_plugin_mod = graphics_plugin,
+        .time_plugin_mod = time_plugin,
+        .imgui_plugin_mod = imgui_plugin,
+        .input_plugin_mod = input_plugin,
+        .serialization_plugin_mod = serialization_plugin,
+    };
+}
+
+/// Build a native executable for desktop/mobile platforms
+/// This is the public API for external users building cross-platform apps
+pub fn buildNative(
+    zenithor_dep: *std.Build.Dependency,
+    options: AppOptions,
+) *std.Build.Step.Compile {
+    const b = zenithor_dep.builder;
+    const zenithor_mod = zenithor_dep.module("zenithor");
+    
+    const deps = loadAppDependencies(
+        zenithor_dep,
+        options.target,
+        options.optimize,
+        options.gl,
+        options.gles3,
+        options.wgpu,
+        options.imgui_docking,
+    ) catch @panic("Failed to load dependencies");
+
+    const mod = createAppModule(
+        b,
+        options.root_source_file,
+        zenithor_mod,
+        options.target,
+        options.optimize,
+        options.imgui_docking,
+        deps,
+        options.custom_plugins,
+    );
+
+    const exe = b.addExecutable(.{
+        .name = options.name,
+        .root_module = mod,
+    });
+
+    // Add iOS framework paths for linking
+    if (options.target.result.os.tag == .ios) {
+        const allocator = b.allocator;
+        const sdk_name = if (options.target.result.abi == .simulator) "iphonesimulator" else "iphoneos";
+        const xcrun_result = std.process.Child.run(.{
+            .allocator = allocator,
+            .argv = &.{ "xcrun", "--sdk", sdk_name, "--show-sdk-path" },
+        }) catch {
+            return exe;
+        };
+        defer allocator.free(xcrun_result.stdout);
+        defer allocator.free(xcrun_result.stderr);
+
+        if (xcrun_result.term == .Exited and xcrun_result.term.Exited == 0) {
+            const sdk_path = std.mem.trim(u8, xcrun_result.stdout, &std.ascii.whitespace);
+            if (sdk_path.len > 0) {
+                const framework_path = b.fmt("{s}/System/Library/Frameworks", .{sdk_path});
+                const framework_lazy: std.Build.LazyPath = .{ .cwd_relative = framework_path };
+                exe.root_module.addFrameworkPath(framework_lazy);
+            }
+        }
+    }
+
+    return exe;
+}
+
+/// Build a WebAssembly application
+/// This is the public API for external users building WASM apps
+/// Returns the emscripten link step (not the library artifact)
+pub fn buildWeb(
+    zenithor_dep: *std.Build.Dependency,
+    options: AppOptions,
+) !*std.Build.Step {
+    const b = zenithor_dep.builder;
+    const zenithor_mod = zenithor_dep.module("zenithor");
+    
+    const deps = try loadAppDependencies(
+        zenithor_dep,
+        options.target,
+        options.optimize,
+        options.gl,
+        options.gles3,
+        options.wgpu,
+        options.imgui_docking,
+    );
+
+    const cimgui_config = cimgui.getConfig(options.imgui_docking);
+    const dep_emsdk = deps.sokol.builder.dependency("emsdk", .{});
+    deps.cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
+    deps.cimgui.artifact(cimgui_config.clib_name).step.dependOn(&deps.sokol.artifact("sokol_clib").step);
+
+    const mod = createAppModule(
+        b,
+        options.root_source_file,
+        zenithor_mod,
+        options.target,
+        options.optimize,
+        options.imgui_docking,
+        deps,
+        options.custom_plugins,
+    );
+
+    const lib = b.addLibrary(.{
+        .name = options.name,
+        .root_module = mod,
+    });
+
+    // Build Emscripten linker arguments
+    const stack_arg = b.fmt("-sSTACK_SIZE={d}MB", .{options.stack_size_mb});
+
+    const base_args = &[_][]const u8{
+        "-sSHARED_MEMORY=0",
+        "-sEXIT_RUNTIME=0",
+        stack_arg,
+        "-sSTACK_OVERFLOW_CHECK=2",
+        "-sINITIAL_MEMORY=64MB",
+        "-sALLOW_MEMORY_GROWTH=1",
+        "-sASSERTIONS=2",
+        "-sSAFE_HEAP=1",
+        "-sUSE_PTHREADS=0",
+        "--bind",
+    };
+
+    const link = try sokol.emLinkStep(b, .{
+        .lib_main = lib,
+        .target = options.target,
+        .optimize = options.optimize,
+        .emsdk = dep_emsdk,
+        .use_webgpu = options.wgpu,
+        .use_webgl2 = !options.wgpu,
+        .use_emmalloc = true,
+        .use_filesystem = options.filesystem,
+        .shell_file_path = deps.sokol.path("src/sokol/web/shell.html"),
+        .extra_args = base_args,
+    });
+
+    return &link.step;
 }
 
 fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) ExampleResult {
