@@ -20,7 +20,7 @@ const Example = struct {
 };
 
 // Public API for external users building cross-platform apps
-pub const CustomPlugin = struct {
+pub const PluginModule = struct {
     name: []const u8,
     module: *std.Build.Module,
 };
@@ -36,7 +36,7 @@ pub const AppOptions = struct {
     imgui_docking: bool = false,
     filesystem: bool = false,
     stack_size_mb: u32 = 5,
-    custom_plugins: []const CustomPlugin = &.{},
+    plugins: []const PluginModule = &.{},
 };
 
 const ExampleOptions = struct {
@@ -240,7 +240,7 @@ fn createAppModule(
     optimize: std.builtin.OptimizeMode,
     imgui_docking: bool,
     deps: DependencySet,
-    custom_plugins: []const CustomPlugin,
+    plugins: []const PluginModule,
 ) *std.Build.Module {
     const cimgui_config = cimgui.getConfig(imgui_docking);
 
@@ -264,7 +264,7 @@ fn createAppModule(
     mod.addImport("serialization_plugin", deps.serialization_plugin_mod);
     
     // Add custom plugins
-    for (custom_plugins) |plugin| {
+    for (plugins) |plugin| {
         mod.addImport(plugin.name, plugin.module);
     }
 
@@ -380,26 +380,46 @@ pub fn buildNative(
     const b = zenithor_dep.builder;
     const zenithor_mod = zenithor_dep.module("zenithor");
     
-    const deps = loadAppDependencies(
-        zenithor_dep,
-        options.target,
-        options.optimize,
-        options.gl,
-        options.gles3,
-        options.wgpu,
-        options.imgui_docking,
-    ) catch @panic("Failed to load dependencies");
+    // Load dependencies
+    const dep_sokol = zenithor_dep.builder.dependency("sokol", .{
+        .target = options.target,
+        .optimize = options.optimize,
+        .with_sokol_imgui = true,
+        .gl = options.gl,
+        .gles3 = options.gles3,
+        .wgpu = options.wgpu,
+    });
 
-    const mod = createAppModule(
-        b,
-        options.root_source_file,
-        zenithor_mod,
-        options.target,
-        options.optimize,
-        options.imgui_docking,
-        deps,
-        options.custom_plugins,
-    );
+    const cimgui_config = cimgui.getConfig(options.imgui_docking);
+    const dep_cimgui = zenithor_dep.builder.dependency("cimgui", .{
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+    
+    dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
+
+    const dep_sparze = zenithor_dep.builder.dependency("sparze", .{
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+
+    // Create app module
+    const mod = b.createModule(.{
+        .root_source_file = options.root_source_file,
+        .target = options.target,
+        .optimize = options.optimize,
+        .imports = &.{
+            .{ .name = "sokol", .module = dep_sokol.module("sokol") },
+            .{ .name = cimgui_config.module_name, .module = dep_cimgui.module(cimgui_config.module_name) },
+        },
+    });
+    mod.addImport("zenithor", zenithor_mod);
+    mod.addImport("sparze", dep_sparze.module("sparze"));
+    
+    // Add user-specified plugins
+    for (options.plugins) |plugin| {
+        mod.addImport(plugin.name, plugin.module);
+    }
 
     const exe = b.addExecutable(.{
         .name = options.name,
@@ -442,31 +462,49 @@ pub fn buildWeb(
     const b = zenithor_dep.builder;
     const zenithor_mod = zenithor_dep.module("zenithor");
     
-    const deps = try loadAppDependencies(
-        zenithor_dep,
-        options.target,
-        options.optimize,
-        options.gl,
-        options.gles3,
-        options.wgpu,
-        options.imgui_docking,
-    );
+    // Load dependencies
+    const dep_sokol = zenithor_dep.builder.dependency("sokol", .{
+        .target = options.target,
+        .optimize = options.optimize,
+        .with_sokol_imgui = true,
+        .gl = options.gl,
+        .gles3 = options.gles3,
+        .wgpu = options.wgpu,
+    });
 
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
-    const dep_emsdk = deps.sokol.builder.dependency("emsdk", .{});
-    deps.cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
-    deps.cimgui.artifact(cimgui_config.clib_name).step.dependOn(&deps.sokol.artifact("sokol_clib").step);
+    const dep_cimgui = zenithor_dep.builder.dependency("cimgui", .{
+        .target = options.target,
+        .optimize = options.optimize,
+    });
 
-    const mod = createAppModule(
-        b,
-        options.root_source_file,
-        zenithor_mod,
-        options.target,
-        options.optimize,
-        options.imgui_docking,
-        deps,
-        options.custom_plugins,
-    );
+    const dep_emsdk = dep_sokol.builder.dependency("emsdk", .{});
+    dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
+    dep_cimgui.artifact(cimgui_config.clib_name).step.dependOn(&dep_sokol.artifact("sokol_clib").step);
+    dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
+
+    const dep_sparze = zenithor_dep.builder.dependency("sparze", .{
+        .target = options.target,
+        .optimize = options.optimize,
+    });
+
+    // Create app module
+    const mod = b.createModule(.{
+        .root_source_file = options.root_source_file,
+        .target = options.target,
+        .optimize = options.optimize,
+        .imports = &.{
+            .{ .name = "sokol", .module = dep_sokol.module("sokol") },
+            .{ .name = cimgui_config.module_name, .module = dep_cimgui.module(cimgui_config.module_name) },
+        },
+    });
+    mod.addImport("zenithor", zenithor_mod);
+    mod.addImport("sparze", dep_sparze.module("sparze"));
+    
+    // Add user-specified plugins
+    for (options.plugins) |plugin| {
+        mod.addImport(plugin.name, plugin.module);
+    }
 
     const lib = b.addLibrary(.{
         .name = options.name,
@@ -498,7 +536,7 @@ pub fn buildWeb(
         .use_webgl2 = !options.wgpu,
         .use_emmalloc = true,
         .use_filesystem = options.filesystem,
-        .shell_file_path = deps.sokol.path("src/sokol/web/shell.html"),
+        .shell_file_path = dep_sokol.path("src/sokol/web/shell.html"),
         .extra_args = base_args,
     });
 
@@ -661,6 +699,54 @@ pub fn build(b: *std.Build) !void {
     lib.root_module.addImport("sparze", sparze_mod);
 
     b.installArtifact(lib);
+
+    // Export plugin modules for external users
+    const graphics_plugin = b.addModule("graphics_plugin", .{
+        .root_source_file = b.path("plugins/graphics/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    graphics_plugin.addImport("zenithor", lib_mod);
+    graphics_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    graphics_plugin.addImport("sparze", sparze_mod);
+
+    const time_plugin = b.addModule("time_plugin", .{
+        .root_source_file = b.path("plugins/time/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    time_plugin.addImport("zenithor", lib_mod);
+    time_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    time_plugin.addImport("sparze", sparze_mod);
+
+    const imgui_plugin = b.addModule("imgui_plugin", .{
+        .root_source_file = b.path("plugins/imgui/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    imgui_plugin.addImport("zenithor", lib_mod);
+    imgui_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    imgui_plugin.addImport("sparze", sparze_mod);
+    imgui_plugin.addImport("cimgui", dep_cimgui.module(cimgui_config.module_name));
+    imgui_plugin.addImport("cimgui_docking", dep_cimgui.module(cimgui_config.module_name));
+    imgui_plugin.addImport("build_options", mod_options.createModule());
+
+    const input_plugin = b.addModule("input_plugin", .{
+        .root_source_file = b.path("plugins/input/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    input_plugin.addImport("zenithor", lib_mod);
+    input_plugin.addImport("sokol", dep_sokol.module("sokol"));
+    input_plugin.addImport("sparze", sparze_mod);
+
+    const serialization_plugin = b.addModule("serialization_plugin", .{
+        .root_source_file = b.path("plugins/serialization/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    serialization_plugin.addImport("zenithor", lib_mod);
+    serialization_plugin.addImport("sparze", sparze_mod);
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
