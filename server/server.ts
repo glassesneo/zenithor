@@ -6,6 +6,232 @@ const HOT_RELOAD_PATH = "/__hot-reload";
 const API_EXAMPLES_PATH = "/__api/examples";
 const ASSETS_PATH = "/__assets";
 
+// Inlined assets
+const HTML_TEMPLATE = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zenithor Examples</title>
+  <link rel="stylesheet" href="/__assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Zenithor Examples</h1>
+      <p>Choose an example to run</p>
+    </div>
+    <div class="examples" id="examples">
+      <!-- Examples will be injected here -->
+    </div>
+    <div class="footer">
+      <span class="hot-reload">Hot Reload Active</span>
+    </div>
+  </div>
+  <script src="/__assets/index.js"></script>
+</body>
+</html>
+`;
+
+const CSS_CONTENT = `* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 800px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 32px;
+  text-align: center;
+}
+
+.header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.header p {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.examples {
+  padding: 24px;
+}
+
+.example-card {
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+
+.example-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.example-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.example-title::before {
+  content: "▶";
+  color: #667eea;
+  font-size: 14px;
+}
+
+.example-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.example-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge {
+  background: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty h2 {
+  font-size: 20px;
+  margin-bottom: 12px;
+  color: #374151;
+}
+
+.empty p {
+  line-height: 1.6;
+}
+
+.empty code {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #667eea;
+}
+
+.footer {
+  padding: 16px 24px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.hot-reload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #dcfce7;
+  color: #166534;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.hot-reload::before {
+  content: "🔥";
+  font-size: 12px;
+}
+`;
+
+const JS_CONTENT = `// Fetch and display available examples
+async function loadExamples() {
+  try {
+    const response = await fetch("/__api/examples");
+    const examples = await response.json();
+
+    const container = document.getElementById("examples");
+
+    if (examples.length === 0) {
+      container.innerHTML = \`
+        <div class="empty">
+          <div class="empty-icon">📦</div>
+          <h2>No examples found</h2>
+          <p>Build examples with: <code>zig build examples-web -Dtarget=wasm32-emscripten</code></p>
+        </div>
+      \`;
+    } else {
+      container.innerHTML = examples.map((ex) => \`
+        <a href="\${ex.htmlPath}" class="example-card">
+          <div class="example-title">\${ex.name}</div>
+          <div class="example-meta">
+            <span><span class="badge">\${ex.wasmSize}</span></span>
+            <span>📅 \${ex.lastModified}</span>
+          </div>
+        </a>
+      \`).join("");
+    }
+  } catch (error) {
+    console.error("Failed to load examples:", error);
+    document.getElementById("examples").innerHTML = \`
+      <div class="empty">
+        <div class="empty-icon">⚠️</div>
+        <h2>Failed to load examples</h2>
+        <p>Please check the console for errors.</p>
+      </div>
+    \`;
+  }
+}
+
+// Load examples when page loads
+loadExamples();
+`;
+
 // Store WebSocket connections for hot reload notifications
 const wsConnections = new Set<WebSocket>();
 
@@ -110,18 +336,18 @@ interface ExampleInfo {
 
 async function getAvailableExamples(): Promise<ExampleInfo[]> {
   const examples: ExampleInfo[] = [];
-  
+
   try {
     for await (const entry of Deno.readDir(fsRoot)) {
       if (entry.isFile && entry.name.endsWith(".html")) {
         const name = entry.name.replace(".html", "");
         const htmlPath = `${fsRoot}/${entry.name}`;
         const wasmPath = `${fsRoot}/${name}.wasm`;
-        
+
         try {
           const wasmStat = await Deno.stat(wasmPath);
           const htmlStat = await Deno.stat(htmlPath);
-          
+
           examples.push({
             name,
             htmlPath: `/${entry.name}`,
@@ -136,7 +362,7 @@ async function getAvailableExamples(): Promise<ExampleInfo[]> {
   } catch (error) {
     console.error("Error reading examples directory:", error);
   }
-  
+
   return examples.sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -155,24 +381,19 @@ function formatDate(date: Date): string {
   });
 }
 
-async function serveAsset(pathname: string): Promise<Response | null> {
-  const assetMap: Record<string, { path: string; contentType: string }> = {
-    "/style.css": { path: "./server/style.css", contentType: "text/css" },
-    "/index.js": { path: "./server/index.js", contentType: "application/javascript" },
+function serveAsset(pathname: string): Response | null {
+  const assetMap: Record<string, { content: string; contentType: string }> = {
+    "/style.css": { content: CSS_CONTENT, contentType: "text/css" },
+    "/index.js": { content: JS_CONTENT, contentType: "application/javascript" },
   };
 
   const asset = assetMap[pathname];
   if (!asset) return null;
 
-  try {
-    const content = await Deno.readTextFile(asset.path);
-    return new Response(content, {
-      status: 200,
-      headers: { "content-type": asset.contentType },
-    });
-  } catch {
-    return new Response("Not Found", { status: 404 });
-  }
+  return new Response(asset.content, {
+    status: 200,
+    headers: { "content-type": asset.contentType },
+  });
 }
 
 async function serveHandler(req: Request): Promise<Response> {
@@ -191,31 +412,26 @@ async function serveHandler(req: Request): Promise<Response> {
       wasmSize: formatBytes(ex.wasmSize),
       lastModified: formatDate(ex.lastModified),
     }));
-    
+
     return new Response(JSON.stringify(formattedExamples), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
   }
 
-  // Serve static assets (CSS, JS)
+  // Serve static assets (CSS, JS) from memory
   if (url.pathname.startsWith(ASSETS_PATH)) {
     const assetPath = url.pathname.replace(ASSETS_PATH, "");
-    const response = await serveAsset(assetPath);
+    const response = serveAsset(assetPath);
     if (response) return response;
   }
 
-  // Serve custom index page at root
+  // Serve custom index page at root from memory
   if (url.pathname === "/") {
-    try {
-      const html = await Deno.readTextFile("./server/index.html");
-      return new Response(html, {
-        status: 200,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
-    } catch {
-      return new Response("Index page not found", { status: 404 });
-    }
+    return new Response(HTML_TEMPLATE, {
+      status: 200,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    });
   }
 
   // Serve example files with hot reload injection

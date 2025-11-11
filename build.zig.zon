@@ -54,6 +54,7 @@
         "build.zig.zon",
         "src",
         "plugins",
+        "server",
         "LICENSE-MIT",
         "LICENSE-APACHE",
         "README.md",
