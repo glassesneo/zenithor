@@ -231,46 +231,6 @@ fn createExampleModule(b: *std.Build, example: Example, options: ExampleOptions,
     return mod;
 }
 
-/// Create an application module with all built-in and custom plugins
-fn createAppModule(
-    b: *std.Build,
-    root_source_file: std.Build.LazyPath,
-    zenithor_mod: *std.Build.Module,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    imgui_docking: bool,
-    deps: DependencySet,
-    plugins: []const PluginModule,
-) *std.Build.Module {
-    const cimgui_config = cimgui.getConfig(imgui_docking);
-
-    const mod = b.createModule(.{
-        .root_source_file = root_source_file,
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "sokol", .module = deps.sokol.module("sokol") },
-            .{ .name = cimgui_config.module_name, .module = deps.cimgui.module(cimgui_config.module_name) },
-        },
-    });
-    mod.addImport("zenithor", zenithor_mod);
-    mod.addImport("sparze", deps.sparze.module("sparze"));
-
-    // Add built-in plugins
-    mod.addImport("graphics_plugin", deps.graphics_plugin_mod);
-    mod.addImport("time_plugin", deps.time_plugin_mod);
-    mod.addImport("imgui_plugin", deps.imgui_plugin_mod);
-    mod.addImport("input_plugin", deps.input_plugin_mod);
-    mod.addImport("serialization_plugin", deps.serialization_plugin_mod);
-
-    // Add custom plugins
-    for (plugins) |plugin| {
-        mod.addImport(plugin.name, plugin.module);
-    }
-
-    return mod;
-}
-
 /// Build Emscripten linker arguments
 fn buildEmscriptenArgs(b: *std.Build, stack_size_mb: u32) []const []const u8 {
     const stack_arg = b.fmt("-sSTACK_SIZE={d}MB", .{stack_size_mb});
@@ -292,10 +252,10 @@ fn buildEmscriptenArgs(b: *std.Build, stack_size_mb: u32) []const []const u8 {
 /// Build a native executable for desktop/mobile platforms
 /// This is the public API for external users building cross-platform apps
 pub fn buildNative(
+    b: *std.Build,
     zenithor_dep: *std.Build.Dependency,
     options: AppOptions,
 ) *std.Build.Step.Compile {
-    const b = zenithor_dep.builder;
     const zenithor_mod = zenithor_dep.module("zenithor");
 
     // Load dependencies
