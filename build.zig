@@ -255,14 +255,14 @@ fn createAppModule(
     });
     mod.addImport("zenithor", zenithor_mod);
     mod.addImport("sparze", deps.sparze.module("sparze"));
-    
+
     // Add built-in plugins
     mod.addImport("graphics_plugin", deps.graphics_plugin_mod);
     mod.addImport("time_plugin", deps.time_plugin_mod);
     mod.addImport("imgui_plugin", deps.imgui_plugin_mod);
     mod.addImport("input_plugin", deps.input_plugin_mod);
     mod.addImport("serialization_plugin", deps.serialization_plugin_mod);
-    
+
     // Add custom plugins
     for (plugins) |plugin| {
         mod.addImport(plugin.name, plugin.module);
@@ -282,7 +282,7 @@ fn loadAppDependencies(
     imgui_docking: bool,
 ) !DependencySet {
     const b = zenithor_dep.builder;
-    
+
     const dep_sokol = zenithor_dep.builder.dependency("sokol", .{
         .target = target,
         .optimize = optimize,
@@ -305,7 +305,7 @@ fn loadAppDependencies(
         .target = target,
         .optimize = optimize,
     });
-    
+
     const zenithor_mod = zenithor_dep.module("zenithor");
 
     // Create plugin modules
@@ -371,6 +371,24 @@ fn loadAppDependencies(
     };
 }
 
+/// Build Emscripten linker arguments
+fn buildEmscriptenArgs(b: *std.Build, stack_size_mb: u32) []const []const u8 {
+    const stack_arg = b.fmt("-sSTACK_SIZE={d}MB", .{stack_size_mb});
+
+    return &[_][]const u8{
+        "-sSHARED_MEMORY=0",
+        "-sEXIT_RUNTIME=0",
+        stack_arg,
+        "-sSTACK_OVERFLOW_CHECK=2",
+        "-sINITIAL_MEMORY=64MB",
+        "-sALLOW_MEMORY_GROWTH=1",
+        "-sASSERTIONS=2",
+        "-sSAFE_HEAP=1",
+        "-sUSE_PTHREADS=0",
+        "--bind",
+    };
+}
+
 /// Build a native executable for desktop/mobile platforms
 /// This is the public API for external users building cross-platform apps
 pub fn buildNative(
@@ -379,7 +397,7 @@ pub fn buildNative(
 ) *std.Build.Step.Compile {
     const b = zenithor_dep.builder;
     const zenithor_mod = zenithor_dep.module("zenithor");
-    
+
     // Load dependencies
     const dep_sokol = zenithor_dep.builder.dependency("sokol", .{
         .target = options.target,
@@ -395,7 +413,7 @@ pub fn buildNative(
         .target = options.target,
         .optimize = options.optimize,
     });
-    
+
     dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
 
     const dep_sparze = zenithor_dep.builder.dependency("sparze", .{
@@ -415,7 +433,7 @@ pub fn buildNative(
     });
     mod.addImport("zenithor", zenithor_mod);
     mod.addImport("sparze", dep_sparze.module("sparze"));
-    
+
     // Add user-specified plugins
     for (options.plugins) |plugin| {
         mod.addImport(plugin.name, plugin.module);
@@ -461,7 +479,7 @@ pub fn buildWeb(
 ) !*std.Build.Step {
     const b = zenithor_dep.builder;
     const zenithor_mod = zenithor_dep.module("zenithor");
-    
+
     // Load dependencies
     const dep_sokol = zenithor_dep.builder.dependency("sokol", .{
         .target = options.target,
@@ -500,7 +518,7 @@ pub fn buildWeb(
     });
     mod.addImport("zenithor", zenithor_mod);
     mod.addImport("sparze", dep_sparze.module("sparze"));
-    
+
     // Add user-specified plugins
     for (options.plugins) |plugin| {
         mod.addImport(plugin.name, plugin.module);
@@ -512,20 +530,7 @@ pub fn buildWeb(
     });
 
     // Build Emscripten linker arguments
-    const stack_arg = b.fmt("-sSTACK_SIZE={d}MB", .{options.stack_size_mb});
-
-    const base_args = &[_][]const u8{
-        "-sSHARED_MEMORY=0",
-        "-sEXIT_RUNTIME=0",
-        stack_arg,
-        "-sSTACK_OVERFLOW_CHECK=2",
-        "-sINITIAL_MEMORY=64MB",
-        "-sALLOW_MEMORY_GROWTH=1",
-        "-sASSERTIONS=2",
-        "-sSAFE_HEAP=1",
-        "-sUSE_PTHREADS=0",
-        "--bind",
-    };
+    const base_args = buildEmscriptenArgs(b, options.stack_size_mb);
 
     const link = try sokol.emLinkStep(b, .{
         .lib_main = lib,
@@ -595,20 +600,7 @@ fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, dep
     lib.root_module.addImport("sparze", deps.sparze.module("sparze"));
 
     // Build Emscripten linker arguments
-    const stack_arg = b.fmt("-sSTACK_SIZE={d}MB", .{options.stack_size_mb});
-
-    const base_args = &[_][]const u8{
-        "-sSHARED_MEMORY=0",
-        "-sEXIT_RUNTIME=0",
-        stack_arg,
-        "-sSTACK_OVERFLOW_CHECK=2",
-        "-sINITIAL_MEMORY=64MB",
-        "-sALLOW_MEMORY_GROWTH=1",
-        "-sASSERTIONS=2",
-        "-sSAFE_HEAP=1",
-        "-sUSE_PTHREADS=0",
-        "--bind",
-    };
+    const base_args = buildEmscriptenArgs(b, options.stack_size_mb);
 
     const link = try sokol.emLinkStep(b, .{
         .lib_main = lib,
