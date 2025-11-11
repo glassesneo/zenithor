@@ -84,7 +84,7 @@ fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
             "--allow-net",
             "--allow-read",
             "--watch",
-            "server/server.ts",
+            "server/examples.ts",
         });
 
         // Build all web examples
@@ -483,7 +483,8 @@ fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, dep
         "--allow-net",
         "--allow-read",
         "--watch",
-        "server/server.ts",
+        "server/shell.ts",
+        example.name,
     });
     deno.step.dependOn(&link.step);
 
@@ -681,4 +682,3 @@ fn createShaderModule(b: *std.Build, dep_sokol: *std.Build.Dependency) !*std.Bui
 
     return mod_shd;
 }
-
