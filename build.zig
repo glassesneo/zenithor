@@ -403,22 +403,20 @@ pub fn buildWeb(
 fn buildNativeExample(b: *Build, example: Example, options: ExampleOptions, deps: DependencySet) ExampleResult {
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
 
-    // Create module with root source file
+    // Create module with root source file (using .imports for sokol and cimgui like the original code)
     const mod = b.createModule(.{
         .root_source_file = b.path(b.fmt("examples/{s}.zig", .{example.name})),
         .target = options.target,
         .optimize = options.optimize,
+        .imports = &.{
+            .{ .name = "sokol", .module = deps.sokol.module("sokol") },
+            .{ .name = cimgui_config.module_name, .module = deps.cimgui.module(cimgui_config.module_name) },
+        },
     });
 
-    // Wire up core dependencies
-    wireModuleImports(
-        mod,
-        deps.sokol.module("sokol"),
-        deps.cimgui.module(cimgui_config.module_name),
-        cimgui_config.module_name,
-        options.mod_zenithor,
-        deps.sparze.module("sparze"),
-    );
+    // Wire up remaining core dependencies (zenithor and sparze)
+    mod.addImport("zenithor", options.mod_zenithor);
+    mod.addImport("sparze", deps.sparze.module("sparze"));
 
     // Wire up standard plugins
     wireStandardPlugins(mod, deps);
@@ -462,25 +460,24 @@ fn buildNativeExample(b: *Build, example: Example, options: ExampleOptions, deps
 fn buildWebExample(b: *Build, example: Example, options: ExampleOptions, deps: DependencySet) !ExampleResult {
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
 
-    // Setup Emscripten-specific cimgui configuration
-    setupEmscriptenCimgui(options.dep_cimgui, deps.sokol, cimgui_config.clib_name);
+    // Setup Emscripten-specific cimgui configuration (matching old code exactly)
+    const dep_emsdk = deps.sokol.builder.dependency("emsdk", .{});
+    options.dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
+    options.dep_cimgui.artifact(cimgui_config.clib_name).step.dependOn(&deps.sokol.artifact("sokol_clib").step);
 
-    // Create module with root source file
+    // Create module with root source file (using .imports for sokol and cimgui like the original code)
     const mod = b.createModule(.{
         .root_source_file = b.path(b.fmt("examples/{s}.zig", .{example.name})),
         .target = options.target,
         .optimize = options.optimize,
+        .imports = &.{
+            .{ .name = "sokol", .module = deps.sokol.module("sokol") },
+            .{ .name = cimgui_config.module_name, .module = deps.cimgui.module(cimgui_config.module_name) },
+        },
     });
 
-    // Wire up core dependencies
-    wireModuleImports(
-        mod,
-        deps.sokol.module("sokol"),
-        deps.cimgui.module(cimgui_config.module_name),
-        cimgui_config.module_name,
-        options.mod_zenithor,
-        deps.sparze.module("sparze"),
-    );
+    // Wire up zenithor (sparze will be added after library creation, like the original code)
+    mod.addImport("zenithor", options.mod_zenithor);
 
     // Wire up standard plugins
     wireStandardPlugins(mod, deps);
@@ -490,11 +487,11 @@ fn buildWebExample(b: *Build, example: Example, options: ExampleOptions, deps: D
         .name = example.name,
         .root_module = mod,
     });
+    lib.root_module.addImport("sparze", deps.sparze.module("sparze"));
 
     // Build Emscripten linker arguments
     const base_args = buildEmscriptenArgs(b, options.stack_size_mb);
 
-    const dep_emsdk = deps.sokol.builder.dependency("emsdk", .{});
     const link = try sokol.emLinkStep(b, .{
         .lib_main = lib,
         .target = options.target,
