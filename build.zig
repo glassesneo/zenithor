@@ -1,4 +1,5 @@
 const std = @import("std");
+const Build = std.Build;
 const sokol = @import("sokol");
 const cimgui = @import("cimgui");
 
@@ -19,16 +20,14 @@ const Example = struct {
     name: []const u8,
 };
 
-// Public API for external users building cross-platform apps
+// Public API for external plugins
 pub const PluginModule = struct {
     name: []const u8,
-    module: *std.Build.Module,
+    module: *Build.Module,
 };
 
 pub const AppOptions = struct {
-    name: []const u8,
-    root_source_file: std.Build.LazyPath,
-    target: std.Build.ResolvedTarget,
+    target: Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     gl: bool = false,
     gles3: bool = false,
@@ -36,11 +35,12 @@ pub const AppOptions = struct {
     imgui_docking: bool = false,
     filesystem: bool = false,
     stack_size_mb: u32 = 5,
+    default_plugins: []const []const u8 = &.{},
     plugins: []const PluginModule = &.{},
 };
 
 const ExampleOptions = struct {
-    target: std.Build.ResolvedTarget,
+    target: Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     gl: bool,
     gles3: bool,
@@ -48,28 +48,28 @@ const ExampleOptions = struct {
     imgui_docking: bool,
     filesystem: bool,
     stack_size_mb: u32,
-    dep_cimgui: *std.Build.Dependency,
-    mod_zenithor: *std.Build.Module,
+    dep_cimgui: *Build.Dependency,
+    mod_zenithor: *Build.Module,
 };
 
 const DependencySet = struct {
-    sokol: *std.Build.Dependency,
-    cimgui: *std.Build.Dependency,
-    sparze: *std.Build.Dependency,
-    emsdk: ?*std.Build.Dependency = null,
-    graphics_plugin_mod: *std.Build.Module,
-    time_plugin_mod: *std.Build.Module,
-    imgui_plugin_mod: *std.Build.Module,
-    input_plugin_mod: *std.Build.Module,
-    serialization_plugin_mod: *std.Build.Module,
+    sokol: *Build.Dependency,
+    cimgui: *Build.Dependency,
+    sparze: *Build.Dependency,
+    emsdk: ?*Build.Dependency = null,
+    graphics_plugin_mod: *Build.Module,
+    time_plugin_mod: *Build.Module,
+    imgui_plugin_mod: *Build.Module,
+    input_plugin_mod: *Build.Module,
+    serialization_plugin_mod: *Build.Module,
 };
 
 const ExampleResult = struct {
-    build: *std.Build.Step,
-    run: *std.Build.Step.Run,
+    build: *Build.Step,
+    run: *Build.Step.Run,
 };
 
-fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
+fn buildExamples(b: *Build, options: ExampleOptions) !void {
     const is_wasm = options.target.result.cpu.arch.isWasm();
 
     // Create "examples" step that builds all examples
@@ -120,7 +120,7 @@ fn buildExamples(b: *std.Build, options: ExampleOptions) !void {
     }
 }
 
-fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySet {
+fn loadExampleDependencies(b: *Build, options: ExampleOptions) !DependencySet {
     const dep_sokol = b.dependency("sokol", .{
         .target = options.target,
         .optimize = options.optimize,
@@ -209,7 +209,7 @@ fn loadExampleDependencies(b: *std.Build, options: ExampleOptions) !DependencySe
     };
 }
 
-fn createExampleModule(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) *std.Build.Module {
+fn createExampleModule(b: *Build, example: Example, options: ExampleOptions, deps: DependencySet) *Build.Module {
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
 
     const mod = b.createModule(.{
@@ -232,7 +232,7 @@ fn createExampleModule(b: *std.Build, example: Example, options: ExampleOptions,
 }
 
 /// Build Emscripten linker arguments
-fn buildEmscriptenArgs(b: *std.Build, stack_size_mb: u32) []const []const u8 {
+fn buildEmscriptenArgs(b: *Build, stack_size_mb: u32) []const []const u8 {
     const stack_arg = b.fmt("-sSTACK_SIZE={d}MB", .{stack_size_mb});
 
     return &[_][]const u8{
@@ -252,14 +252,16 @@ fn buildEmscriptenArgs(b: *std.Build, stack_size_mb: u32) []const []const u8 {
 /// Build a native executable for desktop/mobile platforms
 /// This is the public API for external users building cross-platform apps
 pub fn buildNative(
-    b: *std.Build,
-    zenithor_dep: *std.Build.Dependency,
+    b: *Build,
+    dep_zenithor: *Build.Dependency,
+    exe: *Build.Step.Compile,
     options: AppOptions,
-) *std.Build.Step.Compile {
-    const zenithor_mod = zenithor_dep.module("zenithor");
+) void {
+    _ = b;
+    const mod_zenithor = dep_zenithor.module("zenithor");
 
     // Load dependencies
-    const dep_sokol = zenithor_dep.builder.dependency("sokol", .{
+    const dep_sokol = dep_zenithor.builder.dependency("sokol", .{
         .target = options.target,
         .optimize = options.optimize,
         .with_sokol_imgui = true,
@@ -269,79 +271,49 @@ pub fn buildNative(
     });
 
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
-    const dep_cimgui = zenithor_dep.builder.dependency("cimgui", .{
+    const dep_cimgui = dep_zenithor.builder.dependency("cimgui", .{
         .target = options.target,
         .optimize = options.optimize,
     });
 
     dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
 
-    const dep_sparze = zenithor_dep.builder.dependency("sparze", .{
+    const dep_sparze = dep_zenithor.builder.dependency("sparze", .{
         .target = options.target,
         .optimize = options.optimize,
     });
 
     // Create app module
-    const mod = b.createModule(.{
-        .root_source_file = options.root_source_file,
-        .target = options.target,
-        .optimize = options.optimize,
-        .imports = &.{
-            .{ .name = "sokol", .module = dep_sokol.module("sokol") },
-            .{ .name = cimgui_config.module_name, .module = dep_cimgui.module(cimgui_config.module_name) },
-        },
-    });
-    mod.addImport("zenithor", zenithor_mod);
-    mod.addImport("sparze", dep_sparze.module("sparze"));
+    exe.root_module.addImport("sokol", dep_sokol.module("sokol"));
+    exe.root_module.addImport(cimgui_config.module_name, dep_cimgui.module(cimgui_config.module_name));
+    exe.root_module.addImport("zenithor", mod_zenithor);
+    exe.root_module.addImport("sparze", dep_sparze.module("sparze"));
+
+    // Add default plugins
+    for (options.default_plugins) |plugin_name| {
+        const plugin_module = dep_zenithor.module(plugin_name);
+        exe.root_module.addImport(plugin_name, plugin_module);
+    }
 
     // Add user-specified plugins
     for (options.plugins) |plugin| {
-        mod.addImport(plugin.name, plugin.module);
+        exe.root_module.addImport(plugin.name, plugin.module);
     }
-
-    const exe = b.addExecutable(.{
-        .name = options.name,
-        .root_module = mod,
-    });
-
-    // Add iOS framework paths for linking
-    if (options.target.result.os.tag == .ios) {
-        const allocator = b.allocator;
-        const sdk_name = if (options.target.result.abi == .simulator) "iphonesimulator" else "iphoneos";
-        const xcrun_result = std.process.Child.run(.{
-            .allocator = allocator,
-            .argv = &.{ "xcrun", "--sdk", sdk_name, "--show-sdk-path" },
-        }) catch {
-            return exe;
-        };
-        defer allocator.free(xcrun_result.stdout);
-        defer allocator.free(xcrun_result.stderr);
-
-        if (xcrun_result.term == .Exited and xcrun_result.term.Exited == 0) {
-            const sdk_path = std.mem.trim(u8, xcrun_result.stdout, &std.ascii.whitespace);
-            if (sdk_path.len > 0) {
-                const framework_path = b.fmt("{s}/System/Library/Frameworks", .{sdk_path});
-                const framework_lazy: std.Build.LazyPath = .{ .cwd_relative = framework_path };
-                exe.root_module.addFrameworkPath(framework_lazy);
-            }
-        }
-    }
-
-    return exe;
 }
 
 /// Build a WebAssembly application
 /// This is the public API for external users building WASM apps
 /// Returns the emscripten link step (not the library artifact)
 pub fn buildWeb(
-    b: *std.Build,
-    zenithor_dep: *std.Build.Dependency,
+    b: *Build,
+    dep_zenithor: *Build.Dependency,
+    lib: *Build.Step.Compile,
     options: AppOptions,
-) !*std.Build.Step {
-    const zenithor_mod = zenithor_dep.module("zenithor");
+) !*Build.Step {
+    const mod_zenithor = dep_zenithor.module("zenithor");
 
     // Load dependencies
-    const dep_sokol = zenithor_dep.builder.dependency("sokol", .{
+    const dep_sokol = dep_zenithor.builder.dependency("sokol", .{
         .target = options.target,
         .optimize = options.optimize,
         .with_sokol_imgui = true,
@@ -351,7 +323,7 @@ pub fn buildWeb(
     });
 
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
-    const dep_cimgui = zenithor_dep.builder.dependency("cimgui", .{
+    const dep_cimgui = dep_zenithor.builder.dependency("cimgui", .{
         .target = options.target,
         .optimize = options.optimize,
     });
@@ -361,33 +333,25 @@ pub fn buildWeb(
     dep_cimgui.artifact(cimgui_config.clib_name).step.dependOn(&dep_sokol.artifact("sokol_clib").step);
     dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
 
-    const dep_sparze = zenithor_dep.builder.dependency("sparze", .{
+    const dep_sparze = dep_zenithor.builder.dependency("sparze", .{
         .target = options.target,
         .optimize = options.optimize,
     });
 
-    // Create app module
-    const mod = b.createModule(.{
-        .root_source_file = options.root_source_file,
-        .target = options.target,
-        .optimize = options.optimize,
-        .imports = &.{
-            .{ .name = "sokol", .module = dep_sokol.module("sokol") },
-            .{ .name = cimgui_config.module_name, .module = dep_cimgui.module(cimgui_config.module_name) },
-        },
-    });
-    mod.addImport("zenithor", zenithor_mod);
-    mod.addImport("sparze", dep_sparze.module("sparze"));
+    lib.root_module.addImport("sokol", dep_sokol.module("sokol"));
+    lib.root_module.addImport(cimgui_config.module_name, dep_cimgui.module(cimgui_config.module_name));
+    lib.root_module.addImport("zenithor", mod_zenithor);
+    lib.root_module.addImport("sparze", dep_sparze.module("sparze"));
 
+    // Add default plugins
+    for (options.default_plugins) |plugin_name| {
+        const plugin_module = dep_zenithor.module(plugin_name);
+        lib.root_module.addImport(plugin_name, plugin_module);
+    }
     // Add user-specified plugins
     for (options.plugins) |plugin| {
-        mod.addImport(plugin.name, plugin.module);
+        lib.root_module.addImport(plugin.name, plugin.module);
     }
-
-    const lib = b.addLibrary(.{
-        .name = options.name,
-        .root_module = mod,
-    });
 
     // Build Emscripten linker arguments
     const base_args = buildEmscriptenArgs(b, options.stack_size_mb);
@@ -408,7 +372,7 @@ pub fn buildWeb(
     return &link.step;
 }
 
-fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) ExampleResult {
+fn buildNativeExample(b: *Build, example: Example, options: ExampleOptions, deps: DependencySet) ExampleResult {
     const mod = createExampleModule(b, example, options, deps);
     const exe = b.addExecutable(.{
         .name = example.name,
@@ -435,7 +399,7 @@ fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, 
             const sdk_path = std.mem.trim(u8, xcrun_result.stdout, &std.ascii.whitespace);
             if (sdk_path.len > 0) {
                 const framework_path = b.fmt("{s}/System/Library/Frameworks", .{sdk_path});
-                const framework_lazy: std.Build.LazyPath = .{ .cwd_relative = framework_path };
+                const framework_lazy: Build.LazyPath = .{ .cwd_relative = framework_path };
                 exe.root_module.addFrameworkPath(framework_lazy);
             }
         }
@@ -446,7 +410,7 @@ fn buildNativeExample(b: *std.Build, example: Example, options: ExampleOptions, 
     return .{ .build = &exe.step, .run = run };
 }
 
-fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, deps: DependencySet) !ExampleResult {
+fn buildWebExample(b: *Build, example: Example, options: ExampleOptions, deps: DependencySet) !ExampleResult {
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
     const dep_emsdk = deps.sokol.builder.dependency("emsdk", .{});
     options.dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(dep_emsdk.path("upstream/emscripten/cache/sysroot/include"));
@@ -491,7 +455,7 @@ fn buildWebExample(b: *std.Build, example: Example, options: ExampleOptions, dep
     return .{ .build = &link.step, .run = deno };
 }
 
-pub fn build(b: *std.Build) !void {
+pub fn build(b: *Build) !void {
     const target = b.standardTargetOptions(.{});
     const mod_target = target.result;
     const optimize = b.standardOptimizeOption(.{});
@@ -610,7 +574,7 @@ pub fn build(b: *std.Build) !void {
 
     if (mod_target.os.tag == .macos) for_darwin: {
         const cups_include_dir = env_map.get("CUPS_INCLUDE_DIR") orelse break :for_darwin;
-        const cups_include_path: std.Build.LazyPath = .{ .cwd_relative = cups_include_dir };
+        const cups_include_path: Build.LazyPath = .{ .cwd_relative = cups_include_dir };
         dep_sokol.artifact("sokol_clib").addIncludePath(cups_include_path);
     }
 
@@ -629,11 +593,11 @@ pub fn build(b: *std.Build) !void {
             const sdk_path = std.mem.trim(u8, xcrun_result.stdout, &std.ascii.whitespace);
             if (sdk_path.len > 0) {
                 // Add both SDK root and usr/include for C standard library headers
-                const sdk_lazy_path: std.Build.LazyPath = .{ .cwd_relative = sdk_path };
+                const sdk_lazy_path: Build.LazyPath = .{ .cwd_relative = sdk_path };
                 const usr_include_path = b.fmt("{s}/usr/include", .{sdk_path});
-                const usr_include_lazy: std.Build.LazyPath = .{ .cwd_relative = usr_include_path };
+                const usr_include_lazy: Build.LazyPath = .{ .cwd_relative = usr_include_path };
                 const framework_path = b.fmt("{s}/System/Library/Frameworks", .{sdk_path});
-                const framework_lazy: std.Build.LazyPath = .{ .cwd_relative = framework_path };
+                const framework_lazy: Build.LazyPath = .{ .cwd_relative = framework_path };
 
                 // Configure both sokol and cimgui with iOS SDK paths
                 dep_sokol.artifact("sokol_clib").addSystemIncludePath(sdk_lazy_path);
@@ -669,7 +633,7 @@ pub fn build(b: *std.Build) !void {
 }
 
 // compile shader via sokol-shdc
-fn createShaderModule(b: *std.Build, dep_sokol: *std.Build.Dependency) !*std.Build.Module {
+fn createShaderModule(b: *Build, dep_sokol: *Build.Dependency) !*Build.Module {
     const dep_shdc = dep_sokol.builder.dependency("shdc", .{});
     const mod_shd = try sokol.shdc.createModule(b, "shader", dep_sokol.module("sokol"), .{
         .shdc_dep = dep_shdc,
