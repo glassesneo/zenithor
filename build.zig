@@ -86,15 +86,6 @@ fn wireModuleImports(
     target_module.addImport("sparze", sparze_mod);
 }
 
-/// Add standard plugin imports (graphics, time, imgui, input, serialization) to module
-fn wireStandardPlugins(target_module: *Build.Module, deps: DependencySet) void {
-    target_module.addImport("graphics_plugin", deps.graphics_plugin_mod);
-    target_module.addImport("time_plugin", deps.time_plugin_mod);
-    target_module.addImport("imgui_plugin", deps.imgui_plugin_mod);
-    target_module.addImport("input_plugin", deps.input_plugin_mod);
-    target_module.addImport("serialization_plugin", deps.serialization_plugin_mod);
-}
-
 /// Configure cimgui artifact with Emscripten system includes and sokol dependency
 fn setupEmscriptenCimgui(
     dep_cimgui: *Build.Dependency,
@@ -110,11 +101,31 @@ fn setupEmscriptenCimgui(
     );
 }
 
+fn attachExampleSteps(
+    b: *Build,
+    example: Example,
+    result: ExampleResult,
+    examples_step: *Build.Step,
+    extra_build_steps: []const *Build.Step,
+) void {
+    const build_desc = b.fmt("Build {s} example", .{example.name});
+    const run_desc = b.fmt("Run {s} example", .{example.name});
+
+    b.step(example.name, build_desc).dependOn(result.build);
+    b.step(b.fmt("run-{s}", .{example.name}), run_desc).dependOn(&result.run.step);
+
+    examples_step.dependOn(result.build);
+    for (extra_build_steps) |step| {
+        step.dependOn(result.build);
+    }
+}
+
 fn buildExamples(b: *Build, options: ExampleOptions) !void {
     const is_wasm = options.target.result.cpu.arch.isWasm();
 
     // Create "examples" step that builds all examples
     const examples_step = b.step("examples", "Build all examples");
+    const deps = try loadExampleDependencies(b, options);
 
     if (is_wasm) {
         // Create serve-examples step
@@ -130,33 +141,15 @@ fn buildExamples(b: *Build, options: ExampleOptions) !void {
 
         // Build all web examples
         for (examples) |example| {
-            const deps = try loadExampleDependencies(b, options);
-            const build_desc = b.fmt("Build {s} example", .{example.name});
-            const run_desc = b.fmt("Run {s} example", .{example.name});
             const out = try buildWebExample(b, example, options, deps);
-
-            b.step(example.name, build_desc).dependOn(out.build);
-            b.step(b.fmt("run-{s}", .{example.name}), run_desc).dependOn(&out.run.step);
-
-            // Add this example's build to aggregate steps
-            examples_step.dependOn(out.build);
-            serve_step.dependOn(out.build);
-            serve_deno.step.dependOn(out.build);
+            attachExampleSteps(b, example, out, examples_step, &.{ serve_step, &serve_deno.step });
         }
 
         serve_step.dependOn(&serve_deno.step);
     } else {
         for (examples) |example| {
-            const deps = try loadExampleDependencies(b, options);
-            const build_desc = b.fmt("Build {s} example", .{example.name});
-            const run_desc = b.fmt("Run {s} example", .{example.name});
             const out = buildNativeExample(b, example, options, deps);
-
-            b.step(example.name, build_desc).dependOn(out.build);
-            b.step(b.fmt("run-{s}", .{example.name}), run_desc).dependOn(&out.run.step);
-
-            // Add this example's build to aggregate step
-            examples_step.dependOn(out.build);
+            attachExampleSteps(b, example, out, examples_step, &.{});
         }
     }
 }
@@ -170,6 +163,7 @@ fn loadExampleDependencies(b: *Build, options: ExampleOptions) !DependencySet {
         .gles3 = options.gles3,
         .wgpu = options.wgpu,
     });
+    const sokol_mod = dep_sokol.module("sokol");
 
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
 
@@ -177,6 +171,7 @@ fn loadExampleDependencies(b: *Build, options: ExampleOptions) !DependencySet {
         .target = options.target,
         .optimize = options.optimize,
     });
+    const cimgui_mod = dep_cimgui.module(cimgui_config.module_name);
 
     dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_config.include_dir));
 
@@ -184,6 +179,13 @@ fn loadExampleDependencies(b: *Build, options: ExampleOptions) !DependencySet {
         .target = options.target,
         .optimize = options.optimize,
     });
+    const sparze_mod = dep_sparze.module("sparze");
+
+    const standard_imports = [_]Build.Module.Import{
+        .{ .name = "zenithor", .module = options.mod_zenithor },
+        .{ .name = "sokol", .module = sokol_mod },
+        .{ .name = "sparze", .module = sparze_mod },
+    };
 
     // Create plugin modules directly instead of loading via b.dependency()
     // This avoids circular dependency issues
@@ -191,51 +193,48 @@ fn loadExampleDependencies(b: *Build, options: ExampleOptions) !DependencySet {
         .root_source_file = b.path("plugins/graphics/src/root.zig"),
         .target = options.target,
         .optimize = options.optimize,
+        .imports = &standard_imports,
     });
-    graphics_plugin.addImport("zenithor", options.mod_zenithor);
-    graphics_plugin.addImport("sokol", dep_sokol.module("sokol"));
-    graphics_plugin.addImport("sparze", dep_sparze.module("sparze"));
 
     const time_plugin = b.addModule("time_plugin", .{
         .root_source_file = b.path("plugins/time/src/root.zig"),
         .target = options.target,
         .optimize = options.optimize,
+        .imports = &standard_imports,
     });
-    time_plugin.addImport("zenithor", options.mod_zenithor);
-    time_plugin.addImport("sokol", dep_sokol.module("sokol"));
-    time_plugin.addImport("sparze", dep_sparze.module("sparze"));
 
     const imgui_build_options = b.addOptions();
     imgui_build_options.addOption(bool, "docking", options.imgui_docking);
+    const imgui_build_options_mod = imgui_build_options.createModule();
 
     const imgui_plugin = b.addModule("imgui_plugin", .{
         .root_source_file = b.path("plugins/imgui/src/root.zig"),
         .target = options.target,
         .optimize = options.optimize,
+        .imports = &(standard_imports ++ [_]Build.Module.Import{
+            .{ .name = "cimgui", .module = cimgui_mod },
+            .{ .name = "cimgui_docking", .module = cimgui_mod },
+            .{ .name = "build_options", .module = imgui_build_options_mod },
+        }),
     });
-    imgui_plugin.addImport("zenithor", options.mod_zenithor);
-    imgui_plugin.addImport("sokol", dep_sokol.module("sokol"));
-    imgui_plugin.addImport("sparze", dep_sparze.module("sparze"));
-    imgui_plugin.addImport("cimgui", dep_cimgui.module(cimgui_config.module_name));
-    imgui_plugin.addImport("cimgui_docking", dep_cimgui.module(cimgui_config.module_name));
-    imgui_plugin.addImport("build_options", imgui_build_options.createModule());
 
     const input_plugin = b.addModule("input_plugin", .{
         .root_source_file = b.path("plugins/input/src/root.zig"),
         .target = options.target,
         .optimize = options.optimize,
+        .imports = &standard_imports,
     });
-    input_plugin.addImport("zenithor", options.mod_zenithor);
-    input_plugin.addImport("sokol", dep_sokol.module("sokol"));
-    input_plugin.addImport("sparze", dep_sparze.module("sparze"));
 
+    const serialization_imports = [_]Build.Module.Import{
+        .{ .name = "zenithor", .module = options.mod_zenithor },
+        .{ .name = "sparze", .module = sparze_mod },
+    };
     const serialization_plugin = b.addModule("serialization_plugin", .{
         .root_source_file = b.path("plugins/serialization/src/root.zig"),
         .target = options.target,
         .optimize = options.optimize,
+        .imports = serialization_imports[0..],
     });
-    serialization_plugin.addImport("zenithor", options.mod_zenithor);
-    serialization_plugin.addImport("sparze", dep_sparze.module("sparze"));
 
     // Return a modified DependencySet structure that holds modules instead of dependencies
     return .{
@@ -403,7 +402,6 @@ pub fn buildWeb(
 fn buildNativeExample(b: *Build, example: Example, options: ExampleOptions, deps: DependencySet) ExampleResult {
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
 
-    // Create module with root source file (using .imports for sokol and cimgui like the original code)
     const mod = b.createModule(.{
         .root_source_file = b.path(b.fmt("examples/{s}.zig", .{example.name})),
         .target = options.target,
@@ -411,46 +409,20 @@ fn buildNativeExample(b: *Build, example: Example, options: ExampleOptions, deps
         .imports = &.{
             .{ .name = "sokol", .module = deps.sokol.module("sokol") },
             .{ .name = cimgui_config.module_name, .module = deps.cimgui.module(cimgui_config.module_name) },
+            .{ .name = "zenithor", .module = options.mod_zenithor },
+            .{ .name = "sparze", .module = deps.sparze.module("sparze") },
+            .{ .name = "graphics_plugin", .module = deps.graphics_plugin_mod },
+            .{ .name = "time_plugin", .module = deps.time_plugin_mod },
+            .{ .name = "imgui_plugin", .module = deps.imgui_plugin_mod },
+            .{ .name = "input_plugin", .module = deps.input_plugin_mod },
+            .{ .name = "serialization_plugin", .module = deps.serialization_plugin_mod },
         },
     });
 
-    // Wire up remaining core dependencies (zenithor and sparze)
-    mod.addImport("zenithor", options.mod_zenithor);
-    mod.addImport("sparze", deps.sparze.module("sparze"));
-
-    // Wire up standard plugins
-    wireStandardPlugins(mod, deps);
-
-    // Create executable with the configured module
     const exe = b.addExecutable(.{
         .name = example.name,
         .root_module = mod,
     });
-
-    // Add iOS framework paths for linking
-    if (options.target.result.os.tag == .ios) {
-        const allocator = b.allocator;
-        const sdk_name = if (options.target.result.abi == .simulator) "iphonesimulator" else "iphoneos";
-        const xcrun_result = std.process.Child.run(.{
-            .allocator = allocator,
-            .argv = &.{ "xcrun", "--sdk", sdk_name, "--show-sdk-path" },
-        }) catch |err| {
-            std.debug.print("Warning: Failed to get iOS SDK path: {}\n", .{err});
-            const run = b.addRunArtifact(exe);
-            return .{ .build = &exe.step, .run = run };
-        };
-        defer allocator.free(xcrun_result.stdout);
-        defer allocator.free(xcrun_result.stderr);
-
-        if (xcrun_result.term == .Exited and xcrun_result.term.Exited == 0) {
-            const sdk_path = std.mem.trim(u8, xcrun_result.stdout, &std.ascii.whitespace);
-            if (sdk_path.len > 0) {
-                const framework_path = b.fmt("{s}/System/Library/Frameworks", .{sdk_path});
-                const framework_lazy: Build.LazyPath = .{ .cwd_relative = framework_path };
-                exe.root_module.addFrameworkPath(framework_lazy);
-            }
-        }
-    }
 
     const run = b.addRunArtifact(exe);
 
@@ -473,21 +445,21 @@ fn buildWebExample(b: *Build, example: Example, options: ExampleOptions, deps: D
         .imports = &.{
             .{ .name = "sokol", .module = deps.sokol.module("sokol") },
             .{ .name = cimgui_config.module_name, .module = deps.cimgui.module(cimgui_config.module_name) },
+            .{ .name = "zenithor", .module = options.mod_zenithor },
+            .{ .name = "sparze", .module = deps.sparze.module("sparze") },
+            .{ .name = "graphics_plugin", .module = deps.graphics_plugin_mod },
+            .{ .name = "time_plugin", .module = deps.time_plugin_mod },
+            .{ .name = "imgui_plugin", .module = deps.imgui_plugin_mod },
+            .{ .name = "input_plugin", .module = deps.input_plugin_mod },
+            .{ .name = "serialization_plugin", .module = deps.serialization_plugin_mod },
         },
     });
-
-    // Wire up zenithor (sparze will be added after library creation, like the original code)
-    mod.addImport("zenithor", options.mod_zenithor);
-
-    // Wire up standard plugins
-    wireStandardPlugins(mod, deps);
 
     // Create library with the configured module
     const lib = b.addLibrary(.{
         .name = example.name,
         .root_module = mod,
     });
-    lib.root_module.addImport("sparze", deps.sparze.module("sparze"));
 
     // Build Emscripten linker arguments
     const base_args = buildEmscriptenArgs(b, options.stack_size_mb);
@@ -513,8 +485,7 @@ fn buildWebExample(b: *Build, example: Example, options: ExampleOptions, deps: D
         "--allow-net",
         "--allow-read",
         "--watch",
-        "server/shell.ts",
-        example.name,
+        "server/server.ts",
     });
     deno.step.dependOn(&link.step);
 
@@ -566,11 +537,13 @@ pub fn build(b: *Build) !void {
         .imports = &.{
             .{ .name = "sokol", .module = dep_sokol.module("sokol") },
             .{ .name = cimgui_config.module_name, .module = dep_cimgui.module(cimgui_config.module_name) },
+            .{ .name = "sparze", .module = sparze_mod },
         },
     });
 
     const mod_options = b.addOptions();
     mod_options.addOption(bool, "docking", imgui_docking);
+    const mod_options_module = mod_options.createModule();
     lib_mod.addOptions("build_options", mod_options);
 
     const lib = b.addLibrary(.{
@@ -579,57 +552,60 @@ pub fn build(b: *Build) !void {
         .root_module = lib_mod,
     });
 
-    lib.root_module.addImport("sparze", sparze_mod);
-
     b.installArtifact(lib);
 
+    const exported_imports = [_]Build.Module.Import{
+        .{ .name = "zenithor", .module = lib_mod },
+        .{ .name = "sokol", .module = dep_sokol.module("sokol") },
+        .{ .name = "sparze", .module = sparze_mod },
+    };
+    const exported_serialization_imports = [_]Build.Module.Import{
+        .{ .name = "zenithor", .module = lib_mod },
+        .{ .name = "sparze", .module = sparze_mod },
+    };
+
     // Export plugin modules for external users
-    const graphics_plugin = b.addModule("graphics_plugin", .{
+    _ = b.addModule("graphics_plugin", .{
         .root_source_file = b.path("plugins/graphics/src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = exported_imports[0..],
     });
-    graphics_plugin.addImport("zenithor", lib_mod);
-    graphics_plugin.addImport("sokol", dep_sokol.module("sokol"));
-    graphics_plugin.addImport("sparze", sparze_mod);
 
-    const time_plugin = b.addModule("time_plugin", .{
+    _ = b.addModule("time_plugin", .{
         .root_source_file = b.path("plugins/time/src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = exported_imports[0..],
     });
-    time_plugin.addImport("zenithor", lib_mod);
-    time_plugin.addImport("sokol", dep_sokol.module("sokol"));
-    time_plugin.addImport("sparze", sparze_mod);
 
-    const imgui_plugin = b.addModule("imgui_plugin", .{
+    _ = b.addModule("imgui_plugin", .{
         .root_source_file = b.path("plugins/imgui/src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = &.{
+            exported_imports[0],
+            exported_imports[1],
+            exported_imports[2],
+            .{ .name = "cimgui", .module = dep_cimgui.module(cimgui_config.module_name) },
+            .{ .name = "cimgui_docking", .module = dep_cimgui.module(cimgui_config.module_name) },
+            .{ .name = "build_options", .module = mod_options_module },
+        },
     });
-    imgui_plugin.addImport("zenithor", lib_mod);
-    imgui_plugin.addImport("sokol", dep_sokol.module("sokol"));
-    imgui_plugin.addImport("sparze", sparze_mod);
-    imgui_plugin.addImport("cimgui", dep_cimgui.module(cimgui_config.module_name));
-    imgui_plugin.addImport("cimgui_docking", dep_cimgui.module(cimgui_config.module_name));
-    imgui_plugin.addImport("build_options", mod_options.createModule());
 
-    const input_plugin = b.addModule("input_plugin", .{
+    _ = b.addModule("input_plugin", .{
         .root_source_file = b.path("plugins/input/src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = exported_imports[0..],
     });
-    input_plugin.addImport("zenithor", lib_mod);
-    input_plugin.addImport("sokol", dep_sokol.module("sokol"));
-    input_plugin.addImport("sparze", sparze_mod);
 
-    const serialization_plugin = b.addModule("serialization_plugin", .{
+    _ = b.addModule("serialization_plugin", .{
         .root_source_file = b.path("plugins/serialization/src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = exported_serialization_imports[0..],
     });
-    serialization_plugin.addImport("zenithor", lib_mod);
-    serialization_plugin.addImport("sparze", sparze_mod);
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -642,37 +618,6 @@ pub fn build(b: *Build) !void {
         const cups_include_dir = env_map.get("CUPS_INCLUDE_DIR") orelse break :for_darwin;
         const cups_include_path: Build.LazyPath = .{ .cwd_relative = cups_include_dir };
         dep_sokol.artifact("sokol_clib").addIncludePath(cups_include_path);
-    }
-
-    // iOS SDK configuration: add sysroot for C/C++ compilation
-    if (mod_target.os.tag == .ios) for_ios: {
-        // Get iOS SDK path via xcrun (requires DEVELOPER_DIR pointing to Xcode)
-        const sdk_name = if (mod_target.abi == .simulator) "iphonesimulator" else "iphoneos";
-        const xcrun_result = std.process.Child.run(.{
-            .allocator = allocator,
-            .argv = &.{ "xcrun", "--sdk", sdk_name, "--show-sdk-path" },
-        }) catch break :for_ios;
-        defer allocator.free(xcrun_result.stdout);
-        defer allocator.free(xcrun_result.stderr);
-
-        if (xcrun_result.term == .Exited and xcrun_result.term.Exited == 0) {
-            const sdk_path = std.mem.trim(u8, xcrun_result.stdout, &std.ascii.whitespace);
-            if (sdk_path.len > 0) {
-                // Add both SDK root and usr/include for C standard library headers
-                const sdk_lazy_path: Build.LazyPath = .{ .cwd_relative = sdk_path };
-                const usr_include_path = b.fmt("{s}/usr/include", .{sdk_path});
-                const usr_include_lazy: Build.LazyPath = .{ .cwd_relative = usr_include_path };
-                const framework_path = b.fmt("{s}/System/Library/Frameworks", .{sdk_path});
-                const framework_lazy: Build.LazyPath = .{ .cwd_relative = framework_path };
-
-                // Configure both sokol and cimgui with iOS SDK paths
-                dep_sokol.artifact("sokol_clib").addSystemIncludePath(sdk_lazy_path);
-                dep_sokol.artifact("sokol_clib").addSystemIncludePath(usr_include_lazy);
-                dep_sokol.artifact("sokol_clib").addFrameworkPath(framework_lazy);
-                dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(sdk_lazy_path);
-                dep_cimgui.artifact(cimgui_config.clib_name).addSystemIncludePath(usr_include_lazy);
-            }
-        }
     }
 
     try buildExamples(b, .{
