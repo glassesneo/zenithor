@@ -3,7 +3,7 @@ const Build = std.Build;
 const sokol = @import("sokol");
 const cimgui = @import("cimgui");
 
-const example_plugins_all = &.{
+const standard_plugins_all = &.{
     "graphics_plugin",
     "time_plugin",
     "imgui_plugin",
@@ -12,16 +12,16 @@ const example_plugins_all = &.{
 };
 
 const examples = [_]Example{
-    .{ .name = "demo_window", .plugins = example_plugins_all },
-    .{ .name = "demo_2d", .plugins = example_plugins_all },
-    .{ .name = "demo_imgui", .plugins = example_plugins_all },
-    .{ .name = "demo_input", .plugins = example_plugins_all },
-    .{ .name = "demo_time", .plugins = example_plugins_all },
-    .{ .name = "demo_zindex", .plugins = example_plugins_all },
-    .{ .name = "demo_circle", .plugins = example_plugins_all },
-    .{ .name = "demo_resources", .plugins = example_plugins_all },
-    .{ .name = "demo_events", .plugins = example_plugins_all },
-    .{ .name = "demo_serialization", .plugins = example_plugins_all },
+    .{ .name = "demo_window", .plugins = standard_plugins_all },
+    .{ .name = "demo_2d", .plugins = standard_plugins_all },
+    .{ .name = "demo_imgui", .plugins = standard_plugins_all },
+    .{ .name = "demo_input", .plugins = standard_plugins_all },
+    .{ .name = "demo_time", .plugins = standard_plugins_all },
+    .{ .name = "demo_zindex", .plugins = standard_plugins_all },
+    .{ .name = "demo_circle", .plugins = standard_plugins_all },
+    .{ .name = "demo_resources", .plugins = standard_plugins_all },
+    .{ .name = "demo_events", .plugins = standard_plugins_all },
+    .{ .name = "demo_serialization", .plugins = standard_plugins_all },
 };
 
 const Example = struct {
@@ -43,7 +43,7 @@ pub const AppOptions = struct {
     imgui_docking: bool = false,
     filesystem: bool = false,
     stack_size_mb: u32 = 5,
-    default_plugins: []const []const u8 = &.{},
+    standard_plugins: []const []const u8 = &.{},
     plugins: []const PluginModule = &.{},
 };
 
@@ -56,7 +56,7 @@ const ExampleOptions = struct {
     imgui_docking: bool,
     filesystem: bool,
     stack_size_mb: u32,
-    default_plugins: []const []const u8,
+    standard_plugins: []const []const u8,
     mod_zenithor: *Build.Module,
 };
 
@@ -269,7 +269,7 @@ fn resolvePluginModule(lookup: PluginLookup, name: []const u8) *Build.Module {
     };
 }
 
-fn addDefaultPlugins(root_module: *Build.Module, ctx: AppBuildContext, plugin_names: []const []const u8) void {
+fn addStandardPlugins(root_module: *Build.Module, ctx: AppBuildContext, plugin_names: []const []const u8) void {
     for (plugin_names) |plugin_name| {
         root_module.addImport(plugin_name, resolvePluginModule(ctx.plugin_lookup, plugin_name));
     }
@@ -325,7 +325,7 @@ fn buildExamples(b: *Build, options: ExampleOptions, deps: DependencySet) !void 
 
         for (examples) |example| {
             var example_options = options;
-            example_options.default_plugins = if (example.plugins.len != 0) example.plugins else options.default_plugins;
+            example_options.standard_plugins = if (example.plugins.len != 0) example.plugins else options.standard_plugins;
             const out = try buildWebExample(b, example, example_options, deps);
             attachExampleSteps(b, example, out, examples_step, &.{ serve_step, &serve_deno.step });
         }
@@ -334,7 +334,7 @@ fn buildExamples(b: *Build, options: ExampleOptions, deps: DependencySet) !void 
     } else {
         for (examples) |example| {
             var example_options = options;
-            example_options.default_plugins = if (example.plugins.len != 0) example.plugins else options.default_plugins;
+            example_options.standard_plugins = if (example.plugins.len != 0) example.plugins else options.standard_plugins;
             const out = buildNativeExample(b, example, example_options, deps);
             attachExampleSteps(b, example, out, examples_step, &.{});
         }
@@ -495,7 +495,7 @@ fn buildNativeWithContext(ctx: AppBuildContext, exe: *Build.Step.Compile, option
     exe.root_module.addImport("zenithor", ctx.zenithor_mod);
     exe.root_module.addImport("sparze", ctx.dep_sparze.module("sparze"));
 
-    addDefaultPlugins(exe.root_module, ctx, options.default_plugins);
+    addStandardPlugins(exe.root_module, ctx, options.standard_plugins);
 
     for (options.plugins) |plugin| {
         exe.root_module.addImport(plugin.name, plugin.module);
@@ -508,7 +508,7 @@ fn buildWebWithContext(b: *Build, ctx: AppBuildContext, lib: *Build.Step.Compile
     lib.root_module.addImport("zenithor", ctx.zenithor_mod);
     lib.root_module.addImport("sparze", ctx.dep_sparze.module("sparze"));
 
-    addDefaultPlugins(lib.root_module, ctx, options.default_plugins);
+    addStandardPlugins(lib.root_module, ctx, options.standard_plugins);
 
     for (options.plugins) |plugin| {
         lib.root_module.addImport(plugin.name, plugin.module);
@@ -561,7 +561,7 @@ fn exampleAppOptions(options: ExampleOptions) AppOptions {
         .imgui_docking = options.imgui_docking,
         .filesystem = options.filesystem,
         .stack_size_mb = options.stack_size_mb,
-        .default_plugins = options.default_plugins,
+        .standard_plugins = options.standard_plugins,
         .plugins = &.{},
     };
 }
@@ -585,7 +585,7 @@ pub fn build(b: *Build) !void {
         .imgui_docking = setup.flags.imgui_docking,
         .filesystem = setup.flags.filesystem,
         .stack_size_mb = setup.flags.stack_size_mb,
-        .default_plugins = example_plugins_all,
+        .standard_plugins = standard_plugins_all,
         .mod_zenithor = setup.lib_module,
     }, setup.deps);
 

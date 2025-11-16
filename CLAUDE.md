@@ -93,7 +93,7 @@ pub fn build(world: anytype, registry: SystemRegistry) !void {
 - Plugins are compile-time types that may declare `Components`, `Resources`, `Events`, `Groups` and must expose a `build()` function to register systems and initialize resources.
 - `build()` may accept `allocator: std.mem.Allocator`, `world: anytype`, and/or `registry: SystemRegistry` in any order; the engine detects and supplies parameters at compile time.
 - Builtin plugin (`src/core/builtin.zig`) is always included (provides `Transform`).
-- Default plugins live under `plugins/*/src/root.zig` and must be registered by examples via `zenithor.run(.{ PluginA, PluginB })`.
+- Standard plugins live under `plugins/*/src/root.zig` and must be registered by examples via `zenithor.run(.{ PluginA, PluginB })`.
 - The main `build.zig` creates plugin modules and supplies imports (zenithor, sokol, sparze).
 
 ## World, Systems & Resources
