@@ -35,7 +35,7 @@ Methods:
 ## Usage
 
 ```zig
-const Serialization = @import("serialization");
+const Serialization = @import("serialization_plugin");
 
 fn handleInput(
     keyboard: Resource(Keyboard),

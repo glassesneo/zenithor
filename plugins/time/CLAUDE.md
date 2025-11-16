@@ -15,7 +15,7 @@ Frame timing and FPS tracking.
 ## Usage
 
 ```zig
-const Time = @import("time").Time;
+const Time = @import("time_plugin").Time;
 
 fn movement(time: Resource(Time), entities: Query(struct { Position, Velocity })) !void {
     const dt = time.value.delta_time * time.value.time_scale;

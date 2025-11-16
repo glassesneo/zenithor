@@ -72,9 +72,9 @@ zenithor/
 
 ```zig
 const zenithor = @import("zenithor");
-const Graphics = @import("graphics");
-const Time = @import("time");
-const Input = @import("input");
+const Graphics = @import("graphics_plugin");
+const Time = @import("time_plugin");
+const Input = @import("input_plugin");
 
 pub fn main() void {
     zenithor.run(.{ Graphics, Time, Input });
@@ -165,7 +165,6 @@ nix develop  # Zig 0.15.1, ZLS, zon2nix, Deno
 
 **macOS**: Nix shell sets `CUPS_INCLUDE_DIR` for Sokol (CUPS headers required).
 
-**iOS** (experimental, currently broken in Zig 0.15.1 - see src/core/CLAUDE.md for details).
 
 ## Constraints
 

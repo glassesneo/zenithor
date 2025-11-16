@@ -49,7 +49,7 @@ setNextWindowSize(size: ImVec2, cond: ImGuiCond)
 ## Usage
 
 ```zig
-const ImGui = @import("imgui");
+const ImGui = @import("imgui_plugin");
 
 fn debugUI(time: Resource(Time)) !void {
     if (ImGui.begin("Debug", null, .None)) {

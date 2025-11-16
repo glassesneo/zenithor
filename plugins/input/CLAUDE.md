@@ -29,7 +29,7 @@ fn heldFrames(key: Keycode) u32  // Frames held (0 if not held)
 ## Usage
 
 ```zig
-const Input = @import("input");
+const Input = @import("input_plugin");
 
 fn playerControl(
     keyboard: Resource(Input.Keyboard),

@@ -103,5 +103,5 @@ pub fn build(world: anytype, registry: SystemRegistry) !void {
 ## Cross-Platform Notes
 
 - WASM target: `wasm32-emscripten`
-- Graphics backends: OpenGL (default), OpenGL ES3, WebGPU, Metal (iOS)
+- Graphics backends: OpenGL (default), OpenGL ES3, WebGPU
 - macOS requires CUPS headers (set via `CUPS_INCLUDE_DIR` in Nix shell)

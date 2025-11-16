@@ -37,7 +37,7 @@ Systems run in stages:
 ## Usage
 
 ```zig
-const Graphics = @import("graphics");
+const Graphics = @import("graphics_plugin");
 
 // Create shapes
 const e1 = try commands.createEntity();
