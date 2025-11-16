@@ -1,199 +1,184 @@
-# CLAUDE.md
+# Zenithor
 
-Guidance for working with the Zenithor repository (concise).
+Plugin-driven 2D/3D game engine for Zig using Sokol (graphics), Sparze (ECS), and Dear ImGui (UI).
 
-## What Zenithor Is
+## Quick Start
 
-Zenithor is a Zig-based, plugin-driven game engine framework using Sokol for graphics/windowing, Sparze for ECS, and Dear ImGui for UI. It supports native and WebAssembly targets and exposes small example programs under `examples/`.
+```bash
+zig build test                  # Run tests
+zig build demo_window           # Build native example
+zig build run-demo_window       # Run native example
 
-## Quick Build & Run
+# WASM builds
+zig build demo_2d -Dtarget=wasm32-emscripten
+zig build serve-examples -Dtarget=wasm32-emscripten
 
-- Run tests: `zig build test`
-- Build a native example: `zig build demo_window`
-- Build a wasm example: `zig build demo_2d -Dtarget=wasm32-emscripten`
-- Run a native example: `zig build run-demo_window`
-- Serve wasm examples (dev server): `zig build serve-examples -Dtarget=wasm32-emscripten`
-- Serve with filesystem support: `zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem`
-- Build library: `zig build`
-- Install: `zig build install`
+# With WASM filesystem support (for serialization)
+zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem
 
-Examples include: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`.
+# Graphics backend options
+zig build <target> -Dgl        # OpenGL (default)
+zig build <target> -Dgles3     # OpenGL ES3
+zig build <target> -Dwgpu      # WebGPU
+```
 
-Graphics backend overrides:
-- `-Dgl` (OpenGL), `-Dgles3` (OpenGL ES3), `-Dwgpu` (WebGPU), `-Dimgui-docking` (ImGui docking)
+**Available examples**: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`
 
-WASM filesystem support (required for serialization/save files):
-- `-Dfilesystem` (enables Emscripten IDBFS, increases binary ~50KB, allows file I/O in browser)
+## Architecture
 
-WASM stack size configuration:
-- `-Dstack-size=<MB>` (default: 5MB, range: 1-16MB, increase if experiencing stack overflow with large save files)
+**Compile-time plugin system** - Plugins declare Components/Resources/Events and register systems. BuiltinPlugin (Transform, Color) always included.
 
-## iOS Builds (Experimental - Known Limitations)
+**ECS via Sparze** - Compile-time type resolution, zero runtime lookup, cache-friendly storage. See [Sparze docs](https://github.com/glassesneo/sparze/blob/main/CLAUDE.md) for Query/Group/Event details.
 
-**Current Status:** iOS build infrastructure is partially configured but **not fully functional** due to Zig 0.15.1 limitations.
+**Sokol for I/O** - Cross-platform graphics, windowing, input, audio (initialized centrally in core).
 
-**Prerequisites:**
-- Install Xcode from the App Store (provides iOS SDK and frameworks)
-- Run: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`
-- Restart your Nix shell after installation
+## Directory Structure
 
-**Build commands (currently broken):**
-- iOS Simulator (Apple Silicon): `zig build demo_window -Dtarget=aarch64-ios-simulator`
-- iOS Simulator (Intel Mac): `zig build demo_window -Dtarget=x86_64-ios-simulator`
-- iOS Device (ARM64): `zig build demo_window -Dtarget=aarch64-ios`
+```
+zenithor/
+├── src/
+│   ├── root.zig           # Public API exports
+│   └── core/              # Engine core (see src/core/CLAUDE.md)
+│       ├── application.zig    # Main loop, plugin system, Sokol init
+│       ├── builtin.zig        # Transform, Color (always included)
+│       └── system.zig         # SystemScheduler, SystemRegistry
+├── plugins/               # Standard plugins (see plugin CLAUDE.md files)
+│   ├── graphics/          # 2D shapes (Point, Line, Triangle, Rectangle, Circle)
+│   ├── time/              # Delta time, FPS tracking
+│   ├── input/             # Mouse, Keyboard resources
+│   ├── imgui/             # Dear ImGui integration
+│   └── serialization/     # Save/load game state
+├── examples/              # Example programs
+├── build.zig              # Build system (creates plugin modules)
+└── CLAUDE.md              # This file
+```
 
-**Known Issues:**
-- **Blocker:** Zig 0.15.1's bundled libc++ has compatibility issues with iOS cross-compilation
-- Error occurs during final executable linking when Zig's libc++ tries to compile for iOS target
-- C libraries (cimgui, sokol) compile successfully, but linking fails with libc++ type errors
+## Documentation Index
 
-**What Works:**
-- ✅ iOS SDK detection via `xcrun` and `DEVELOPER_DIR`
-- ✅ C/C++ compilation with iOS system headers
-- ✅ iOS framework discovery and linking configuration
-- ✅ Automatic iOS vs simulator target detection
+### Core Engine
+- **[Core Components](src/core/CLAUDE.md)** - Application lifecycle, builtin types, system scheduling
 
-**Potential Solutions (not yet tested):**
-- Upgrade to Zig 0.16.x or newer when available (may have improved iOS support)
-- Use Xcode's native build system instead of Zig for iOS targets
-- Investigate custom libc++ configuration or patches for iOS
+### Standard Plugins
+- **[Graphics](plugins/graphics/CLAUDE.md)** - 2D shape rendering
+- **[Time](plugins/time/CLAUDE.md)** - Frame timing and FPS
+- **[Input](plugins/input/CLAUDE.md)** - Mouse and keyboard
+- **[ImGui](plugins/imgui/CLAUDE.md)** - Debug UI and tools
+- **[Serialization](plugins/serialization/CLAUDE.md)** - Save/load state
 
-**Notes:**
-- iOS builds use system Xcode SDKs (not managed by Nix due to Apple licensing restrictions)
-- macOS builds continue using Nix-managed SDK for reproducibility
-- The Nix shell automatically detects and configures iOS SDK paths when Xcode is installed
-- Metal backend is used by default for iOS (Sokol's default)
-- Building for physical devices requires additional code signing configuration (not covered here)
+### External Dependencies
+- **[Sparze](https://github.com/glassesneo/sparze/blob/main/CLAUDE.md)** - ECS framework (World, Query, Group, Events, Resources)
 
-## Web Dev & Debugging (WASM)
+## Creating an Application
 
-- Use `zig build serve-examples -Dtarget=wasm32-emscripten` to build and run the dev server (serves `zig-out/web`).
-- Use the provided MCP chrome-devtools helpers for automated debugging (screenshots, console, network, evaluate scripts).
-- Primary workflow: build+serve, navigate page, take screenshots, inspect console/network, iterate with hot reload.
-
-## Plugin System
-
-**Plugin Structure:**
 ```zig
+const zenithor = @import("zenithor");
+const Graphics = @import("graphics");
+const Time = @import("time");
+const Input = @import("input");
+
+pub fn main() void {
+    zenithor.run(.{ Graphics, Time, Input });
+}
+```
+
+Entry point must call `zenithor.run()` with plugin tuple. BuiltinPlugin added automatically.
+
+## Plugin Development
+
+### Plugin Structure
+
+```zig
+// plugins/my_plugin/src/root.zig
+const zenithor = @import("zenithor");
+const SystemRegistry = zenithor.SystemRegistry;
+const sparze = @import("sparze");
+
+pub const MyComponent = struct { value: f32 };
+pub const MyResource = struct { state: u32 };
+pub const MyEvent = struct { entity_id: u32 };
+
 pub const Components = .{ MyComponent };
-pub const Resources = .{ DeltaTime, Score };
-pub const Events = .{ CollisionEvent };
-pub const Groups = &.{ MyGroup };
+pub const Resources = .{ MyResource };
+pub const Events = .{ MyEvent };
 
 pub fn build(world: anytype, registry: SystemRegistry) !void {
-    // Initialize resources
-    try world.setResource(DeltaTime, .{ .dt = 0.016 });
-    
-    // Register systems
-    registry.registerStartupSystem(initSystem, .first);
-    registry.registerSystem(updateSystem, .update);
+    try world.setResource(MyResource, .{ .state = 0 });
+    registry.registerSystem(mySystem, .update);
+}
+
+fn mySystem(res: sparze.Resource(MyResource)) !void {
+    res.value.state += 1;
 }
 ```
 
-- Plugins are compile-time types that may declare `Components`, `Resources`, `Events`, `Groups` and must expose a `build()` function to register systems and initialize resources.
-- `build()` may accept `allocator: std.mem.Allocator`, `world: anytype`, and/or `registry: SystemRegistry` in any order; the engine detects and supplies parameters at compile time.
-- Builtin plugin (`src/core/builtin.zig`) is always included (provides `Transform`).
-- Standard plugins live under `plugins/*/src/root.zig` and must be registered by examples via `zenithor.run(.{ PluginA, PluginB })`.
-- The main `build.zig` creates plugin modules and supplies imports (zenithor, sokol, sparze).
+### build() Parameters (any order, all optional)
+- `allocator: std.mem.Allocator`
+- `world: anytype` - For `setResource()`, `createGroup()`
+- `registry: SystemRegistry` - For system registration
 
-## World, Systems & Resources
+### System Stages (execution order)
+1. `first` - Early setup
+2. `pre_update`, `update`, `post_update` - Game logic
+3. `pre_render`, `render`, `render_submit`, `post_render` - Rendering
+4. `last` - Late cleanup
+5. `post_process` - Post-frame
 
-**System Stages:**
-- `first` (startup), `update` (main loop), `render` (drawing), `last` (cleanup)
-- Startup systems run once, regular systems every frame, terminate systems on shutdown
-
-**System Parameters (Query Filters):**
+### Sparze System Parameters
 ```zig
-// Single component/tag iteration (fast)
-fn movementSystem(query: SingleQuery(Position)) !void {
-    for (query.components) |*pos| { /* ... */ }
-}
-
-// Multi-component query (flexible)
-fn combatSystem(query: Query(struct { Position, Health })) !void {
-    for (query.entities) |entity| {
-        const pos = query.getComponent(entity, Position);
-        const health = query.getComponentMut(entity, Health);
-    }
-}
-
-// Optimized hot-path grouping
-const MovementGroup = struct { Position, Velocity };
-fn physicsSystem(movement: Group(MovementGroup)) !void {
-    const positions = movement.getMutArrayOf(Position);
-    const velocities = movement.getArrayOf(Velocity);
-    for (positions, velocities) |*pos, vel| { /* ... */ }
+fn mySystem(
+    query: Query(struct { Position, Velocity }),
+    delta: Resource(DeltaTime),
+    writer: EventWriter(CollisionEvent),
+    commands: anytype,
+) !void {
+    // ... system logic
 }
 ```
 
-**Resources Usage:**
-```zig
-fn systemWithResources(dt: zenithor.Resource(DeltaTime), score: zenithor.Resource(Score)) !void {
-    const delta = dt.value.dt;        // Access via .value
-    score.value.points += 100;         // Mutate via .value
-}
+See [Sparze CLAUDE.md](https://github.com/glassesneo/sparze/blob/main/CLAUDE.md) for full parameter types and query filters.
+
+## Build Configuration
+
+**WASM filesystem** (required for serialization):
+```bash
+zig build <target> -Dtarget=wasm32-emscripten -Dfilesystem
+```
+Enables Emscripten IDBFS (~50KB binary increase).
+
+**WASM stack size** (default 5MB):
+```bash
+zig build <target> -Dtarget=wasm32-emscripten -Dstack-size=8
+```
+Increase if stack overflow with large save files (range: 1-16MB).
+
+**ImGui docking**:
+```bash
+zig build <target> -Dimgui-docking
 ```
 
-- `buildWorld()` deduplicates `Components`, `Resources`, and `Events` from all plugins at compile time
-- Resources are global singletons; initialize in `build()` with `world.setResource(...)`
-- Groups require `world.createGroup()` and are most efficient for hot paths
-- Query types: `SingleQuery`, `SingleTag`, `Query`, `TagQuery`, `Group` (fastest)
+## Development Environment
 
-## Events (Brief)
-
-- Events are frame-delayed: write with `EventWriter` in frame N, read with `EventReader` in frame N+1.
-- Use event chains for multi-frame workflows (collision → damage → death).
-
-## Development Workflow
-
-**Create New Example:**
-1. Add to `examples` array in `build.zig`
-2. Create `examples/{name}.zig` with `main()` that calls `zenithor.run(.{ PluginA, PluginB })`
-
-**Add New Plugin:**
-1. Create `plugins/your_plugin/src/root.zig` and `build.zig.zon` (no zenithor dependency)
-2. Define `Components`, `Resources`, `Events`, `Groups` tuples and `build()` function
-3. Update `build.zig` to load plugin module and add imports
-4. Export plugin in `src/root.zig`
-
-**Common Plugin Example:**
-```zig
-// plugins/physics/src/root.zig
-const Position = struct { x: f32, y: f32 };
-const Velocity = struct { x: f32, y: f32 };
-
-pub const Components = .{ Position, Velocity };
-
-pub fn build(world: anytype, registry: SystemRegistry) !void {
-    // Setup group for efficient physics queries
-    try world.createGroup(struct { Position, Velocity });
-    registry.registerSystem(physicsSystem, .update);
-}
-
-fn physicsSystem(movement: Group(struct { Position, Velocity })) !void {
-    const positions = movement.getMutArrayOf(Position);
-    const velocities = movement.getArrayOf(Velocity);
-    for (positions, velocities) |*pos, vel| {
-        pos.x += vel.x;
-        pos.y += vel.y;
-    }
-}
+**Nix flake** provides reproducible dev shell:
+```bash
+nix develop  # Zig 0.15.1, ZLS, zon2nix, Deno
 ```
 
-- Unit tests use Zig's `test` blocks and run via `zig build test`
-- All Sokol modules initialized centrally in `src/core/application.zig` — plugins must NOT call `sokol.*.setup()`
+**macOS**: Nix shell sets `CUPS_INCLUDE_DIR` for Sokol (CUPS headers required).
 
-## Environment & CI
+**iOS** (experimental, currently broken in Zig 0.15.1 - see src/core/CLAUDE.md for details).
 
-- Use the provided Nix flake (`flake.nix`) for a reproducible dev shell (`nix develop`) with Zig 0.15.1, ZLS, zon2nix and Deno.
-- On macOS, CUPS headers are required for Sokol; the Nix shell sets `CUPS_INCLUDE_DIR`.
-- CI (`.github/workflows/`) runs tests and builds native and wasm examples (including WebGPU).
+## Constraints
 
-## Key References & Constraints
+- **Zig 0.15.1+** required
+- **Plugins must NOT** call `sokol.*.setup()`/`shutdown()` (centrally initialized)
+- **Groups** are full-owning, cannot overlap (validated at compile time)
+- **Tag components** are empty structs (`struct {}`) using TagStorage
 
-- Minimum Zig version: 0.15.1
-- Plugins must not call `sokol.*.setup()`/`shutdown()`; Sokol modules are initialized centrally in `src/core/application.zig`.
-- Groups are full-owning and may not overlap (validated at compile time).
-- Tag components are empty structs (`struct {}`) and use `TagStorage`.
+## Testing
 
-For more detailed usage examples (systems, queries, events), see `examples/`.
+```bash
+zig build test              # Native tests
+zig build test-wasm         # WASM tests (if supported)
+```
+
+CI runs tests and builds all examples (native + WASM/WebGPU) via `.github/workflows/`.
