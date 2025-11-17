@@ -303,8 +303,14 @@ pub fn run(comptime user_plugins: anytype) void {
                 .environment = sokol.glue.environment(),
                 .logger = .{ .func = sokol.log.func },
             });
-            sokol.gl.setup(.{});
-            std.debug.print("Backend: {}\n", .{sokol.gfx.queryBackend()});
+
+            sokol.gl.setup(.{
+                .logger = .{ .func = sokol.log.func },
+            });
+
+            if (is_debug) {
+                std.debug.print("Backend: {}\n", .{sokol.gfx.queryBackend()});
+            }
 
             // 2. Time module - required by time-using plugins
             sokol.time.setup();
