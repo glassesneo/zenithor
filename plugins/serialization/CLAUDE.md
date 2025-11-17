@@ -14,13 +14,6 @@ Methods:
 - `getPath() []const u8` - Get path slice
 - `getPathZ() [:0]const u8` - Get null-terminated path
 
-**GameState** (example resource)
-- `level: u32`
-- `lives: u32`
-- `score: u32`
-- `is_paused: bool`
-- `game_time: f32`
-
 ## Systems
 
 **saveGame(commands, save_file: Resource(SaveFile))**

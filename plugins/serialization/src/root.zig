@@ -32,16 +32,7 @@ pub const SaveFile = struct {
     }
 };
 
-/// Game state for serialization demo
-pub const GameState = struct {
-    level: u32 = 1,
-    lives: u32 = 3,
-    score: u32 = 0,
-    is_paused: bool = false,
-    game_time: f32 = 0.0,
-};
-
-pub const Resources = .{ SaveFile, GameState };
+pub const Resources = .{SaveFile};
 pub const Events = .{};
 pub const Components = .{};
 
@@ -108,16 +99,7 @@ pub fn build(_: SystemRegistry, world: anytype) !void {
     }
     save_path.len = save_filename.len;
 
-    const game_state: GameState = .{
-        .level = 1,
-        .lives = 3,
-        .score = 0,
-        .is_paused = false,
-        .game_time = 0.0,
-    };
-
     try world.setResource(SaveFile, save_path);
-    try world.setResource(GameState, game_state);
 
     std.debug.print("SerializationPlugin: Save/Load systems available\n", .{});
     std.debug.print("Default save path: {s}\n", .{save_path.getPath()});

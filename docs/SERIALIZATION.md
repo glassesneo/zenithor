@@ -34,15 +34,6 @@ const SaveFile = struct {
     resource_count: u32,  // Number of resources
     checksum_valid: bool, // Data integrity check
 };
-
-// Game state for demo
-const GameState = struct {
-    level: u32,           // Current level
-    lives: u32,           // Remaining lives
-    score: u32,           // Player score
-    is_paused: bool,      // Game pause state
-    game_time: f32,       // Elapsed game time
-};
 ```
 
 ## Usage
@@ -481,15 +472,6 @@ fn preSaveOptimization(commands: anytype) !void {
 ### Debug Inspection
 
 ```zig
-// Print serialization statistics
-fn debugSerializationStats(game_status: zenithor.Resource(SerializationPlugin.GameState)) void {
-    std.debug.print("Game Level: {}, Score: {}, Lives: {}\n", .{
-        game_status.value.level,
-        game_status.value.score,
-        game_status.value.lives,
-    });
-}
-
 // Validate save file exists
 fn debugCheckSaveFile(save_file: zenithor.Resource(SerializationPlugin.SaveFile)) void {
     const path = save_file.value.getPath();
