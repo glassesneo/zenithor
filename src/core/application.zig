@@ -2,6 +2,8 @@ const std = @import("std");
 const testing = std.testing;
 const builtin = @import("builtin");
 
+const is_debug = builtin.mode == .Debug;
+
 const system_module = @import("system.zig");
 const Stage = system_module.Stage;
 const BuiltinPlugin = @import("builtin.zig");
@@ -168,7 +170,7 @@ pub fn run(comptime user_plugins: anytype) void {
         }
 
         pub fn registerEventHandler(comptime handler_fn: anytype) void {
-            if (event_handler_count >= max_event_handlers) {
+            if (is_debug and event_handler_count >= max_event_handlers) {
                 std.debug.panic(
                     "Event handler overflow: reached max capacity of {} handlers. " ++
                         "Consider increasing max_event_handlers in application.zig or reducing event handler registrations.",
