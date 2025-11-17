@@ -341,23 +341,6 @@ fn buildExamples(b: *Build, options: ExampleOptions, deps: DependencySet) !void 
     }
 }
 
-fn buildEmscriptenArgs(b: *Build, stack_size_mb: u32) []const []const u8 {
-    const stack_arg = b.fmt("-sSTACK_SIZE={d}MB", .{stack_size_mb});
-
-    return &[_][]const u8{
-        "-sSHARED_MEMORY=0",
-        "-sEXIT_RUNTIME=0",
-        stack_arg,
-        "-sSTACK_OVERFLOW_CHECK=2",
-        "-sINITIAL_MEMORY=64MB",
-        "-sALLOW_MEMORY_GROWTH=1",
-        "-sASSERTIONS=2",
-        "-sSAFE_HEAP=1",
-        "-sUSE_PTHREADS=0",
-        "--bind",
-    };
-}
-
 pub fn buildNative(
     b: *Build,
     dep_zenithor: *Build.Dependency,
@@ -517,7 +500,7 @@ fn buildWebWithContext(b: *Build, ctx: AppBuildContext, lib: *Build.Step.Compile
     setupEmscriptenCimgui(ctx.dep_cimgui, ctx.dep_sokol, cimgui_config.clib_name);
 
     const dep_emsdk = ctx.dep_sokol.builder.dependency("emsdk", .{});
-    const base_args = buildEmscriptenArgs(b, options.stack_size_mb);
+    const stack_arg = b.fmt("-sSTACK_SIZE={d}MB", .{options.stack_size_mb});
 
     const link = try sokol.emLinkStep(b, .{
         .lib_main = lib,
@@ -529,7 +512,27 @@ fn buildWebWithContext(b: *Build, ctx: AppBuildContext, lib: *Build.Step.Compile
         .use_emmalloc = true,
         .use_filesystem = options.filesystem,
         .shell_file_path = ctx.dep_sokol.path("src/sokol/web/shell.html"),
-        .extra_args = base_args,
+        .extra_args = if (options.optimize == std.builtin.OptimizeMode.Debug) &.{
+            "-sSHARED_MEMORY=0",
+            "-sEXIT_RUNTIME=0",
+            stack_arg,
+            "-sSTACK_OVERFLOW_CHECK=2",
+            "-sINITIAL_MEMORY=64MB",
+            "-sALLOW_MEMORY_GROWTH=1",
+            "-sASSERTIONS=2",
+            "-sSAFE_HEAP=1",
+            "-sUSE_PTHREADS=0",
+            "--bind",
+        } else &.{
+            "-sSHARED_MEMORY=0",
+            "-sEXIT_RUNTIME=0",
+            stack_arg,
+            "-sSTACK_OVERFLOW_CHECK=2",
+            "-sINITIAL_MEMORY=64MB",
+            "-sALLOW_MEMORY_GROWTH=1",
+            "-sUSE_PTHREADS=0",
+            "--bind",
+        },
     });
 
     return &link.step;
@@ -594,4 +597,3 @@ pub fn build(b: *Build) !void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
 }
-
