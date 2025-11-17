@@ -20,6 +20,13 @@ pub fn SystemScheduler(comptime World: type) type {
 
         pub fn register(self: *Self, system: SystemPointerType, stage: Stage) void {
             const count_ptr = self.systemCounts.getPtr(stage);
+            if (count_ptr.* >= max_systems_per_stage) {
+                std.debug.panic(
+                    "SystemScheduler overflow: stage '{s}' has reached max capacity of {} systems. " ++
+                        "Consider increasing max_systems_per_stage or reducing plugin count.",
+                    .{ @tagName(stage), max_systems_per_stage },
+                );
+            }
             self.systemsByStages.getPtr(stage)[count_ptr.*] = system;
             count_ptr.* += 1;
         }
