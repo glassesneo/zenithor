@@ -5,9 +5,10 @@ const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const InputPlugin = @import("input_plugin");
+const TimePlugin = @import("time_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, TimePlugin, Game });
 }
 
 // ===== Event Definitions =====
@@ -99,8 +100,8 @@ fn setup(commands: anytype, pass_action: zenithor.Resource(GraphicsPlugin.PassAc
 var spawn_timer: f32 = 0.0;
 const spawn_interval: f32 = 1.0; // Spawn every 1 second
 
-fn spawnEnemies(commands: anytype) !void {
-    const dt: f32 = 1.0 / 60.0;
+fn spawnEnemies(commands: anytype, time: zenithor.Resource(TimePlugin.Time)) !void {
+    const dt = time.value.delta_time;
     spawn_timer += dt;
 
     if (spawn_timer >= spawn_interval) {
@@ -122,52 +123,41 @@ fn spawnEnemies(commands: anytype) !void {
 
 fn handleInput(
     mouse: zenithor.Resource(InputPlugin.Mouse),
-    player_query: zenithor.SingleTag(Player),
+    player_query: zenithor.Query(struct { Player, BuiltinPlugin.Transform }),
     commands: anytype,
     stats: zenithor.Resource(GameStats),
 ) !void {
     if (!mouse.value.left_button) return;
 
-    for (player_query.entities) |player_entity| {
-        // Get player transform through separate query
-        const player_transform = try getTransform(player_entity);
-        if (player_transform == null) continue;
+    if (player_query.entities.len == 0) return;
+    const player_entity = player_query.entities[0];
+    const player_transform = player_query.getComponent(player_entity, BuiltinPlugin.Transform);
 
-        // Fire projectile toward mouse
-        const dx = mouse.value.x - player_transform.?.x;
-        const dy = mouse.value.y - player_transform.?.y;
-        const dist = @sqrt(dx * dx + dy * dy);
+    // Fire projectile toward mouse
+    const dx = mouse.value.x - player_transform.x;
+    const dy = mouse.value.y - player_transform.y;
+    const dist = @sqrt(dx * dx + dy * dy);
 
-        if (dist < 1.0) continue;
+    if (dist < 1.0) return;
 
-        const speed: f32 = 400.0;
-        const vx = (dx / dist) * speed;
-        const vy = (dy / dist) * speed;
+    const speed: f32 = 400.0;
+    const vx = (dx / dist) * speed;
+    const vy = (dy / dist) * speed;
 
-        const projectile = commands.createEntity();
-        try commands.addComponent(projectile, BuiltinPlugin.Transform, .{ .x = player_transform.?.x, .y = player_transform.?.y, .z = 0 });
-        try commands.addComponent(projectile, BuiltinPlugin.Color, .{ .r = 0.3, .g = 1.0, .b = 0.3, .a = 1.0 });
-        try commands.addComponent(projectile, GraphicsPlugin.Circle, .{ .radius = 5 });
-        try commands.addComponent(projectile, Velocity, .{ .x = vx, .y = vy });
-        try commands.addComponent(projectile, Collider, .{ .radius = 5 });
-        try commands.addComponent(projectile, Lifetime, .{ .remaining = 2.0 });
-        try commands.addTag(projectile, Projectile);
+    const projectile = commands.createEntity();
+    try commands.addComponent(projectile, BuiltinPlugin.Transform, .{ .x = player_transform.x, .y = player_transform.y, .z = 0 });
+    try commands.addComponent(projectile, BuiltinPlugin.Color, .{ .r = 0.3, .g = 1.0, .b = 0.3, .a = 1.0 });
+    try commands.addComponent(projectile, GraphicsPlugin.Circle, .{ .radius = 5 });
+    try commands.addComponent(projectile, Velocity, .{ .x = vx, .y = vy });
+    try commands.addComponent(projectile, Collider, .{ .radius = 5 });
+    try commands.addComponent(projectile, Lifetime, .{ .remaining = 2.0 });
+    try commands.addTag(projectile, Projectile);
 
-        stats.value.shots_fired += 1;
-        break; // Only fire one projectile per frame
-    }
+    stats.value.shots_fired += 1;
 }
 
-// Helper to get transform (workaround for query limitations)
-var cached_transform: ?BuiltinPlugin.Transform = null;
-fn getTransform(entity: zenithor.Entity) !?BuiltinPlugin.Transform {
-    _ = entity;
-    // This is a simplified version - in real code you'd query properly
-    return .{ .x = 320, .y = 400, .z = 0 };
-}
-
-fn moveEntities(query: zenithor.Query(struct { BuiltinPlugin.Transform, Velocity })) !void {
-    const dt: f32 = 1.0 / 60.0;
+fn moveEntities(query: zenithor.Query(struct { BuiltinPlugin.Transform, Velocity }), time: zenithor.Resource(TimePlugin.Time)) !void {
+    const dt = time.value.delta_time;
 
     // Move all entities with both Transform and Velocity
     for (query.entities) |entity| {
@@ -182,8 +172,9 @@ fn moveEntities(query: zenithor.Query(struct { BuiltinPlugin.Transform, Velocity
 fn updateLifetimes(
     lifetime_query: zenithor.SingleQuery(Lifetime),
     commands: anytype,
+    time: zenithor.Resource(TimePlugin.Time),
 ) !void {
-    const dt: f32 = 1.0 / 60.0;
+    const dt = time.value.delta_time;
 
     for (lifetime_query.entities, lifetime_query.components) |entity, *lifetime| {
         lifetime.remaining -= dt;
