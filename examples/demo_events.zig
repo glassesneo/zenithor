@@ -127,7 +127,7 @@ fn handleInput(
     commands: anytype,
     stats: zenithor.Resource(GameStats),
 ) !void {
-    if (!mouse.value.left_button) return;
+    if (!mouse.value.isReleased(.LEFT)) return;
 
     if (player_query.entities.len == 0) return;
     const player_entity = player_query.entities[0];
