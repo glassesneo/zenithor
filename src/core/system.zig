@@ -1,5 +1,8 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const EnumArray = std.EnumArray;
+
+const is_debug = builtin.mode == .Debug;
 
 const max_systems_per_stage = 1024;
 
@@ -20,7 +23,7 @@ pub fn SystemScheduler(comptime World: type) type {
 
         pub fn register(self: *Self, system: SystemPointerType, stage: Stage) void {
             const count_ptr = self.systemCounts.getPtr(stage);
-            if (count_ptr.* >= max_systems_per_stage) {
+            if (is_debug and count_ptr.* >= max_systems_per_stage) {
                 std.debug.panic(
                     "SystemScheduler overflow: stage '{s}' has reached max capacity of {} systems. " ++
                         "Consider increasing max_systems_per_stage or reducing plugin count.",

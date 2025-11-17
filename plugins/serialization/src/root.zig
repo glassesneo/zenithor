@@ -1,5 +1,8 @@
 const std = @import("std");
 const sparze = @import("sparze");
+const builtin = @import("builtin");
+
+const is_debug = builtin.mode == .Debug;
 
 const SingleQuery = sparze.SingleQuery;
 const Query = sparze.Query;
@@ -22,7 +25,9 @@ pub const SaveFile = struct {
 
     pub fn getPathZ(self: *const SaveFile) [:0]const u8 {
         // For C APIs that need null-terminated strings
-        std.debug.assert(self.path[self.len] == 0);
+        if (is_debug) {
+            std.debug.assert(self.path[self.len] == 0);
+        }
         return self.path[0..self.len :0];
     }
 };

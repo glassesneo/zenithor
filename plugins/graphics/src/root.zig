@@ -9,6 +9,10 @@ const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
 const SystemRegistry = zenithor.SystemRegistry;
+const std = @import("std");
+const builtin = @import("builtin");
+
+const is_debug = builtin.mode == .Debug;
 
 pub const Point = struct {};
 
@@ -171,7 +175,10 @@ fn drawCircle(circles: Query(struct { Circle, Transform, ?Color })) !void {
 
         // Draw circle as triangle fan
         if (circle.segments == 0) {
-            @panic("Circle.segments must be at least 1 to avoid division by zero");
+            if (is_debug) {
+                @panic("Circle.segments must be at least 1 to avoid division by zero");
+            }
+            continue;
         }
         const angle_step = 2.0 * std.math.pi / @as(f32, @floatFromInt(circle.segments));
 
@@ -219,4 +226,3 @@ pub fn build(registry: SystemRegistry, world: anytype) !void {
     registry.registerSystem(endPass, .post_render);
 }
 
-const std = @import("std");
