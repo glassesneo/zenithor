@@ -172,6 +172,7 @@ nix develop  # Zig 0.15.1, ZLS, zon2nix, Deno
 - **Plugins must NOT** call `sokol.*.setup()`/`shutdown()` (centrally initialized)
 - **Groups** are full-owning, cannot overlap (validated at compile time)
 - **Tag components** are empty structs (`struct {}`) using TagStorage
+- **Debug builds** include defensive validations (overflow checks, assertions) that are removed in release builds for performance (see [Debug vs Release Builds](src/core/CLAUDE.md#debug-vs-release-builds))
 
 ## Testing
 

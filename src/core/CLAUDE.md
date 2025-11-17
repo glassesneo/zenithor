@@ -100,6 +100,18 @@ pub fn build(world: anytype, registry: SystemRegistry) !void {
 - Uses `std.heap.page_allocator` on native platforms
 - Memory freed on application exit
 
+## Debug vs Release Builds
+
+The engine uses `builtin.mode == .Debug` to gate defensive checks that help catch bugs during development but are removed in release builds for performance.
+
+**Debug-only validations** (skipped in release builds):
+- **System registration overflow** (system.zig:26) - Panics if a stage exceeds `max_systems_per_stage` (1024)
+- **Event handler overflow** (application.zig:173) - Panics if event handlers exceed `max_event_handlers` (32)
+- **Graphics validation** (graphics plugin) - Panics if Circle.segments is 0 (division by zero)
+- **Serialization assertions** (serialization plugin) - Asserts null-termination of save file paths
+
+In release builds, these checks are omitted. Code continues execution without panicking, which may lead to undefined behavior if constraints are violated.
+
 ## Cross-Platform Notes
 
 - WASM target: `wasm32-emscripten`
