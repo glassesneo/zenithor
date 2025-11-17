@@ -168,6 +168,13 @@ pub fn run(comptime user_plugins: anytype) void {
         }
 
         pub fn registerEventHandler(comptime handler_fn: anytype) void {
+            if (event_handler_count >= max_event_handlers) {
+                @compileError(std.fmt.comptimePrint(
+                    "Event handler overflow: reached max capacity of {} handlers. " ++
+                        "Consider increasing max_event_handlers in application.zig or reducing event handler registrations.",
+                    .{max_event_handlers},
+                ));
+            }
             const handler_fn_info = @typeInfo(@TypeOf(handler_fn)).@"fn";
             const AppType = @This(); // Capture the App struct type
 
