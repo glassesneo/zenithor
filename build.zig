@@ -22,6 +22,7 @@ const examples = [_]Example{
     .{ .name = "demo_resources", .plugins = standard_plugins_all },
     .{ .name = "demo_events", .plugins = standard_plugins_all },
     .{ .name = "demo_serialization", .plugins = standard_plugins_all },
+    .{ .name = "demo_errors", .plugins = standard_plugins_all },
 };
 
 const Example = struct {

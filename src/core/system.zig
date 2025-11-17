@@ -1,6 +1,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const EnumArray = std.EnumArray;
+const BuiltinPlugin = @import("builtin.zig");
+const sparze = @import("sparze");
 
 const is_debug = builtin.mode == .Debug;
 
@@ -34,10 +36,15 @@ pub fn SystemScheduler(comptime World: type) type {
             count_ptr.* += 1;
         }
 
-        pub fn run(self: *Self, world: *World) !void {
+        pub fn run(self: *Self, world: *World) void {
             for (self.systemsByStages.values, self.systemCounts.values) |systems, count| {
                 for (0..count) |i| {
-                    try systems[i](world);
+                    systems[i](world) catch |err| {
+                        var queue = world.getEventStoragePtrMut(BuiltinPlugin.GameLoopError);
+                        queue.enqueue(.{ .err = err }) catch |alloc_err| {
+                            std.debug.print("Failed to allocate memory: {any}\n", .{alloc_err});
+                        };
+                    };
                 }
             }
         }
@@ -56,6 +63,26 @@ pub const Stage = enum {
     last,
     post_process,
 };
+
+const CounterResource = struct {
+    value: u32 = 0,
+};
+
+const SequenceResource = struct {
+    values: [3]u32 = .{ 0, 0, 0 },
+    index: usize = 0,
+};
+
+const TestComponents = struct {};
+const TestResources = struct {
+    Counter: CounterResource,
+    Sequence: SequenceResource,
+};
+const TestEvents = struct {
+    GameLoopError: BuiltinPlugin.GameLoopError,
+    EventLoopError: BuiltinPlugin.EventLoopError,
+};
+const TestWorld = sparze.World(TestComponents, TestResources, TestEvents);
 
 // SystemRegistry provides a unified interface for registering systems
 pub const SystemRegistry = struct {
@@ -98,66 +125,62 @@ pub const SystemRegistry = struct {
 const testing = std.testing;
 
 test "SystemScheduler: registers and runs systems" {
-    const TestWorld = struct {
-        counter: u32 = 0,
-
-        pub fn runSystem(self: *@This(), comptime system_fn: anytype) !void {
-            try system_fn(self);
-        }
-    };
-
     const Scheduler = SystemScheduler(TestWorld);
     var scheduler = Scheduler.init();
 
     const incrementCounter = struct {
         fn run(world: *TestWorld) !void {
-            world.counter += 1;
+            var counter = world.getResourcePtrMut(CounterResource);
+            counter.value += 1;
         }
     }.run;
 
     scheduler.register(incrementCounter, .update);
 
-    var world = TestWorld{};
-    try scheduler.run(&world);
+    var world = TestWorld.init(testing.allocator);
+    defer world.deinit();
 
-    try testing.expectEqual(@as(u32, 1), world.counter);
+    try world.setResource(CounterResource, .{});
+    scheduler.run(&world);
+
+    try testing.expectEqual(@as(u32, 1), world.getResource(CounterResource).value);
 }
 
 test "SystemScheduler: runs multiple systems in order" {
-    const TestWorld = struct {
-        values: [3]u32 = .{ 0, 0, 0 },
-        index: usize = 0,
-
-        pub fn runSystem(self: *@This(), comptime system_fn: anytype) !void {
-            try system_fn(self);
-        }
-    };
-
     const Scheduler = SystemScheduler(TestWorld);
     var scheduler = Scheduler.init();
 
     const system1 = struct {
         fn run(world: *TestWorld) !void {
-            world.values[world.index] = 10;
-            world.index += 1;
+            var seq = world.getResourcePtrMut(SequenceResource);
+            seq.values[seq.index] = 10;
+            seq.index += 1;
         }
     }.run;
 
     const system2 = struct {
         fn run(world: *TestWorld) !void {
-            world.values[world.index] = 20;
-            world.index += 1;
+            var seq = world.getResourcePtrMut(SequenceResource);
+            seq.values[seq.index] = 20;
+            seq.index += 1;
         }
     }.run;
 
     scheduler.register(system1, .update);
     scheduler.register(system2, .update);
 
-    var world = TestWorld{};
-    try scheduler.run(&world);
+    var world = TestWorld.init(testing.allocator);
+    defer world.deinit();
 
-    try testing.expectEqual(@as(u32, 10), world.values[0]);
-    try testing.expectEqual(@as(u32, 20), world.values[1]);
+    try world.setResource(
+        SequenceResource,
+        SequenceResource{ .values = .{ 0, 0, 0 }, .index = 0 },
+    );
+    scheduler.run(&world);
+
+    const sequence = world.getResource(SequenceResource);
+    try testing.expectEqual(@as(u32, 10), sequence.values[0]);
+    try testing.expectEqual(@as(u32, 20), sequence.values[1]);
 }
 
 test "SystemRegistry: provides unified registration interface" {
@@ -216,4 +239,125 @@ test "SystemRegistry: provides unified registration interface" {
     try testing.expect(TestState.startup_called);
     try testing.expect(TestState.terminate_called);
     try testing.expect(TestState.event_handler_called);
+}
+
+test "SystemScheduler: catches and enqueues system errors" {
+    const Scheduler = SystemScheduler(TestWorld);
+    var scheduler = Scheduler.init();
+
+    const failingSystem = struct {
+        fn run(_: *TestWorld) !void {
+            return error.TestError;
+        }
+    }.run;
+
+    scheduler.register(failingSystem, .update);
+
+    var world = TestWorld.init(testing.allocator);
+    defer world.deinit();
+
+    // Run scheduler - should not throw
+    scheduler.run(&world);
+
+    // Verify error was enqueued
+    const error_storage = world.getEventStoragePtrMut(BuiltinPlugin.GameLoopError);
+    try testing.expectEqual(@as(usize, 1), error_storage.write_buffer.items.len);
+    try testing.expectEqual(error.TestError, error_storage.write_buffer.items[0].err);
+}
+
+test "SystemScheduler: multiple failing systems accumulate errors" {
+    const Scheduler = SystemScheduler(TestWorld);
+    var scheduler = Scheduler.init();
+
+    const failingSystem1 = struct {
+        fn run(_: *TestWorld) !void {
+            return error.FirstError;
+        }
+    }.run;
+
+    const failingSystem2 = struct {
+        fn run(_: *TestWorld) !void {
+            return error.SecondError;
+        }
+    }.run;
+
+    const successSystem = struct {
+        fn run(world: *TestWorld) !void {
+            var counter = world.getResourcePtrMut(CounterResource);
+            counter.value += 1;
+        }
+    }.run;
+
+    scheduler.register(failingSystem1, .update);
+    scheduler.register(successSystem, .update);
+    scheduler.register(failingSystem2, .update);
+
+    var world = TestWorld.init(testing.allocator);
+    defer world.deinit();
+
+    try world.setResource(CounterResource, .{});
+
+    // Run scheduler - should not throw despite errors
+    scheduler.run(&world);
+
+    // Verify successful system ran
+    try testing.expectEqual(@as(u32, 1), world.getResource(CounterResource).value);
+
+    // Verify both errors were enqueued
+    const error_storage = world.getEventStoragePtrMut(BuiltinPlugin.GameLoopError);
+    try testing.expectEqual(@as(usize, 2), error_storage.write_buffer.items.len);
+    try testing.expectEqual(error.FirstError, error_storage.write_buffer.items[0].err);
+    try testing.expectEqual(error.SecondError, error_storage.write_buffer.items[1].err);
+}
+
+test "SystemScheduler: continues execution after system failure" {
+    const Scheduler = SystemScheduler(TestWorld);
+    var scheduler = Scheduler.init();
+
+    const system1 = struct {
+        fn run(world: *TestWorld) !void {
+            var seq = world.getResourcePtrMut(SequenceResource);
+            seq.values[seq.index] = 10;
+            seq.index += 1;
+        }
+    }.run;
+
+    const failingSystem = struct {
+        fn run(_: *TestWorld) !void {
+            return error.MiddleError;
+        }
+    }.run;
+
+    const system2 = struct {
+        fn run(world: *TestWorld) !void {
+            var seq = world.getResourcePtrMut(SequenceResource);
+            seq.values[seq.index] = 20;
+            seq.index += 1;
+        }
+    }.run;
+
+    scheduler.register(system1, .update);
+    scheduler.register(failingSystem, .update);
+    scheduler.register(system2, .update);
+
+    var world = TestWorld.init(testing.allocator);
+    defer world.deinit();
+
+    try world.setResource(
+        SequenceResource,
+        SequenceResource{ .values = .{ 0, 0, 0 }, .index = 0 },
+    );
+
+    // Run scheduler
+    scheduler.run(&world);
+
+    // Verify both systems before and after the failing one executed
+    const sequence = world.getResource(SequenceResource);
+    try testing.expectEqual(@as(u32, 10), sequence.values[0]);
+    try testing.expectEqual(@as(u32, 20), sequence.values[1]);
+
+    // Verify error was captured
+    const error_storage = world.getEventStoragePtrMut(BuiltinPlugin.GameLoopError);
+    try testing.expectEqual(@as(usize, 1), error_storage.write_buffer.items.len);
+    try testing.expectEqual(error.MiddleError, error_storage.write_buffer.items[0].err);
 }

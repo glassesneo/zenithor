@@ -22,7 +22,7 @@ zig build <target> -Dgles3     # OpenGL ES3
 zig build <target> -Dwgpu      # WebGPU
 ```
 
-**Available examples**: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`
+**Available examples**: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`, `demo_errors`
 
 ## Architecture
 

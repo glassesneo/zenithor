@@ -217,7 +217,12 @@ pub fn run(comptime user_plugins: anytype) void {
                         }
                     }
 
-                    @call(.auto, handler_fn, args) catch {};
+                    @call(.auto, handler_fn, args) catch |err| {
+                        var queue = AppType.world.getEventStoragePtrMut(BuiltinPlugin.EventLoopError);
+                        queue.enqueue(.{ .err = err }) catch |alloc_err| {
+                            std.debug.print("Failed to allocate memory: {any}\n", .{alloc_err});
+                        };
+                    };
                 }
             }.handle;
             event_handlers[event_handler_count] = wrapper;
@@ -250,7 +255,7 @@ pub fn run(comptime user_plugins: anytype) void {
 
                     // Create a wrapper function to construct args at runtime
                     const wrapper = struct {
-                        fn call(alloc: std.mem.Allocator, reg: system_module.SystemRegistry, w: *World) !void {
+                        fn call(alloc: std.mem.Allocator, reg: system_module.SystemRegistry, w: *World) void {
                             // Build tuple type at compile time
                             const ArgsType = comptime blk: {
                                 var fields: [build_fn_info.params.len]std.builtin.Type.StructField = undefined;
@@ -289,11 +294,13 @@ pub fn run(comptime user_plugins: anytype) void {
                                 }
                             }
 
-                            try @call(.auto, Plugin.build, args);
+                            @call(.auto, Plugin.build, args) catch |err| if (is_debug) {
+                                std.debug.print("Building {s} failed: {any}\n", .{ @typeName(Plugin), err });
+                            };
                         }
                     }.call;
 
-                    try wrapper(allocator, registry, &App.world);
+                    wrapper(allocator, registry, &App.world);
                 }
             }
 
@@ -321,19 +328,19 @@ pub fn run(comptime user_plugins: anytype) void {
             });
 
             App.world.beginFrame();
-            App.startup_system_scheduler.run(&App.world) catch unreachable;
+            App.startup_system_scheduler.run(&App.world);
             App.world.endFrame() catch unreachable;
         }
 
         fn appFrame() callconv(.c) void {
             App.world.beginFrame();
-            App.system_scheduler.run(&App.world) catch unreachable;
+            App.system_scheduler.run(&App.world);
             App.world.endFrame() catch unreachable;
         }
 
         export fn appCleanup() callconv(.c) void {
             App.world.beginFrame();
-            App.terminate_system_scheduler.run(&App.world) catch unreachable;
+            App.terminate_system_scheduler.run(&App.world);
             App.world.endFrame() catch unreachable;
             App.world.deinit();
             App.arena.deinit();

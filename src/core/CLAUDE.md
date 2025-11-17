@@ -33,6 +33,88 @@ Central engine components (application lifecycle, builtin types, system scheduli
   - `Color.red`, `Color.green`, `Color.blue`, `Color.yellow`, `Color.cyan`, `Color.magenta`
   - `Color.white`, `Color.black`, `Color.orange`, `Color.purple`
 
+## Builtin Events
+
+**GameLoopError** `{ err: anyerror }`
+- Captures errors from systems during frame execution
+- Automatically enqueued when any system returns an error
+- Use `EventReader(GameLoopError)` to monitor and handle system failures
+- Marked as non-serializable (`serialized = false`)
+
+**EventLoopError** `{ err: anyerror }`
+- Captures errors from event handlers (input, window events)
+- Automatically enqueued when event handlers return errors
+- Use `EventReader(EventLoopError)` to monitor and handle event failures
+- Marked as non-serializable (`serialized = false`)
+
+## Error Handling
+
+Zenithor implements a graceful error handling system that allows systems and event handlers to fail without crashing the application.
+
+**Design Philosophy**:
+- Systems can return errors with `!void` signature
+- Errors are caught and converted to events
+- Application continues execution after failures
+- Error monitoring is opt-in via event readers
+
+**System Error Flow** (application.zig:39-50, system.zig:39-50):
+```zig
+// Systems can fail
+fn mySystem(res: Resource(MyResource)) !void {
+    return error.SomethingWentWrong;
+}
+
+// SystemScheduler catches errors
+scheduler.run(&world);  // Never throws
+
+// Errors become events
+var errors = EventReader(GameLoopError);
+var iter = errors.iterator();
+while (iter.next()) |err_event| {
+    std.debug.print("System error: {any}\n", .{err_event.err});
+}
+```
+
+**Event Handler Error Flow** (application.zig:220-225):
+```zig
+// Event handlers can fail
+fn onMouseClick(mouse: Resource(Mouse)) !void {
+    return error.HandlerFailed;
+}
+
+// Application catches errors automatically
+// Errors queued as EventLoopError events
+var errors = EventReader(EventLoopError);
+```
+
+**Error Recovery Pattern**:
+```zig
+fn errorMonitor(
+    game_errors: EventReader(GameLoopError),
+    event_errors: EventReader(EventLoopError),
+    log: Resource(ErrorLog),
+) !void {
+    // Check game loop errors
+    var game_iter = game_errors.iterator();
+    while (game_iter.next()) |err| {
+        log.value.record(err.err);
+    }
+
+    // Check event loop errors
+    var event_iter = event_errors.iterator();
+    while (event_iter.next()) |err| {
+        log.value.record(err.err);
+    }
+}
+```
+
+**Fallback Behavior**:
+- If error event allocation fails, error is printed to debug output
+- Plugin `build()` failures are logged in debug builds only (application.zig:297-299)
+- Release builds skip plugin initialization error printing for performance
+
+**See Also**: `examples/demo_errors.zig` for complete error handling demonstration
+
 ## System Scheduling
 
 **SystemRegistry** - Plugin API for registering systems
