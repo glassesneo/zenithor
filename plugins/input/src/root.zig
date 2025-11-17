@@ -100,9 +100,11 @@ fn handleEvent(event: sokol.app.Event, world: anytype) !void {
         },
         .KEY_DOWN => {
             const key_code: i32 = @intFromEnum(event.key_code);
-            keyboard.keys.set(@intCast(key_code));
-            // Set to 1 on first press (updateFrameCounts will increment)
-            keyboard.held_frame_map.set(event.key_code, 1);
+            if (key_code >= 0 and key_code < 512) {
+                keyboard.keys.set(@intCast(key_code));
+                // Set to 1 on first press (updateFrameCounts will increment)
+                keyboard.held_frame_map.set(event.key_code, 1);
+            }
             keyboard.modifiers = event.modifiers;
         },
         .KEY_UP => {
