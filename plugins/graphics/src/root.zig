@@ -170,10 +170,12 @@ fn drawCircle(circles: Query(struct { Circle, Transform, ?Color })) !void {
         }
 
         // Draw circle as triangle fan
-        const segments = circle.segments;
-        const angle_step = 2.0 * std.math.pi / @as(f32, @floatFromInt(segments));
+        if (circle.segments == 0) {
+            @panic("Circle.segments must be at least 1 to avoid division by zero");
+        }
+        const angle_step = 2.0 * std.math.pi / @as(f32, @floatFromInt(circle.segments));
 
-        for (0..segments) |i| {
+        for (0..circle.segments) |i| {
             const angle1 = @as(f32, @floatFromInt(i)) * angle_step;
             const angle2 = @as(f32, @floatFromInt(i + 1)) * angle_step;
 
