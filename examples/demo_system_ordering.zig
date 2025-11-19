@@ -1,0 +1,125 @@
+const std = @import("std");
+const zenithor = @import("zenithor");
+const sparze = @import("sparze");
+
+const Resource = sparze.Resource;
+const SystemRegistry = zenithor.SystemRegistry;
+const SystemConfig = zenithor.SystemConfig;
+
+// Resource to track system execution order
+pub const ExecutionLog = struct {
+    entries: [10][]const u8 = undefined,
+    count: usize = 0,
+
+    pub fn log(self: *ExecutionLog, message: []const u8) void {
+        self.entries[self.count] = message;
+        self.count += 1;
+    }
+
+    pub fn print(self: *const ExecutionLog) void {
+        std.debug.print("\n=== System Execution Order ===\n", .{});
+        for (self.entries[0..self.count], 0..) |entry, i| {
+            std.debug.print("{d}. {s}\n", .{ i + 1, entry });
+        }
+        std.debug.print("==============================\n\n", .{});
+    }
+};
+
+// Define as a plugin module
+const SystemOrderingPlugin = @This();
+
+pub const Components = .{};
+pub const Resources = .{ExecutionLog};
+pub const Events = .{};
+
+pub fn build(world: anytype, registry: SystemRegistry) !void {
+    try world.setResource(ExecutionLog, .{});
+
+    // Register systems with different priorities and constraints
+    // These will demonstrate all three ordering mechanisms:
+
+    // 1. Default priority systems (will run in plugin dependency order)
+    registry.registerSystem(defaultSystem1, .update);
+    registry.registerSystem(defaultSystem2, .update);
+
+    // 2. Priority-based ordering
+    registry.registerSystemWithConfig(highPrioritySystem, .update, .{
+        .priority = 100, // Runs last (high priority = late)
+    });
+
+    registry.registerSystemWithConfig(lowPrioritySystem, .update, .{
+        .priority = -50, // Runs first (low priority = early)
+        .tags = &.{"early"},
+    });
+
+    // 3. Constraint-based ordering
+    registry.registerSystemWithConfig(physicsSystem, .update, .{
+        .priority = 10,
+        .tags = &.{"physics"},
+        .after = &.{"early"}, // Must run after "early" systems
+    });
+
+    registry.registerSystemWithConfig(renderingSystem, .update, .{
+        .priority = 20,
+        .tags = &.{"rendering"},
+        .after = &.{"physics"}, // Must run after physics
+    });
+
+    registry.registerSystemWithConfig(uiSystem, .update, .{
+        .tags = &.{"ui"},
+        .after = &.{"rendering"}, // Must run after rendering
+        .before = &.{}, // Optional: could specify systems that must run after this
+    });
+
+    // Print execution log system - runs at the end to display results
+    registry.registerSystemWithConfig(printLogSystem, .post_update, .{
+        .priority = 1000, // Ensure this runs last
+    });
+}
+
+fn defaultSystem1(log: Resource(ExecutionLog)) !void {
+    log.value.log("Default System 1 (priority: 0)");
+}
+
+fn defaultSystem2(log: Resource(ExecutionLog)) !void {
+    log.value.log("Default System 2 (priority: 0)");
+}
+
+fn lowPrioritySystem(log: Resource(ExecutionLog)) !void {
+    log.value.log("Low Priority System (priority: -50, tags: early)");
+}
+
+fn highPrioritySystem(log: Resource(ExecutionLog)) !void {
+    log.value.log("High Priority System (priority: 100)");
+}
+
+fn physicsSystem(log: Resource(ExecutionLog)) !void {
+    log.value.log("Physics System (priority: 10, tags: physics, after: early)");
+}
+
+fn renderingSystem(log: Resource(ExecutionLog)) !void {
+    log.value.log("Rendering System (priority: 20, tags: rendering, after: physics)");
+}
+
+fn uiSystem(log: Resource(ExecutionLog)) !void {
+    log.value.log("UI System (tags: ui, after: rendering)");
+}
+
+fn printLogSystem(log: Resource(ExecutionLog)) !void {
+    log.value.print();
+
+    std.debug.print("Expected order:\n", .{});
+    std.debug.print("1. Low Priority (-50) with tag 'early'\n", .{});
+    std.debug.print("2. Default System 1 (0)\n", .{});
+    std.debug.print("3. Default System 2 (0)\n", .{});
+    std.debug.print("4. Physics (10, after 'early')\n", .{});
+    std.debug.print("5. Rendering (20, after 'physics')\n", .{});
+    std.debug.print("6. UI (0, after 'rendering') - constraint overrides priority\n", .{});
+    std.debug.print("7. High Priority (100)\n", .{});
+    std.debug.print("\nNote: Default systems with same priority run in registration order\n", .{});
+    std.debug.print("Note: Constraints override priority when necessary\n", .{});
+}
+
+pub fn main() void {
+    zenithor.run(.{SystemOrderingPlugin});
+}

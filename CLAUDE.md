@@ -156,6 +156,59 @@ pub fn main() void {
 4. `last` - Late cleanup
 5. `post_process` - Post-frame
 
+### System Ordering
+
+Systems within a stage are executed in a deterministic order based on:
+1. **Plugin dependencies** (implicit) - Systems from dependency plugins run before dependent plugins
+2. **Priority** (optional) - Lower priority values run first (default: 0)
+3. **Before/After constraints** (optional) - Explicit ordering via tags
+
+**Basic registration** (implicit plugin-based ordering):
+```zig
+registry.registerSystem(mySystem, .update);
+```
+
+**Advanced registration** with priority and constraints:
+```zig
+const SystemConfig = zenithor.SystemConfig;
+
+// High priority system (runs later)
+registry.registerSystemWithConfig(lateSystem, .update, .{
+    .priority = 100,
+});
+
+// Tagged system with constraints
+registry.registerSystemWithConfig(renderSystem, .render, .{
+    .tags = &.{"rendering"},
+    .after = &.{"physics"},  // Run after any system tagged "physics"
+});
+
+// Low priority system that others depend on
+registry.registerSystemWithConfig(physicsSystem, .update, .{
+    .priority = -50,
+    .tags = &.{"physics"},
+});
+```
+
+**Priority semantics:**
+- Default priority: `0`
+- Lower values run first: `-100` runs before `0` runs before `100`
+- Priority is **global** and can override plugin dependency ordering
+- When priority causes a dependent plugin's system to run before its dependency, a warning is printed in debug builds
+- Constraints (before/after) take precedence over priority
+
+**Constraint semantics:**
+- `.after = &.{"tag"}` - Run after all systems tagged with "tag"
+- `.before = &.{"tag"}` - Run before all systems tagged with "tag"
+- Tags are stage-scoped (cannot reference tags in different stages)
+- Circular constraints cause compile-time error (validated in Debug and ReleaseSafe builds)
+
+**Ordering resolution:**
+1. Systems sorted by priority within each stage (stable sort preserves registration order for equal priorities)
+2. Constraints applied via topological sort while preserving priority order
+3. Plugin dependency ordering is implicit (dependencies registered first)
+4. Debug builds print formatted system execution order at startup for diagnostics
+
 ### Sparze System Parameters
 ```zig
 fn mySystem(
@@ -205,7 +258,7 @@ nix develop  # Zig 0.15.1, ZLS, zon2nix, Deno
 - **Plugins must NOT** call `sokol.*.setup()`/`shutdown()` (centrally initialized)
 - **Groups** are full-owning, cannot overlap (validated at compile time)
 - **Tag components** are empty structs (`struct {}`) using TagStorage
-- **Debug builds** include defensive validations (overflow checks, assertions) that are removed in release builds for performance (see [Debug vs Release Builds](src/core/CLAUDE.md#debug-vs-release-builds))
+- **Debug and ReleaseSafe builds** include defensive validations (overflow checks, constraint validation, assertions) that are removed in ReleaseFast/ReleaseSmall builds for performance (see [Debug vs Release Builds](src/core/CLAUDE.md#debug-vs-release-builds))
 
 ## Testing
 

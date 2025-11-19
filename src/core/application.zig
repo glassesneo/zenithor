@@ -251,31 +251,40 @@ pub fn run(comptime user_plugins: anytype) void {
         var event_handlers: [max_event_handlers]*const fn ([*c]const sokol.app.Event) void = undefined;
         var event_handler_count: usize = 0;
 
-        pub fn registerSystem(comptime system_fn: anytype, stage: Stage) void {
+        pub fn registerSystem(comptime system_fn: anytype, stage: Stage, plugin_name: []const u8, plugin_index: u16) void {
             const wrapper = struct {
                 fn run(w: *World) !void {
                     try w.runSystem(system_fn);
                 }
             }.run;
-            system_scheduler.register(wrapper, stage);
+            system_scheduler.register(wrapper, stage, plugin_name, plugin_index);
         }
 
-        pub fn registerStartupSystem(comptime system_fn: anytype, stage: Stage) void {
+        pub fn registerSystemWithConfig(comptime system_fn: anytype, stage: Stage, config: system_module.SystemConfig, plugin_name: []const u8, plugin_index: u16) void {
             const wrapper = struct {
                 fn run(w: *World) !void {
                     try w.runSystem(system_fn);
                 }
             }.run;
-            startup_system_scheduler.register(wrapper, stage);
+            system_scheduler.registerWithConfig(wrapper, stage, config, plugin_name, plugin_index);
         }
 
-        pub fn registerTerminateSystem(comptime system_fn: anytype, stage: Stage) void {
+        pub fn registerStartupSystem(comptime system_fn: anytype, stage: Stage, plugin_name: []const u8, plugin_index: u16) void {
             const wrapper = struct {
                 fn run(w: *World) !void {
                     try w.runSystem(system_fn);
                 }
             }.run;
-            terminate_system_scheduler.register(wrapper, stage);
+            startup_system_scheduler.register(wrapper, stage, plugin_name, plugin_index);
+        }
+
+        pub fn registerTerminateSystem(comptime system_fn: anytype, stage: Stage, plugin_name: []const u8, plugin_index: u16) void {
+            const wrapper = struct {
+                fn run(w: *World) !void {
+                    try w.runSystem(system_fn);
+                }
+            }.run;
+            terminate_system_scheduler.register(wrapper, stage, plugin_name, plugin_index);
         }
 
         pub fn registerEventHandler(comptime handler_fn: anytype) void {
@@ -356,9 +365,17 @@ pub fn run(comptime user_plugins: anytype) void {
             }
 
             // Call plugin build functions
-            const registry = system_module.SystemRegistry.init(App.registerSystem, App.registerStartupSystem, App.registerTerminateSystem, App.registerEventHandler);
-
-            inline for (allPlugins) |Plugin| {
+            inline for (allPlugins, 0..) |Plugin, plugin_idx| {
+                const plugin_name = @typeName(Plugin);
+                const registry = system_module.SystemRegistry.init(
+                    App.registerSystem,
+                    App.registerSystemWithConfig,
+                    App.registerStartupSystem,
+                    App.registerTerminateSystem,
+                    App.registerEventHandler,
+                    plugin_name,
+                    @intCast(plugin_idx),
+                );
                 if (@hasDecl(Plugin, "build")) {
                     const build_fn_info = @typeInfo(@TypeOf(Plugin.build)).@"fn";
 
@@ -412,6 +429,11 @@ pub fn run(comptime user_plugins: anytype) void {
                     wrapper(allocator, registry, &App.world);
                 }
             }
+
+            // Finalize system registration - sort by priority and apply constraints
+            App.system_scheduler.finalize();
+            App.startup_system_scheduler.finalize();
+            App.terminate_system_scheduler.finalize();
 
             // Initialize sokol modules in dependency order:
             // 1. Graphics backend (gfx + gl) - required by imgui

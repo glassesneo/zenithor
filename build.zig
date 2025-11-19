@@ -24,6 +24,7 @@ const examples = [_]Example{
     .{ .name = "demo_events", .plugins = standard_plugins_all },
     .{ .name = "demo_serialization", .plugins = standard_plugins_all },
     .{ .name = "demo_errors", .plugins = standard_plugins_all },
+    .{ .name = "demo_system_ordering", .plugins = standard_plugins_all },
     .{ .name = "demo_dependencies", .plugins = &.{"game_example"} },
 };
 

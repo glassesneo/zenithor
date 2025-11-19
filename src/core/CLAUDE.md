@@ -121,9 +121,20 @@ fn errorMonitor(
 ```zig
 pub const SystemRegistry = struct {
     registerSystem(system_fn, stage: Stage)
+    registerSystemWithConfig(system_fn, stage: Stage, config: SystemConfig)
     registerStartupSystem(system_fn, stage: Stage)
     registerTerminateSystem(system_fn, stage: Stage)
     registerEventHandler(handler_fn)
+};
+```
+
+**SystemConfig** - Optional configuration for system ordering
+```zig
+pub const SystemConfig = struct {
+    priority: i16 = 0,                       // Lower values run first
+    tags: []const []const u8 = &.{},         // Tags for this system
+    before: []const []const u8 = &.{},       // Run before these tags
+    after: []const []const u8 = &.{},        // Run after these tags
 };
 ```
 
@@ -144,6 +155,26 @@ pub const SystemRegistry = struct {
 - **Regular systems**: Run every frame in stage order
 - **Terminate systems**: Run once on shutdown
 - **Event handlers**: Process Sokol events (mouse, keyboard, window)
+
+**System Ordering** (within each stage):
+1. **Plugin dependency ordering** (implicit) - Systems from plugins are registered in topological order of plugin dependencies
+2. **Priority-based ordering** - After registration, systems sorted by priority (ascending: -100 < 0 < 100)
+3. **Constraint resolution** - Before/after tags applied via stable topological sort that preserves priority order
+4. **Finalization** - `finalize()` called on all schedulers after plugin `build()` completes
+
+**Priority Override Behavior**:
+- Priority is **global** across all plugins and can override plugin dependency ordering
+- When a dependent plugin's system runs before its dependency due to priority, a warning is printed in debug builds
+- This allows flexibility but alerts you to potential ordering violations
+- Example: If PluginB depends on PluginA, but PluginB system has priority -50 and PluginA system has priority 0, PluginB runs first with a warning
+
+**Implementation details** (system.zig):
+- `SystemMetadata` stores function pointer, priority, plugin info (name, index), tags, and constraints
+- `finalize()` validates constraints (missing tags, circular dependencies), sorts systems, and checks for priority overrides
+- Sorting uses stable topological sort (`std.sort.block`) that maintains registration order for equal priorities
+- Validation runs in Debug and ReleaseSafe builds (compile-time panics for constraint violations)
+- Debug builds print formatted system execution order at startup for diagnostics
+- Zero runtime overhead after finalization (sorting happens once at init)
 
 ## Plugin Structure
 
