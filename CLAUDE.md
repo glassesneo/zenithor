@@ -47,7 +47,8 @@ zenithor/
 │   ├── time/              # Delta time, FPS tracking
 │   ├── input/             # Mouse, Keyboard resources
 │   ├── imgui/             # Dear ImGui integration
-│   └── serialization/     # Save/load game state
+│   ├── serialization/     # Save/load game state
+│   └── game_example/      # Example plugin demonstrating dependencies
 ├── examples/              # Example programs
 ├── build.zig              # Build system (creates plugin modules)
 └── CLAUDE.md              # This file
@@ -64,6 +65,7 @@ zenithor/
 - **[Input](plugins/input/CLAUDE.md)** - Mouse and keyboard
 - **[ImGui](plugins/imgui/CLAUDE.md)** - Debug UI and tools
 - **[Serialization](plugins/serialization/CLAUDE.md)** - Save/load state
+- **[Game Example](plugins/game_example/CLAUDE.md)** - Example plugin demonstrating dependencies
 
 ### External Dependencies
 - **[Sparze](https://github.com/glassesneo/sparze/blob/main/CLAUDE.md)** - ECS framework (World, Query, Group, Events, Resources)
@@ -110,6 +112,37 @@ fn mySystem(res: sparze.Resource(MyResource)) !void {
     res.value.state += 1;
 }
 ```
+
+### Plugin Dependencies
+
+Plugins can declare dependencies on other plugins using `pub const Requires`. The engine automatically includes all required plugins when you include the dependent plugin.
+
+```zig
+// Plugin that depends on Time, Input, and Graphics
+const TimePlugin = @import("time_plugin");
+const InputPlugin = @import("input_plugin");
+const GraphicsPlugin = @import("graphics_plugin");
+
+pub const Requires = .{ TimePlugin, InputPlugin, GraphicsPlugin };
+```
+
+**Auto-Include Example:**
+```zig
+const GamePlugin = @import("game_example");
+
+pub fn main() void {
+    // Only specify GamePlugin - Time, Input, Graphics auto-included!
+    zenithor.run(.{GamePlugin});
+}
+```
+
+**Features:**
+- **Transitive dependencies**: If A requires B, and B requires C, all three are included
+- **Diamond dependency handling**: If A and B both require C, C is included only once
+- **Circular dependency detection**: Compile-time error with clear message
+- **Topological ordering**: Dependencies are initialized before dependents
+
+**Example Plugin:** See [Game Example](plugins/game_example/CLAUDE.md) for a complete demonstration.
 
 ### build() Parameters (any order, all optional)
 - `allocator: std.mem.Allocator`
