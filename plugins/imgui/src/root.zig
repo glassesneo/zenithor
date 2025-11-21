@@ -17,11 +17,11 @@ pub const ImVec4 = ig.ImVec4;
 
 // Window position/size conditions
 pub const ImGuiCond = enum(c_int) {
-    Never = 0,         // Never set the position/size
-    Always = 1,        // Set every frame
-    Once = 2,          // Set on the first call (per window)
-    FirstUseEver = 4,  // Set if the window has no saved data (if doesn't exist in .ini file)
-    Appearing = 8,     // Set on the first call for a window that just appeared
+    Never = 0, // Never set the position/size
+    Always = 1, // Set every frame
+    Once = 2, // Set on the first call (per window)
+    FirstUseEver = 4, // Set if the window has no saved data (if doesn't exist in .ini file)
+    Appearing = 8, // Set on the first call for a window that just appeared
 };
 
 // Window flags

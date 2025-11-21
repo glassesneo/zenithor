@@ -97,19 +97,19 @@ pub fn SystemScheduler(comptime World: type) type {
 
                 // Then sort: first by priority, then apply constraints
                 sortSystems(systems[0..count]);
-                
+
                 // Check for priority overrides (debug only)
                 if (builtin.mode == .Debug) {
                     checkPriorityOverrides(systems[0..count], stage_name);
                 }
             }
-            
+
             // Print execution order in debug builds
             if (builtin.mode == .Debug) {
                 printSystemExecutionOrder(self);
             }
         }
-        
+
         fn checkPriorityOverrides(systems: []SystemMetadata, stage_name: []const u8) void {
             // Warn when priority causes systems from dependent plugins to run before their dependencies
             for (systems, 0..) |sys_early, i| {
@@ -134,33 +134,33 @@ pub fn SystemScheduler(comptime World: type) type {
                 }
             }
         }
-        
+
         fn printSystemExecutionOrder(self: *Self) void {
             var total_systems: usize = 0;
             for (self.systemCounts.values) |count| {
                 total_systems += count;
             }
-            
+
             if (total_systems == 0) return;
-            
+
             std.debug.print("\n╔════════════════════════════════════════════════════╗\n", .{});
             std.debug.print("║     System Execution Order (Debug Info)           ║\n", .{});
             std.debug.print("╚════════════════════════════════════════════════════╝\n\n", .{});
-            
+
             for (self.systemsByStages.values, self.systemCounts.values, 0..) |systems, count, stage_idx| {
                 if (count == 0) continue;
-                
+
                 const stage = @as(Stage, @enumFromInt(stage_idx));
                 std.debug.print("Stage: {s}\n", .{@tagName(stage)});
                 std.debug.print("────────────────────────────────────────────────────\n", .{});
-                
+
                 for (systems[0..count], 0..) |sys, i| {
                     std.debug.print("  {d}. {s:<25} [priority: {d:>4}]", .{
                         i + 1,
                         sys.plugin_name,
                         sys.priority,
                     });
-                    
+
                     if (sys.tags.len > 0) {
                         std.debug.print("\n     Tags: ", .{});
                         for (sys.tags, 0..) |tag, j| {
@@ -168,7 +168,7 @@ pub fn SystemScheduler(comptime World: type) type {
                             if (j < sys.tags.len - 1) std.debug.print(", ", .{});
                         }
                     }
-                    
+
                     if (sys.after.len > 0 or sys.before.len > 0) {
                         std.debug.print("\n     Constraints:", .{});
                         if (sys.after.len > 0) {
@@ -188,7 +188,7 @@ pub fn SystemScheduler(comptime World: type) type {
                             std.debug.print("]", .{});
                         }
                     }
-                    
+
                     std.debug.print("\n", .{});
                 }
                 std.debug.print("\n", .{});
@@ -197,7 +197,7 @@ pub fn SystemScheduler(comptime World: type) type {
 
         fn validateConstraints(systems: []SystemMetadata, stage_name: []const u8) void {
             _ = stage_name;
-            
+
             // Build tag index
             for (systems, 0..) |system, i| {
                 // Check that all .before tags exist
@@ -219,7 +219,7 @@ pub fn SystemScheduler(comptime World: type) type {
                         );
                     }
                 }
-                
+
                 // Check that all .after tags exist
                 for (system.after) |after_tag| {
                     var found = false;
@@ -264,11 +264,11 @@ pub fn SystemScheduler(comptime World: type) type {
         ) bool {
             if (visited.isSet(idx)) return false;
             if (visiting.isSet(idx)) return true;
-            
+
             visiting.set(idx);
-            
+
             const system = systems[idx];
-            
+
             // Check dependencies from .before constraints
             // If system A has .before = "tag_b", then any system with tag_b depends on A
             for (system.before) |before_tag| {
@@ -283,7 +283,7 @@ pub fn SystemScheduler(comptime World: type) type {
                     }
                 }
             }
-            
+
             // Check dependencies from .after constraints
             // If system A has .after = "tag_b", then A depends on any system with tag_b
             for (system.after) |after_tag| {
@@ -298,7 +298,7 @@ pub fn SystemScheduler(comptime World: type) type {
                     }
                 }
             }
-            
+
             visiting.unset(idx);
             visited.set(idx);
             return false;
@@ -307,7 +307,7 @@ pub fn SystemScheduler(comptime World: type) type {
         fn sortSystems(systems: []SystemMetadata) void {
             // Step 1: Stable sort by priority (lower priority = runs earlier)
             std.sort.block(SystemMetadata, systems, {}, comparePriority);
-            
+
             // Step 2: Apply before/after constraints using topological sort
             // Only reorder systems that have explicit constraints
             applyConstraints(systems);
@@ -341,7 +341,7 @@ pub fn SystemScheduler(comptime World: type) type {
             var adj: [max_systems_per_stage][max_systems_per_stage]u16 = undefined;
             var adj_counts: [max_systems_per_stage]u16 = undefined;
             @memset(adj_counts[0..n], 0);
-            
+
             // Process constraints
             for (systems, 0..) |system, i| {
                 // .after = "tag" means: i must run after any system with "tag"
@@ -358,7 +358,7 @@ pub fn SystemScheduler(comptime World: type) type {
                         }
                     }
                 }
-                
+
                 // .before = "tag" means: i must run before any system with "tag"
                 for (system.before) |before_tag| {
                     for (systems, 0..) |other, j| {
@@ -374,7 +374,7 @@ pub fn SystemScheduler(comptime World: type) type {
                     }
                 }
             }
-            
+
             // Modified Kahn's algorithm that respects initial ordering
             // Build sorted result by selecting systems in order of their original position
             var sorted: [max_systems_per_stage]SystemMetadata = undefined;

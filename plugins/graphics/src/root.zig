@@ -225,4 +225,3 @@ pub fn build(registry: SystemRegistry, world: anytype) !void {
     registry.registerSystem(beginPass, .render_submit);
     registry.registerSystem(endPass, .post_render);
 }
-
