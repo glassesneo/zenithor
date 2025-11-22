@@ -22,7 +22,7 @@ zig build <target> -Dgles3     # OpenGL ES3
 zig build <target> -Dwgpu      # WebGPU
 ```
 
-**Available examples**: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`, `demo_errors`
+**Available examples**: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`, `demo_errors`, `demo_serialization`, `demo_system_ordering`
 
 ## Architecture
 
@@ -47,8 +47,7 @@ zenithor/
 │   ├── time/              # Delta time, FPS tracking
 │   ├── input/             # Mouse, Keyboard resources
 │   ├── imgui/             # Dear ImGui integration
-│   ├── serialization/     # Save/load game state
-│   └── game_example/      # Example plugin demonstrating dependencies
+│   └── serialization/     # Save/load game state
 ├── examples/              # Example programs
 ├── build.zig              # Build system (creates plugin modules)
 └── CLAUDE.md              # This file
@@ -65,7 +64,6 @@ zenithor/
 - **[Input](plugins/input/CLAUDE.md)** - Mouse and keyboard
 - **[ImGui](plugins/imgui/CLAUDE.md)** - Debug UI and tools
 - **[Serialization](plugins/serialization/CLAUDE.md)** - Save/load state
-- **[Game Example](plugins/game_example/CLAUDE.md)** - Example plugin demonstrating dependencies
 
 ### External Dependencies
 - **[Sparze](https://github.com/glassesneo/sparze/blob/main/CLAUDE.md)** - ECS framework (World, Query, Group, Events, Resources)
@@ -126,23 +124,11 @@ const GraphicsPlugin = @import("graphics_plugin");
 pub const Requires = .{ TimePlugin, InputPlugin, GraphicsPlugin };
 ```
 
-**Auto-Include Example:**
-```zig
-const GamePlugin = @import("game_example");
-
-pub fn main() void {
-    // Only specify GamePlugin - Time, Input, Graphics auto-included!
-    zenithor.run(.{GamePlugin});
-}
-```
-
 **Features:**
 - **Transitive dependencies**: If A requires B, and B requires C, all three are included
 - **Diamond dependency handling**: If A and B both require C, C is included only once
 - **Circular dependency detection**: Compile-time error with clear message
 - **Topological ordering**: Dependencies are initialized before dependents
-
-**Example Plugin:** See [Game Example](plugins/game_example/CLAUDE.md) for a complete demonstration.
 
 ### build() Parameters (any order, all optional)
 - `allocator: std.mem.Allocator`
@@ -207,7 +193,6 @@ registry.registerSystemWithConfig(physicsSystem, .update, .{
 1. Systems sorted by priority within each stage (stable sort preserves registration order for equal priorities)
 2. Constraints applied via topological sort while preserving priority order
 3. Plugin dependency ordering is implicit (dependencies registered first)
-4. Debug builds print formatted system execution order at startup for diagnostics
 
 ### Sparze System Parameters
 ```zig
