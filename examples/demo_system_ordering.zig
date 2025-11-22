@@ -13,8 +13,16 @@ pub const ExecutionLog = struct {
     count: usize = 0,
 
     pub fn log(self: *ExecutionLog, message: []const u8) void {
+        if (self.count >= self.entries.len) {
+            std.debug.print("WARNING: ExecutionLog buffer full, ignoring log entry\n", .{});
+            return;
+        }
         self.entries[self.count] = message;
         self.count += 1;
+    }
+
+    pub fn clear(self: *ExecutionLog) void {
+        self.count = 0;
     }
 
     pub fn print(self: *const ExecutionLog) void {
@@ -35,6 +43,9 @@ pub const Events = .{};
 
 pub fn build(world: anytype, registry: SystemRegistry) !void {
     try world.setResource(ExecutionLog, .{});
+
+    // Clear log at the start of each frame
+    registry.registerSystem(clearLogSystem, .first);
 
     // Register systems with different priorities and constraints
     // These will demonstrate all three ordering mechanisms:
@@ -104,6 +115,10 @@ fn renderingSystem(log: ResourceMut(ExecutionLog)) !void {
 
 fn uiSystem(log: ResourceMut(ExecutionLog)) !void {
     log.value.log("UI System (tags: ui, after: rendering)");
+}
+
+fn clearLogSystem(log: ResourceMut(ExecutionLog)) !void {
+    log.value.clear();
 }
 
 fn printLogSystem(log: Resource(ExecutionLog)) !void {
