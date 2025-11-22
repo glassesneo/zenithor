@@ -9,6 +9,7 @@ const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
 const SystemRegistry = zenithor.SystemRegistry;
+const SystemConfig = zenithor.SystemConfig;
 const std = @import("std");
 const builtin = @import("builtin");
 
@@ -222,6 +223,8 @@ pub fn build(registry: SystemRegistry, world: anytype) !void {
     registry.registerSystem(drawTriangle, .render);
     registry.registerSystem(drawRectangle, .render);
     registry.registerSystem(drawCircle, .render);
-    registry.registerSystem(beginPass, .render_submit);
+    registry.registerSystemWithConfig(beginPass, .render_submit, .{
+        .tags = &.{"pass-begin"},
+    });
     registry.registerSystem(endPass, .post_render);
 }

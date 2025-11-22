@@ -8,9 +8,16 @@ pub const ig = if (imgui_docking) @import("cimgui_docking") else @import("cimgui
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const SystemRegistry = zenithor.SystemRegistry;
+const SystemConfig = zenithor.SystemConfig;
+
+// Import dependencies
+const GraphicsPlugin = @import("graphics_plugin");
 
 pub const Components = .{};
 pub const Events = .{};
+
+// Declare dependency on Graphics plugin since renderUi relies on beginPass
+pub const Requires = .{GraphicsPlugin};
 
 pub const ImVec2 = ig.ImVec2;
 pub const ImVec4 = ig.ImVec4;
@@ -159,7 +166,9 @@ fn handleEvent(event: sokol.app.Event) !void {
 pub fn build(registry: SystemRegistry) !void {
     registry.registerStartupSystem(init, .first);
     registry.registerSystem(setupFrame, .first);
-    registry.registerSystem(renderUi, .render_submit);
+    registry.registerSystemWithConfig(renderUi, .render_submit, .{
+        .after = &.{"pass-begin"},
+    });
     registry.registerEventHandler(handleEvent);
 }
 
