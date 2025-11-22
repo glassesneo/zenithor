@@ -180,7 +180,6 @@ registry.registerSystemWithConfig(physicsSystem, .update, .{
 - Default priority: `0`
 - Lower values run first: `-100` runs before `0` runs before `100`
 - Priority is **global** and can override plugin dependency ordering
-- When priority causes a dependent plugin's system to run before its dependency, a warning is printed in debug builds
 - Constraints (before/after) take precedence over priority
 
 **Constraint semantics:**

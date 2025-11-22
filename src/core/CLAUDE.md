@@ -164,13 +164,12 @@ pub const SystemConfig = struct {
 
 **Priority Override Behavior**:
 - Priority is **global** across all plugins and can override plugin dependency ordering
-- When a dependent plugin's system runs before its dependency due to priority, a warning is printed in debug builds
-- This allows flexibility but alerts you to potential ordering violations
-- Example: If PluginB depends on PluginA, but PluginB system has priority -50 and PluginA system has priority 0, PluginB runs first with a warning
+- This allows flexibility when you need fine-grained control over system execution order
+- Example: If PluginB depends on PluginA, but PluginB system has priority -50 and PluginA system has priority 0, PluginB runs first
 
 **Implementation details** (system.zig):
 - `SystemMetadata` stores function pointer, priority, plugin info (name, index), tags, and constraints
-- `finalize()` validates constraints (missing tags, circular dependencies), sorts systems, and checks for priority overrides
+- `finalize()` validates constraints (missing tags, circular dependencies) and sorts systems
 - Sorting uses stable topological sort (`std.sort.block`) that maintains registration order for equal priorities
 - Validation runs in Debug and ReleaseSafe builds (compile-time panics for constraint violations)
 - Zero runtime overhead after finalization (sorting happens once at init)
