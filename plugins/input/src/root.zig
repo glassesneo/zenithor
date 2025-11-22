@@ -184,7 +184,7 @@ fn handleEvent(event: sokol.app.Event, world: anytype) !void {
     }
 }
 
-fn resetPerFrameState(mouse: sparze.Resource(Mouse), keyboard: sparze.Resource(Keyboard)) !void {
+fn resetPerFrameState(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.ResourceMut(Keyboard)) !void {
     // Reset per-frame deltas and buffers
     mouse.value.dx = 0.0;
     mouse.value.dy = 0.0;
@@ -193,7 +193,7 @@ fn resetPerFrameState(mouse: sparze.Resource(Mouse), keyboard: sparze.Resource(K
     keyboard.value.char_count = 0;
 }
 
-fn updateFrameCounts(mouse: sparze.Resource(Mouse), keyboard: sparze.Resource(Keyboard)) !void {
+fn updateFrameCounts(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.ResourceMut(Keyboard)) !void {
     keyboard.value.incrementHeldKeyFrames();
     keyboard.value.cleanupReleasedKeys();
 

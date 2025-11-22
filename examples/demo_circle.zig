@@ -24,7 +24,7 @@ const Game = struct {
 
 var animation_time: f32 = 0.0;
 
-fn setup(commands: anytype, pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+fn setup(commands: anytype, pass_action: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
     var action = pass_action.value;
     action.colors[0].clear_value = .{ .r = 0.95, .g = 0.95, .b = 1.0, .a = 1.0 };
 
@@ -214,3 +214,4 @@ fn infoWindow() !void {
 }
 
 const std = @import("std");
+

@@ -91,7 +91,7 @@ const Game = struct {
 
 fn setup(
     commands: anytype,
-    pass_action_resource: zenithor.Resource(GraphicsPlugin.PassAction),
+    pass_action_resource: zenithor.ResourceMut(GraphicsPlugin.PassAction),
 ) !void {
     var pass_action = pass_action_resource.value;
     pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
@@ -110,7 +110,7 @@ fn setup(
 
 fn updateTimer(
     delta: zenithor.Resource(TimePlugin.Time),
-    game_status: zenithor.Resource(GameStatus),
+    game_status: zenithor.ResourceMut(GameStatus),
 ) !void {
     if (game_status.value.state == .Playing) {
         game_status.value.timer -= delta.value.delta_time;
@@ -126,7 +126,7 @@ fn handleInput(
     keyboard: zenithor.Resource(InputPlugin.Keyboard),
     commands: anytype,
     game_status: zenithor.Resource(GameStatus),
-    save_file: zenithor.Resource(SerializationPlugin.SaveFile),
+    save_file: zenithor.ResourceMut(SerializationPlugin.SaveFile),
     player_query: zenithor.Query(struct { Player, BuiltinPlugin.Transform, Velocity }),
 ) !void {
     // Save/Load input (F5 and F9 keys) - edge detection prevents spam
@@ -213,7 +213,7 @@ fn moveEntities(
 }
 
 fn checkCollisions(
-    game_status: zenithor.Resource(GameStatus),
+    game_status: zenithor.ResourceMut(GameStatus),
     game_settings: zenithor.Resource(GameSettings),
     player_query: zenithor.Query(struct { Player, BuiltinPlugin.Transform }),
     collectible_query: zenithor.Query(struct { Collectible, BuiltinPlugin.Transform }),
@@ -262,8 +262,8 @@ fn updateLifetimes(
 }
 
 fn nextLevel(
-    game_status: zenithor.Resource(GameStatus),
-    game_settings: zenithor.Resource(GameSettings),
+    game_status: zenithor.ResourceMut(GameStatus),
+    game_settings: zenithor.ResourceMut(GameSettings),
 ) !void {
     if (game_status.value.state == .GameOver) {
         // Check for restart
@@ -287,9 +287,9 @@ fn nextLevel(
 
 fn displayGameUI(
     commands: anytype,
-    game_status: zenithor.Resource(GameStatus),
+    game_status: zenithor.ResourceMut(GameStatus),
     game_settings: zenithor.Resource(GameSettings),
-    save_file: zenithor.Resource(SerializationPlugin.SaveFile),
+    save_file: zenithor.ResourceMut(SerializationPlugin.SaveFile),
     player_query: zenithor.SingleQuery(BuiltinPlugin.Transform),
 ) !void {
     // Game status window
@@ -347,3 +347,4 @@ fn displayGameUI(
     }
     ImGuiPlugin.end();
 }
+

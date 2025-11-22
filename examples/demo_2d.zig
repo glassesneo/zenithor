@@ -14,7 +14,7 @@ fn setup(commands: anytype) !void {
     });
 }
 
-fn changeColor(pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+fn changeColor(pass_action: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
     var action = pass_action.value;
     const g = action.colors[0].clear_value.g + 0.01;
     action.colors[0].clear_value.g = if (g > 1.0) 0.0 else g;

@@ -11,7 +11,7 @@ pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game });
 }
 
-fn setupPassAction(pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+fn setupPassAction(pass_action: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
     var action = pass_action.value;
     action.colors[0].clear_value = .{ .r = 0.1, .g = 0.15, .b = 0.2, .a = 1.0 };
 }
@@ -271,4 +271,3 @@ const Game = struct {
         registry.registerSystem(displayInputState, .render);
     }
 };
-

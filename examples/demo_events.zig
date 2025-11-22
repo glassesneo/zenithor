@@ -83,7 +83,7 @@ const Game = struct {
 
 // ===== Systems =====
 
-fn setup(commands: anytype, pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+fn setup(commands: anytype, pass_action: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
     // Set background
     var action = pass_action.value;
     action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
@@ -125,7 +125,7 @@ fn handleInput(
     mouse: zenithor.Resource(InputPlugin.Mouse),
     player_query: zenithor.Query(struct { Player, BuiltinPlugin.Transform }),
     commands: anytype,
-    stats: zenithor.Resource(GameStats),
+    stats: zenithor.ResourceMut(GameStats),
 ) !void {
     if (!mouse.value.isReleased(.LEFT)) return;
 
@@ -234,7 +234,7 @@ fn handleDeath(
     health_query: zenithor.SingleQuery(Health),
     death_writer: zenithor.EventWriter(DeathEvent),
     commands: anytype,
-    stats: zenithor.Resource(GameStats),
+    stats: zenithor.ResourceMut(GameStats),
 ) !void {
     for (damage_reader.queue) |damage_event| {
         // Find entity's health

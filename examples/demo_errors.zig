@@ -90,7 +90,7 @@ const ErrorConfig = struct {
 };
 
 /// System that can intentionally fail for demonstration
-fn errorProneSystem(config: zenithor.Resource(ErrorConfig)) !void {
+fn errorProneSystem(config: zenithor.ResourceMut(ErrorConfig)) !void {
     if (config.value.trigger_system_error) {
         // Reset the flag before triggering error
         config.value.trigger_system_error = false;
@@ -103,9 +103,9 @@ fn errorProneSystem(config: zenithor.Resource(ErrorConfig)) !void {
 fn errorMonitorSystem(
     game_loop_errors: zenithor.EventReader(BuiltinPlugin.GameLoopError),
     event_loop_errors: zenithor.EventReader(BuiltinPlugin.EventLoopError),
-    log: zenithor.Resource(ErrorLog),
+    log: zenithor.ResourceMut(ErrorLog),
     time: zenithor.Resource(TimePlugin.Time),
-    config: zenithor.Resource(ErrorConfig),
+    config: zenithor.ResourceMut(ErrorConfig),
 ) !void {
     const timestamp = time.value.total_time;
 
@@ -124,8 +124,8 @@ fn errorMonitorSystem(
 
 /// System that displays error information using ImGui
 fn errorDisplaySystem(
-    log: zenithor.Resource(ErrorLog),
-    config: zenithor.Resource(ErrorConfig),
+    log: zenithor.ResourceMut(ErrorLog),
+    config: zenithor.ResourceMut(ErrorConfig),
     time: zenithor.Resource(TimePlugin.Time),
 ) !void {
     const window_flags = ImGuiPlugin.ImGuiWindowFlags.None;

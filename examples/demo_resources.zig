@@ -76,14 +76,14 @@ const Game = struct {
 
 // ===== Systems =====
 
-fn setup(pass_action_resource: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
+fn setup(pass_action_resource: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
     var pass_action = pass_action_resource.value;
     // Set white background
     pass_action.colors[0].clear_value = .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
 }
 
 /// Update delta time resource
-fn updateDeltaTime(delta: zenithor.Resource(DeltaTime)) !void {
+fn updateDeltaTime(delta: zenithor.ResourceMut(DeltaTime)) !void {
     // In a real implementation, this would get actual frame delta
     // For this demo, we'll simulate it
     const raw_dt: f32 = 1.0 / 60.0; // Assume 60 FPS
@@ -198,7 +198,7 @@ var was_clicking: bool = false;
 /// Handle click events and update score
 fn handleClicks(
     mouse: zenithor.Resource(InputPlugin.Mouse),
-    score: zenithor.Resource(Score),
+    score: zenithor.ResourceMut(Score),
     config: zenithor.Resource(GameConfig),
     clickable_query: zenithor.Query(struct { Clickable, BuiltinPlugin.Transform }),
     commands: anytype,
@@ -245,9 +245,9 @@ fn handleClicks(
 
 /// Display game UI with resource information
 fn displayUI(
-    delta: zenithor.Resource(DeltaTime),
-    score: zenithor.Resource(Score),
-    config: zenithor.Resource(GameConfig),
+    delta: zenithor.ResourceMut(DeltaTime),
+    score: zenithor.ResourceMut(Score),
+    config: zenithor.ResourceMut(GameConfig),
 ) !void {
     // Score display
     ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 10 }, ImGuiPlugin.ImGuiCond.Once);
@@ -304,3 +304,4 @@ fn displayUI(
     }
     ImGuiPlugin.end();
 }
+

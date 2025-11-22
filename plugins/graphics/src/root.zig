@@ -2,6 +2,7 @@ const sparze = @import("sparze");
 const SingleQuery = sparze.SingleQuery;
 const Query = sparze.Query;
 const Resource = sparze.Resource;
+const ResourceMut = sparze.ResourceMut;
 const sokol = @import("sokol");
 pub const PassAction = sokol.gfx.PassAction;
 
@@ -75,7 +76,7 @@ pub const Resources = .{
 
 pub const Events = .{};
 
-fn init(pass_action_resource: Resource(PassAction)) !void {
+fn init(pass_action_resource: ResourceMut(PassAction)) !void {
     var pass_action = pass_action_resource.value;
     pass_action.colors[0] = .{
         .load_action = .CLEAR,

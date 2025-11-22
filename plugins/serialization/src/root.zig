@@ -7,6 +7,7 @@ const is_debug = builtin.mode == .Debug;
 const SingleQuery = sparze.SingleQuery;
 const Query = sparze.Query;
 const Resource = sparze.Resource;
+const ResourceMut = sparze.ResourceMut;
 const zenithor = @import("zenithor");
 const SystemRegistry = zenithor.SystemRegistry;
 const Transform = zenithor.Transform;
@@ -39,7 +40,7 @@ pub const Components = .{};
 /// Save game system - uses Commands API only
 pub fn saveGame(
     commands: anytype,
-    save_file: Resource(SaveFile),
+    save_file: ResourceMut(SaveFile),
 ) !void {
     const path = save_file.value.getPath();
     if (path.len == 0) return;
@@ -61,7 +62,7 @@ pub fn saveGame(
 /// Load game system - uses Commands API only
 pub fn loadGame(
     commands: anytype,
-    save_file: Resource(SaveFile),
+    save_file: ResourceMut(SaveFile),
 ) !void {
     const path = save_file.value.getPath();
     if (path.len == 0) return;

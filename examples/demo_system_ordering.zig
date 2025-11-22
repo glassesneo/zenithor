@@ -3,6 +3,7 @@ const zenithor = @import("zenithor");
 const sparze = @import("sparze");
 
 const Resource = sparze.Resource;
+const ResourceMut = sparze.ResourceMut;
 const SystemRegistry = zenithor.SystemRegistry;
 const SystemConfig = zenithor.SystemConfig;
 
@@ -77,31 +78,31 @@ pub fn build(world: anytype, registry: SystemRegistry) !void {
     });
 }
 
-fn defaultSystem1(log: Resource(ExecutionLog)) !void {
+fn defaultSystem1(log: ResourceMut(ExecutionLog)) !void {
     log.value.log("Default System 1 (priority: 0)");
 }
 
-fn defaultSystem2(log: Resource(ExecutionLog)) !void {
+fn defaultSystem2(log: ResourceMut(ExecutionLog)) !void {
     log.value.log("Default System 2 (priority: 0)");
 }
 
-fn lowPrioritySystem(log: Resource(ExecutionLog)) !void {
+fn lowPrioritySystem(log: ResourceMut(ExecutionLog)) !void {
     log.value.log("Low Priority System (priority: -50, tags: early)");
 }
 
-fn highPrioritySystem(log: Resource(ExecutionLog)) !void {
+fn highPrioritySystem(log: ResourceMut(ExecutionLog)) !void {
     log.value.log("High Priority System (priority: 100)");
 }
 
-fn physicsSystem(log: Resource(ExecutionLog)) !void {
+fn physicsSystem(log: ResourceMut(ExecutionLog)) !void {
     log.value.log("Physics System (priority: 10, tags: physics, after: early)");
 }
 
-fn renderingSystem(log: Resource(ExecutionLog)) !void {
+fn renderingSystem(log: ResourceMut(ExecutionLog)) !void {
     log.value.log("Rendering System (priority: 20, tags: rendering, after: physics)");
 }
 
-fn uiSystem(log: Resource(ExecutionLog)) !void {
+fn uiSystem(log: ResourceMut(ExecutionLog)) !void {
     log.value.log("UI System (tags: ui, after: rendering)");
 }
 

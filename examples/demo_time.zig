@@ -89,7 +89,7 @@ fn displayTimeInfo(time: zenithor.Resource(TimePlugin.Time)) !void {
 
     if (ImGuiPlugin.begin("Time Information", null, .None)) {
         ImGuiPlugin.textFmt("FPS: {d:.1}", .{1.0 / time.value.delta_time});
-        ImGuiPlugin.textFmt("Delta Time: {d:.4} s ({d:.2} ms)", .{time.value.delta_time, time.value.delta_time * 1000.0});
+        ImGuiPlugin.textFmt("Delta Time: {d:.4} s ({d:.2} ms)", .{ time.value.delta_time, time.value.delta_time * 1000.0 });
         ImGuiPlugin.textFmt("Total Time: {d:.2} s", .{time.value.total_time});
         ImGuiPlugin.textFmt("Frame Count: {d}", .{time.value.frame_count});
         ImGuiPlugin.separator();
@@ -98,7 +98,7 @@ fn displayTimeInfo(time: zenithor.Resource(TimePlugin.Time)) !void {
     ImGuiPlugin.end();
 }
 
-fn timeControls(time: zenithor.Resource(TimePlugin.Time)) !void {
+fn timeControls(time: zenithor.ResourceMut(TimePlugin.Time)) !void {
     ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 170 }, ImGuiPlugin.ImGuiCond.Once);
     ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 150 }, ImGuiPlugin.ImGuiCond.Once);
 
@@ -127,3 +127,4 @@ fn timeControls(time: zenithor.Resource(TimePlugin.Time)) !void {
     }
     ImGuiPlugin.end();
 }
+
