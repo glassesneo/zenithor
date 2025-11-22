@@ -97,36 +97,6 @@ pub fn SystemScheduler(comptime World: type) type {
 
                 // Then sort: first by priority, then apply constraints
                 sortSystems(systems[0..count]);
-
-                // Check for priority overrides (debug only)
-                if (builtin.mode == .Debug) {
-                    checkPriorityOverrides(systems[0..count], stage_name);
-                }
-            }
-        }
-
-        fn checkPriorityOverrides(systems: []SystemMetadata, stage_name: []const u8) void {
-            // Warn when priority causes systems from dependent plugins to run before their dependencies
-            for (systems, 0..) |sys_early, i| {
-                for (systems[i + 1 ..]) |sys_late| {
-                    if (sys_early.plugin_index > sys_late.plugin_index) {
-                        std.debug.print(
-                            "\n⚠️  WARNING: Priority override in stage '{s}':\n" ++
-                                "   System from '{s}' (plugin #{d}, priority {d}) runs BEFORE\n" ++
-                                "   System from '{s}' (plugin #{d}, priority {d})\n" ++
-                                "   This may violate plugin dependency order.\n\n",
-                            .{
-                                stage_name,
-                                sys_early.plugin_name,
-                                sys_early.plugin_index,
-                                sys_early.priority,
-                                sys_late.plugin_name,
-                                sys_late.plugin_index,
-                                sys_late.priority,
-                            },
-                        );
-                    }
-                }
             }
         }
 
