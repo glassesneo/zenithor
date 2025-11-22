@@ -173,7 +173,6 @@ pub const SystemConfig = struct {
 - `finalize()` validates constraints (missing tags, circular dependencies), sorts systems, and checks for priority overrides
 - Sorting uses stable topological sort (`std.sort.block`) that maintains registration order for equal priorities
 - Validation runs in Debug and ReleaseSafe builds (compile-time panics for constraint violations)
-- Debug builds print formatted system execution order at startup for diagnostics
 - Zero runtime overhead after finalization (sorting happens once at init)
 
 ## Plugin Structure

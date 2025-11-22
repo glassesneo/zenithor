@@ -103,11 +103,6 @@ pub fn SystemScheduler(comptime World: type) type {
                     checkPriorityOverrides(systems[0..count], stage_name);
                 }
             }
-
-            // Print execution order in debug builds
-            if (builtin.mode == .Debug) {
-                printSystemExecutionOrder(self);
-            }
         }
 
         fn checkPriorityOverrides(systems: []SystemMetadata, stage_name: []const u8) void {
@@ -135,65 +130,6 @@ pub fn SystemScheduler(comptime World: type) type {
             }
         }
 
-        fn printSystemExecutionOrder(self: *Self) void {
-            var total_systems: usize = 0;
-            for (self.systemCounts.values) |count| {
-                total_systems += count;
-            }
-
-            if (total_systems == 0) return;
-
-            std.debug.print("\n╔════════════════════════════════════════════════════╗\n", .{});
-            std.debug.print("║     System Execution Order (Debug Info)           ║\n", .{});
-            std.debug.print("╚════════════════════════════════════════════════════╝\n\n", .{});
-
-            for (self.systemsByStages.values, self.systemCounts.values, 0..) |systems, count, stage_idx| {
-                if (count == 0) continue;
-
-                const stage = @as(Stage, @enumFromInt(stage_idx));
-                std.debug.print("Stage: {s}\n", .{@tagName(stage)});
-                std.debug.print("────────────────────────────────────────────────────\n", .{});
-
-                for (systems[0..count], 0..) |sys, i| {
-                    std.debug.print("  {d}. {s:<25} [priority: {d:>4}]", .{
-                        i + 1,
-                        sys.plugin_name,
-                        sys.priority,
-                    });
-
-                    if (sys.tags.len > 0) {
-                        std.debug.print("\n     Tags: ", .{});
-                        for (sys.tags, 0..) |tag, j| {
-                            std.debug.print("{s}", .{tag});
-                            if (j < sys.tags.len - 1) std.debug.print(", ", .{});
-                        }
-                    }
-
-                    if (sys.after.len > 0 or sys.before.len > 0) {
-                        std.debug.print("\n     Constraints:", .{});
-                        if (sys.after.len > 0) {
-                            std.debug.print(" after=[", .{});
-                            for (sys.after, 0..) |tag, j| {
-                                std.debug.print("{s}", .{tag});
-                                if (j < sys.after.len - 1) std.debug.print(", ", .{});
-                            }
-                            std.debug.print("]", .{});
-                        }
-                        if (sys.before.len > 0) {
-                            std.debug.print(" before=[", .{});
-                            for (sys.before, 0..) |tag, j| {
-                                std.debug.print("{s}", .{tag});
-                                if (j < sys.before.len - 1) std.debug.print(", ", .{});
-                            }
-                            std.debug.print("]", .{});
-                        }
-                    }
-
-                    std.debug.print("\n", .{});
-                }
-                std.debug.print("\n", .{});
-            }
-        }
 
         fn validateConstraints(systems: []SystemMetadata, stage_name: []const u8) void {
             _ = stage_name;

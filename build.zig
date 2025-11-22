@@ -9,7 +9,6 @@ const standard_plugins_all = &.{
     "imgui_plugin",
     "input_plugin",
     "serialization_plugin",
-    "game_example",
 };
 
 const examples = [_]Example{
@@ -25,7 +24,6 @@ const examples = [_]Example{
     .{ .name = "demo_serialization", .plugins = standard_plugins_all },
     .{ .name = "demo_errors", .plugins = standard_plugins_all },
     .{ .name = "demo_system_ordering", .plugins = standard_plugins_all },
-    .{ .name = "demo_dependencies", .plugins = &.{"game_example"} },
 };
 
 const Example = struct {
@@ -73,7 +71,6 @@ const DependencySet = struct {
     imgui_plugin_mod: *Build.Module,
     input_plugin_mod: *Build.Module,
     serialization_plugin_mod: *Build.Module,
-    game_example_mod: *Build.Module,
 };
 
 const ExampleResult = struct {
@@ -87,7 +84,6 @@ const PluginModules = struct {
     imgui: *Build.Module,
     input: *Build.Module,
     serialization: *Build.Module,
-    game_example: *Build.Module,
 };
 
 const PluginLookup = union(enum) {
@@ -227,21 +223,6 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .imports = exported_serialization_imports[0..],
     });
 
-    // Game example plugin needs access to other plugins
-    const game_example_mod = b.addModule("game_example", .{
-        .root_source_file = b.path("plugins/game_example/src/root.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            exported_imports[0], // zenithor
-            exported_imports[1], // sokol
-            exported_imports[2], // sparze
-            .{ .name = "time_plugin", .module = time_mod },
-            .{ .name = "input_plugin", .module = input_mod },
-            .{ .name = "graphics_plugin", .module = graphics_mod },
-        },
-    });
-
     addDarwinIncludePaths(target, dep_sokol);
 
     return .{
@@ -258,7 +239,6 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
             .imgui_plugin_mod = imgui_mod,
             .input_plugin_mod = input_mod,
             .serialization_plugin_mod = serialization_mod,
-            .game_example_mod = game_example_mod,
         },
     };
 }
@@ -287,7 +267,6 @@ fn resolvePluginModule(lookup: PluginLookup, name: []const u8) *Build.Module {
             if (std.mem.eql(u8, name, "imgui_plugin")) break :blk mods.imgui;
             if (std.mem.eql(u8, name, "input_plugin")) break :blk mods.input;
             if (std.mem.eql(u8, name, "serialization_plugin")) break :blk mods.serialization;
-            if (std.mem.eql(u8, name, "game_example")) break :blk mods.game_example;
             std.debug.panic("Unknown plugin name: {s}", .{name});
         },
     };
@@ -574,7 +553,6 @@ fn exampleContext(options: ExampleOptions, deps: DependencySet) AppBuildContext 
             .imgui = deps.imgui_plugin_mod,
             .input = deps.input_plugin_mod,
             .serialization = deps.serialization_plugin_mod,
-            .game_example = deps.game_example_mod,
         } },
     };
 }
