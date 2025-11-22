@@ -208,6 +208,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
             exported_imports[0],
             exported_imports[1],
             exported_imports[2],
+            .{ .name = "graphics_plugin", .module = graphics_mod },
             .{ .name = "cimgui", .module = dep_cimgui.module(cimgui_config.module_name) },
             .{ .name = "cimgui_docking", .module = dep_cimgui.module(cimgui_config.module_name) },
             .{ .name = "build_options", .module = dock_module },

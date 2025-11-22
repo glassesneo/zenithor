@@ -306,7 +306,7 @@ pub fn SystemScheduler(comptime World: type) type {
 
         fn sortSystems(systems: []SystemMetadata) void {
             // Step 1: Stable sort by priority (lower priority = runs earlier)
-            std.sort.block(SystemMetadata, systems, {}, comparePriority);
+            std.sort.insertion(SystemMetadata, systems, {}, comparePriority);
 
             // Step 2: Apply before/after constraints using topological sort
             // Only reorder systems that have explicit constraints
