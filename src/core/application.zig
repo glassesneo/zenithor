@@ -12,11 +12,9 @@ const sparze = @import("sparze");
 const sokol = @import("sokol");
 
 fn containsType(comptime arr: anytype, comptime T: type, comptime n: usize) bool {
-    var i: usize = 0;
-    while (i < n) : (i += 1) {
-        if (arr[i] == T) return true;
-    }
-    return false;
+    return inline for (0..n) |i| {
+        if (arr[i] == T) break true;
+    } else false;
 }
 
 /// Expands plugin dependencies recursively, auto-including all required plugins
@@ -37,19 +35,15 @@ fn expandPluginDependencies(comptime user_plugins: anytype) type {
         visiting_count: usize = 0,
 
         fn contains(self: *const @This(), comptime T: type) bool {
-            var i: usize = 0;
-            while (i < self.count) : (i += 1) {
-                if (self.plugins[i] == T) return true;
-            }
-            return false;
+            return inline for (0..self.count) |i| {
+                if (self.plugins[i] == T) break true;
+            } else false;
         }
 
         fn isVisiting(self: *const @This(), comptime T: type) bool {
-            var i: usize = 0;
-            while (i < self.visiting_count) : (i += 1) {
-                if (self.visiting[i] == T) return true;
-            }
-            return false;
+            return inline for (0..self.visiting_count) |i| {
+                if (self.visiting[i] == T) break true;
+            } else false;
         }
 
         fn add(self: *@This(), comptime T: type) void {
@@ -105,8 +99,7 @@ fn expandPluginDependencies(comptime user_plugins: anytype) type {
     // Build array of plugin types
     const result_array = blk: {
         var arr: [set.count]type = undefined;
-        comptime var i: usize = 0;
-        inline while (i < set.count) : (i += 1) {
+        inline for (0..set.count) |i| {
             arr[i] = set.plugins[i];
         }
         break :blk arr;
@@ -150,13 +143,13 @@ pub fn buildWorld(comptime plugins: anytype) type {
     }
 
     // finalize exact-sized component list
-    var components: [component_count]type = undefined;
-    comptime {
-        var i: usize = 0;
-        while (i < component_count) : (i += 1) {
+    const components: [component_count]type = blk: {
+        var components: [component_count]type = undefined;
+        inline for (0..component_count) |i| {
             components[i] = tmp_components[i];
         }
-    }
+        break :blk components;
+    };
     const Components = std.meta.Tuple(&components);
 
     // === Collect and deduplicate Resources ===
@@ -184,13 +177,13 @@ pub fn buildWorld(comptime plugins: anytype) type {
     }
 
     // finalize exact-sized resource list
-    var resources: [resource_count]type = undefined;
-    comptime {
-        var i: usize = 0;
-        while (i < resource_count) : (i += 1) {
+    const resources: [resource_count]type = blk: {
+        var resources: [resource_count]type = undefined;
+        inline for (0..resource_count) |i| {
             resources[i] = tmp_resources[i];
         }
-    }
+        break :blk resources;
+    };
     const Resources = std.meta.Tuple(&resources);
 
     // === Collect and deduplicate Events ===
@@ -218,13 +211,13 @@ pub fn buildWorld(comptime plugins: anytype) type {
     }
 
     // finalize exact-sized event list
-    var events: [event_count]type = undefined;
-    comptime {
-        var i: usize = 0;
-        while (i < event_count) : (i += 1) {
+    const events: [event_count]type = blk: {
+        var events: [event_count]type = undefined;
+        inline for (0..event_count) |i| {
             events[i] = tmp_events[i];
         }
-    }
+        break :blk events;
+    };
     const Events = std.meta.Tuple(&events);
 
     return sparze.World(Components, Resources, Events);
