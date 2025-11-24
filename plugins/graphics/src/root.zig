@@ -9,7 +9,7 @@ pub const PassAction = sokol.gfx.PassAction;
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const SystemConfig = zenithor.SystemConfig;
 const std = @import("std");
 const builtin = @import("builtin");
@@ -214,18 +214,25 @@ fn endPass() !void {
     sokol.gfx.commit();
 }
 
-pub fn build(registry: SystemRegistry, world: anytype) !void {
+// Declarative system registration
+pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
+    .main = &.{
+        .{ .system = setDefaults, .stage = .pre_render },
+        .{ .system = setup2d, .stage = .pre_render },
+        .{ .system = drawPoint, .stage = .render },
+        .{ .system = drawLine, .stage = .render },
+        .{ .system = drawTriangle, .stage = .render },
+        .{ .system = drawRectangle, .stage = .render },
+        .{ .system = drawCircle, .stage = .render },
+        .{ .system = beginPass, .stage = .render_submit, .config = .{ .tags = &.{"pass-begin"} } },
+        .{ .system = endPass, .stage = .post_render },
+    },
+};
+
+// Resource initialization
+pub fn initResources(world: anytype) !void {
     try world.setResource(sokol.gfx.PassAction, .{});
-    registry.registerStartupSystem(init, .first);
-    registry.registerSystem(setDefaults, .pre_render);
-    registry.registerSystem(setup2d, .pre_render);
-    registry.registerSystem(drawPoint, .render);
-    registry.registerSystem(drawLine, .render);
-    registry.registerSystem(drawTriangle, .render);
-    registry.registerSystem(drawRectangle, .render);
-    registry.registerSystem(drawCircle, .render);
-    registry.registerSystemWithConfig(beginPass, .render_submit, .{
-        .tags = &.{"pass-begin"},
-    });
-    registry.registerSystem(endPass, .post_render);
 }

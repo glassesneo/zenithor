@@ -1,6 +1,6 @@
 const std = @import("std");
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
@@ -8,7 +8,7 @@ const InputPlugin = @import("input_plugin");
 const TimePlugin = @import("time_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, TimePlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, TimePlugin, Game }, .{});
 }
 
 // ===== Event Definitions =====
@@ -66,18 +66,24 @@ const Game = struct {
     pub const Resources = .{GameStats};
     pub const Events = .{ CollisionEvent, DamageEvent, DeathEvent };
 
-    pub fn build(world: anytype, registry: SystemRegistry) !void {
-        try world.setResource(GameStats, .{});
+    pub const systems = .{
+        .startup = &.{
+            .{ .system = setup, .stage = .first },
+        },
+        .main = &.{
+            .{ .system = spawnEnemies, .stage = .update },
+            .{ .system = handleInput, .stage = .update },
+            .{ .system = moveEntities, .stage = .update },
+            .{ .system = updateLifetimes, .stage = .update },
+            .{ .system = detectCollisions, .stage = .update },
+            .{ .system = handleDamage, .stage = .post_update },
+            .{ .system = handleDeath, .stage = .post_update },
+            .{ .system = displayUI, .stage = .render },
+        },
+    };
 
-        registry.registerStartupSystem(setup, .first);
-        registry.registerSystem(spawnEnemies, .update);
-        registry.registerSystem(handleInput, .update);
-        registry.registerSystem(moveEntities, .update);
-        registry.registerSystem(updateLifetimes, .update);
-        registry.registerSystem(detectCollisions, .update);
-        registry.registerSystem(handleDamage, .post_update);
-        registry.registerSystem(handleDeath, .post_update);
-        registry.registerSystem(displayUI, .render);
+    pub fn initResources(world: anytype) !void {
+        try world.setResource(GameStats, .{});
     }
 };
 

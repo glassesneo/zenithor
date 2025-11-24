@@ -1,6 +1,6 @@
 const std = @import("std");
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
@@ -8,7 +8,7 @@ const InputPlugin = @import("input_plugin");
 const sokol = @import("sokol");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game }, .{});
 }
 
 fn setupPassAction(pass_action: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
@@ -266,8 +266,12 @@ const Game = struct {
     pub const Components = .{};
     pub const Events = .{};
 
-    pub fn build(registry: SystemRegistry) !void {
-        registry.registerStartupSystem(setupPassAction, .first);
-        registry.registerSystem(displayInputState, .render);
-    }
+    pub const systems = .{
+        .startup = &.{
+            .{ .system = setupPassAction, .stage = .first },
+        },
+        .main = &.{
+            .{ .system = displayInputState, .stage = .render },
+        },
+    };
 };

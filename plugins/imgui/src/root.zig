@@ -7,7 +7,7 @@ pub const ig = if (imgui_docking) @import("cimgui_docking") else @import("cimgui
 
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const SystemConfig = zenithor.SystemConfig;
 
 // Import dependencies
@@ -159,18 +159,22 @@ fn renderUi() !void {
     sokol.imgui.render();
 }
 
-fn handleEvent(event: sokol.app.Event) !void {
+fn handleEvent(event: sokol.app.Event, world: anytype) !void {
+    _ = world; // Unused but required for standardized signature
     _ = sokol.imgui.handleEvent(event);
 }
 
-pub fn build(registry: SystemRegistry) !void {
-    registry.registerStartupSystem(init, .first);
-    registry.registerSystem(setupFrame, .first);
-    registry.registerSystemWithConfig(renderUi, .render_submit, .{
-        .after = &.{"pass-begin"},
-    });
-    registry.registerEventHandler(handleEvent);
-}
+// Declarative system registration
+pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
+    .main = &.{
+        .{ .system = setupFrame, .stage = .first },
+        .{ .system = renderUi, .stage = .render_submit, .config = .{ .after = &.{"pass-begin"} } },
+    },
+    .event_handlers = &.{handleEvent},
+};
 
 fn init() !void {
     sokol.imgui.setup(.{

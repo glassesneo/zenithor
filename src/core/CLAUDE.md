@@ -12,16 +12,18 @@ Central engine components (application lifecycle, builtin types, system scheduli
 
 **zenithor.run(plugins: anytype)**
 - Entry point for all Zenithor applications
+- Expands plugin dependencies automatically via `expandPluginDependencies()`
 - Combines user plugins with BuiltinPlugin (Transform, Color)
 - Builds World from deduplicated Components/Resources/Events
 - Creates system schedulers (startup, main, terminate)
-- Initializes Sokol modules (app, gfx, gl, time, audio)
+- Introspects plugin declarations via `pub const systems` and `initResources()`
+- Initializes Sokol modules (app, gfx, gl, time, imgui)
 - Runs main loop with frame timing
 
 **buildWorld(plugins: anytype) type**
 - Compile-time deduplication of Components, Resources, Events across all plugins
 - Returns Sparze World type with merged declarations
-- Validates plugin structure (`Components`, `Resources`, `Events`, `build()` function)
+- Validates plugin structure (`Components`, `Resources`, `Events` tuples)
 
 ## Builtin Components
 
@@ -117,15 +119,28 @@ fn errorMonitor(
 
 ## System Scheduling
 
-**SystemRegistry** - Plugin API for registering systems
+**Declarative System Registration** - Plugins declare systems via compile-time constants:
 ```zig
-pub const SystemRegistry = struct {
-    registerSystem(system_fn, stage: Stage)
-    registerSystemWithConfig(system_fn, stage: Stage, config: SystemConfig)
-    registerStartupSystem(system_fn, stage: Stage)
-    registerTerminateSystem(system_fn, stage: Stage)
-    registerEventHandler(handler_fn)
+pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
+    .main = &.{
+        .{ .system = update, .stage = .update },
+        .{ .system = render, .stage = .render, .config = .{ .tags = &.{"rendering"}, .after = &.{"physics"} } },
+    },
+    .terminate = &.{
+        .{ .system = cleanup, .stage = .first },
+    },
+    .event_handlers = &.{handleEvent},
 };
+```
+
+**Optional initResources Hook** - Initialize resources without world parameter dance:
+```zig
+pub fn initResources(world: anytype) !void {
+    try world.setResource(MyResource, .{ .state = 0 });
+}
 ```
 
 **SystemConfig** - Optional configuration for system ordering
@@ -157,10 +172,11 @@ pub const SystemConfig = struct {
 - **Event handlers**: Process Sokol events (mouse, keyboard, window)
 
 **System Ordering** (within each stage):
-1. **Plugin dependency ordering** (implicit) - Systems from plugins are registered in topological order of plugin dependencies
-2. **Priority-based ordering** - After registration, systems sorted by priority (ascending: -100 < 0 < 100)
-3. **Constraint resolution** - Before/after tags applied via stable topological sort that preserves priority order
-4. **Finalization** - `finalize()` called on all schedulers after plugin `build()` completes
+1. **Plugin dependency ordering** (implicit) - Plugins with `pub const Requires` dependencies registered in topological order
+2. **Declarative introspection** - `application.zig:appInit()` discovers systems via `@hasDecl(Plugin, "systems")` and `@hasField()`
+3. **Priority-based ordering** - Systems sorted by priority (ascending: -100 < 0 < 100) via stable sort
+4. **Constraint resolution** - Before/after tags applied via topological sort that preserves priority order
+5. **Finalization** - `finalize()` called on all schedulers before first frame
 
 **Priority Override Behavior**:
 - Priority is **global** across all plugins and can override plugin dependency ordering
@@ -168,30 +184,94 @@ pub const SystemConfig = struct {
 - Example: If PluginB depends on PluginA, but PluginB system has priority -50 and PluginA system has priority 0, PluginB runs first
 
 **Implementation details** (system.zig):
+- `registerDecl()` extracts system function, stage, and optional config from anonymous struct descriptors
+- Builds complete `SystemConfig` from partial config fields (priority, tags, before, after)
+- Creates wrapper that calls `world.runSystem(system_fn)` for parameter injection
 - `SystemMetadata` stores function pointer, priority, plugin info (name, index), tags, and constraints
 - `finalize()` validates constraints (missing tags, circular dependencies) and sorts systems
 - Sorting uses stable topological sort (`std.sort.block`) that maintains registration order for equal priorities
 - Validation runs in Debug and ReleaseSafe builds (compile-time panics for constraint violations)
 - Zero runtime overhead after finalization (sorting happens once at init)
 
+**Event Handler Registration** - Standardized signature `fn(event: sokol.app.Event, world: *World) !void`:
+```zig
+fn handleEvent(event: sokol.app.Event, world: anytype) !void {
+    // Process Sokol event (mouse, keyboard, window)
+    // World parameter allows event handlers to mutate game state
+}
+
+pub const systems = .{
+    .event_handlers = &.{handleEvent},
+};
+```
+
+Application wraps each handler with compile-time generated wrapper that converts `[*c]const sokol.app.Event` to `sokol.app.Event` and passes World pointer.
+
 ## Plugin Structure
 
 ```zig
-// Minimal plugin
-pub const Components = .{ MyComponent };
-pub const Resources = .{ MyResource };
-pub const Events = .{ MyEvent };
+// Complete plugin example with all features
+const zenithor = @import("zenithor");
+const Stage = zenithor.Stage;
+const SystemConfig = zenithor.SystemConfig;
 
-pub fn build(world: anytype, registry: SystemRegistry) !void {
-    try world.setResource(MyResource, .{});
-    registry.registerSystem(mySystem, .update);
+pub const MyComponent = struct { value: f32 };
+pub const MyResource = struct { state: u32 };
+pub const MyEvent = struct { entity_id: u32 };
+
+pub const Components = .{MyComponent};
+pub const Resources = .{MyResource};
+pub const Events = .{MyEvent};
+
+// Optional: Declare plugin dependencies
+pub const Requires = .{SomeOtherPlugin};
+
+// Optional: Initialize resources
+pub fn initResources(world: anytype) !void {
+    try world.setResource(MyResource, .{ .state = 0 });
+    try world.createGroup(MyGroup);
 }
+
+// Declarative system registration
+pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
+    .main = &.{
+        .{ .system = update, .stage = .update },
+        .{ .system = render, .stage = .render, .config = .{ 
+            .priority = 10, 
+            .tags = &.{"rendering"}, 
+            .after = &.{"physics"} 
+        } },
+    },
+    .terminate = &.{
+        .{ .system = cleanup, .stage = .first },
+    },
+    .event_handlers = &.{handleEvent},
+};
+
+fn init() !void { /* startup logic */ }
+fn update(res: zenithor.Resource(MyResource)) !void { /* frame logic */ }
+fn render() !void { /* rendering */ }
+fn cleanup() !void { /* shutdown */ }
+fn handleEvent(event: sokol.app.Event, world: anytype) !void { /* event processing */ }
 ```
 
-**build() parameter injection** (any order, all optional):
-- `allocator: std.mem.Allocator`
-- `world: anytype` (for resource init, group creation)
-- `registry: SystemRegistry` (for system registration)
+**System descriptor fields**:
+- `system` (required) - System function reference
+- `stage` (required) - Stage enum value (`.first`, `.update`, `.render`, etc.)
+- `config` (optional) - Anonymous struct with any subset of SystemConfig fields
+
+**Plugin declaration tuples** (all required, can be empty):
+- `pub const Components = .{...}` - Component types
+- `pub const Resources = .{...}` - Resource types  
+- `pub const Events = .{...}` - Event types
+
+**Plugin hooks** (all optional):
+- `pub const Requires = .{...}` - Plugin dependencies (auto-included)
+- `pub fn initResources(world: anytype) !void` - Resource initialization
+- `pub const systems = .{...}` - System declarations
 
 ## Sokol Initialization
 
@@ -206,20 +286,22 @@ pub fn build(world: anytype, registry: SystemRegistry) !void {
 
 ## Memory Management
 
-- Arena allocator for entire application lifetime
+- Single arena allocator per AppState (initialized in `AppState.init()`)
 - Uses `std.heap.c_allocator` on WASM/Emscripten
-- Uses `std.heap.page_allocator` on native platforms
-- Memory freed on application exit
+- Uses configurable base allocator on native platforms (default: `std.heap.page_allocator`)
+- Memory freed on application exit via `AppState.deinit()`
+- **IMPORTANT**: Never nest arena allocators - pass base allocator to `AppState.init()`, which creates its own arena internally
 
 ## Debug vs Release Builds
 
 The engine uses `builtin.mode == .Debug` to gate defensive checks that help catch bugs during development but are removed in release builds for performance.
 
 **Debug-only validations** (skipped in release builds):
-- **System registration overflow** (system.zig:26) - Panics if a stage exceeds `max_systems_per_stage` (1024)
-- **Event handler overflow** (application.zig:173) - Panics if event handlers exceed `max_event_handlers` (32)
+- **System registration overflow** (system.zig) - Panics if a stage exceeds `max_systems_per_stage` (1024)
+- **Event handler overflow** (application.zig) - Panics if event handlers exceed `max_event_handlers` (32)
 - **Graphics validation** (graphics plugin) - Panics if Circle.segments is 0 (division by zero)
 - **Serialization assertions** (serialization plugin) - Asserts null-termination of save file paths
+- **Plugin initResources failures** (application.zig) - Prints initialization errors to debug output
 
 In release builds, these checks are omitted. Code continues execution without panicking, which may lead to undefined behavior if constraints are violated.
 

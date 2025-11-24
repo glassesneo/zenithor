@@ -1,5 +1,5 @@
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const Transform = BuiltinPlugin.Transform;
 const Color = BuiltinPlugin.Color;
@@ -8,18 +8,22 @@ const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, TimePlugin, ImGuiPlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, TimePlugin, ImGuiPlugin, Game }, .{});
 }
 
 const Game = struct {
     pub const Components = .{};
     pub const Events = .{};
 
-    pub fn build(registry: SystemRegistry) !void {
-        registry.registerStartupSystem(setup, .first);
-        registry.registerSystem(animate, .update);
-        registry.registerSystem(infoWindow, .render);
-    }
+    pub const systems = .{
+        .startup = &.{
+            .{ .system = setup, .stage = .first },
+        },
+        .main = &.{
+            .{ .system = animate, .stage = .update },
+            .{ .system = infoWindow, .stage = .render },
+        },
+    };
 };
 
 var animation_time: f32 = 0.0;
@@ -214,4 +218,3 @@ fn infoWindow() !void {
 }
 
 const std = @import("std");
-

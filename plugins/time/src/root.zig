@@ -3,7 +3,7 @@ const sokol = @import("sokol");
 const sparze = @import("sparze");
 
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 
 /// Time resource containing all time-related state
 pub const Time = struct {
@@ -65,9 +65,14 @@ fn update(time: sparze.ResourceMut(Time)) !void {
     }
 }
 
-pub fn build(world: anytype, registry: SystemRegistry) !void {
-    // Initialize Time resource with default values
-    try world.setResource(Time, .{});
+// Declarative system registration
+pub const systems = .{
+    .main = &.{
+        .{ .system = update, .stage = .first },
+    },
+};
 
-    registry.registerSystem(update, .first);
+// Resource initialization
+pub fn initResources(world: anytype) !void {
+    try world.setResource(Time, .{});
 }

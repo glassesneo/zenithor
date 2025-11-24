@@ -50,7 +50,7 @@ pub fn main() !void {
         TimePlugin,
         SerializationPlugin, 
         YourGamePlugin 
-    });
+    }, .{});
 }
 ```
 
@@ -407,7 +407,7 @@ fn handleSaveError(err: anyerror, save_file: zenithor.Resource(SerializationPlug
 ## Next Steps
 
 1. **Run the demo** - `zig build run-demo_serialization` (native) or `zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem` (web)
-2. **Integrate into your game** - Add SerializationPlugin to `zenithor.run()`
+2. **Integrate into your game** - Add SerializationPlugin to `zenithor.run(plugins, .{})`
 3. **Implement save/load systems** - Add input handlers and UI
 4. **Custom serializers** - Implement for complex, non-POD component types
 5. **Auto-save system** - Add periodic saves to timer-based system

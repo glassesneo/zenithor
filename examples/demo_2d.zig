@@ -1,10 +1,10 @@
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, Game }, .{});
 }
 
 fn setup(commands: anytype) !void {
@@ -24,8 +24,12 @@ const Game = struct {
     pub const Components = .{};
     pub const Events = .{};
 
-    pub fn build(registry: SystemRegistry) !void {
-        registry.registerStartupSystem(setup, .first);
-        registry.registerSystem(changeColor, .render);
-    }
+    pub const systems = .{
+        .startup = &.{
+            .{ .system = setup, .stage = .first },
+        },
+        .main = &.{
+            .{ .system = changeColor, .stage = .render },
+        },
+    };
 };

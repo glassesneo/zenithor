@@ -3,7 +3,7 @@ pub const run = application_module.run;
 
 const system_module = @import("core/system.zig");
 pub const Stage = system_module.Stage;
-pub const SystemRegistry = system_module.SystemRegistry;
+// SystemRegistry removed - use declarative system registration via pub const systems
 pub const SystemConfig = system_module.SystemConfig;
 
 // Core engine exports

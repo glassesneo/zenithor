@@ -9,7 +9,7 @@ const Query = sparze.Query;
 const Resource = sparze.Resource;
 const ResourceMut = sparze.ResourceMut;
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
 
@@ -89,7 +89,11 @@ pub fn loadGame(
     std.debug.print("✅ Load complete!\n", .{});
 }
 
-pub fn build(_: SystemRegistry, world: anytype) !void {
+// Declarative system registration (no systems, just resources)
+pub const systems = .{};
+
+// Resource initialization
+pub fn initResources(world: anytype) !void {
     // Initialize resources with defaults
     const save_filename = "savegame.spze";
     var save_path: SaveFile = .{};

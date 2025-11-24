@@ -16,6 +16,10 @@ pub const SystemConfig = struct {
     after: []const []const u8 = &.{},
 };
 
+// SystemDecl is defined inline in plugin declarations as anonymous structs
+// Example: .{ .system = myFn, .stage = .update, .config = .{ .priority = 10 } }
+// No explicit type needed - the compiler infers the structure
+
 // SystemMetadata stores information about a registered system
 pub const SystemMetadata = struct {
     system_fn: *const fn (*anyopaque) anyerror!void,
@@ -84,6 +88,31 @@ pub fn SystemScheduler(comptime World: type) type {
             count_ptr.* += 1;
         }
 
+        // registerDecl registers a system from a declarative system descriptor (anonymous struct)
+        // Expected format: .{ .system = fn, .stage = Stage, .config = SystemConfig or partial }
+        pub fn registerDecl(self: *Self, comptime decl: anytype, plugin_name: []const u8, plugin_index: u16) void {
+            const system_fn = decl.system;
+            const stage = decl.stage;
+
+            // Build complete SystemConfig from partial config if provided
+            const config: SystemConfig = if (@hasField(@TypeOf(decl), "config")) blk: {
+                const partial = decl.config;
+                var cfg = SystemConfig{};
+                if (@hasField(@TypeOf(partial), "priority")) cfg.priority = partial.priority;
+                if (@hasField(@TypeOf(partial), "tags")) cfg.tags = partial.tags;
+                if (@hasField(@TypeOf(partial), "before")) cfg.before = partial.before;
+                if (@hasField(@TypeOf(partial), "after")) cfg.after = partial.after;
+                break :blk cfg;
+            } else SystemConfig{};
+
+            const wrapper = struct {
+                fn run(world: *World) !void {
+                    try world.runSystem(system_fn);
+                }
+            }.run;
+            self.registerWithConfig(wrapper, stage, config, plugin_name, plugin_index);
+        }
+
         // Finalize system registration - sorts by priority and applies constraints
         pub fn finalize(self: *Self) void {
             // Sort each stage's systems
@@ -99,7 +128,6 @@ pub fn SystemScheduler(comptime World: type) type {
                 sortSystems(systems[0..count]);
             }
         }
-
 
         fn validateConstraints(systems: []SystemMetadata, stage_name: []const u8) void {
             _ = stage_name;
@@ -359,65 +387,14 @@ const SequenceResource = struct {
 
 const TestComponents = struct {};
 const TestResources = struct {
-    Counter: CounterResource,
-    Sequence: SequenceResource,
+    CounterResource,
+    SequenceResource,
 };
 const TestEvents = struct {
-    GameLoopError: BuiltinPlugin.GameLoopError,
-    EventLoopError: BuiltinPlugin.EventLoopError,
+    BuiltinPlugin.GameLoopError,
+    BuiltinPlugin.EventLoopError,
 };
 const TestWorld = sparze.World(TestComponents, TestResources, TestEvents);
-
-// SystemRegistry provides a unified interface for registering systems
-pub const SystemRegistry = struct {
-    _register_system_func: *const fn (comptime anytype, Stage, []const u8, u16) void,
-    _register_system_with_config_func: *const fn (comptime anytype, Stage, SystemConfig, []const u8, u16) void,
-    _register_startup_system_func: *const fn (comptime anytype, Stage, []const u8, u16) void,
-    _register_terminate_system_func: *const fn (comptime anytype, Stage, []const u8, u16) void,
-    _register_event_handler_func: *const fn (comptime anytype) void,
-    plugin_name: []const u8,
-    plugin_index: u16,
-
-    pub inline fn init(
-        register_system_func: *const fn (comptime anytype, Stage, []const u8, u16) void,
-        register_system_with_config_func: *const fn (comptime anytype, Stage, SystemConfig, []const u8, u16) void,
-        register_startup_system_func: *const fn (comptime anytype, Stage, []const u8, u16) void,
-        register_terminate_system_func: *const fn (comptime anytype, Stage, []const u8, u16) void,
-        register_event_handler_func: *const fn (comptime anytype) void,
-        plugin_name: []const u8,
-        plugin_index: u16,
-    ) SystemRegistry {
-        return .{
-            ._register_system_func = register_system_func,
-            ._register_system_with_config_func = register_system_with_config_func,
-            ._register_startup_system_func = register_startup_system_func,
-            ._register_terminate_system_func = register_terminate_system_func,
-            ._register_event_handler_func = register_event_handler_func,
-            .plugin_name = plugin_name,
-            .plugin_index = plugin_index,
-        };
-    }
-
-    pub inline fn registerSystem(self: SystemRegistry, comptime system_fn: anytype, stage: Stage) void {
-        self._register_system_func(system_fn, stage, self.plugin_name, self.plugin_index);
-    }
-
-    pub inline fn registerSystemWithConfig(self: SystemRegistry, comptime system_fn: anytype, stage: Stage, config: SystemConfig) void {
-        self._register_system_with_config_func(system_fn, stage, config, self.plugin_name, self.plugin_index);
-    }
-
-    pub inline fn registerStartupSystem(self: SystemRegistry, comptime system_fn: anytype, stage: Stage) void {
-        self._register_startup_system_func(system_fn, stage, self.plugin_name, self.plugin_index);
-    }
-
-    pub inline fn registerTerminateSystem(self: SystemRegistry, comptime system_fn: anytype, stage: Stage) void {
-        self._register_terminate_system_func(system_fn, stage, self.plugin_name, self.plugin_index);
-    }
-
-    pub inline fn registerEventHandler(self: SystemRegistry, comptime handler_fn: anytype) void {
-        self._register_event_handler_func(handler_fn);
-    }
-};
 
 const testing = std.testing;
 
@@ -478,70 +455,6 @@ test "SystemScheduler: runs multiple systems in order" {
     const sequence = world.getResource(SequenceResource);
     try testing.expectEqual(@as(u32, 10), sequence.values[0]);
     try testing.expectEqual(@as(u32, 20), sequence.values[1]);
-}
-
-test "SystemRegistry: provides unified registration interface" {
-    const TestState = struct {
-        var system_called = false;
-        var startup_called = false;
-        var terminate_called = false;
-        var event_handler_called = false;
-
-        fn reset() void {
-            system_called = false;
-            startup_called = false;
-            terminate_called = false;
-            event_handler_called = false;
-        }
-    };
-
-    TestState.reset();
-
-    const registerSystem = struct {
-        fn func(comptime _: anytype, _: Stage, _: []const u8, _: u16) void {
-            TestState.system_called = true;
-        }
-    }.func;
-
-    const registerSystemWithConfig = struct {
-        fn func(comptime _: anytype, _: Stage, _: SystemConfig, _: []const u8, _: u16) void {
-            TestState.system_called = true;
-        }
-    }.func;
-
-    const registerStartup = struct {
-        fn func(comptime _: anytype, _: Stage, _: []const u8, _: u16) void {
-            TestState.startup_called = true;
-        }
-    }.func;
-
-    const registerTerminate = struct {
-        fn func(comptime _: anytype, _: Stage, _: []const u8, _: u16) void {
-            TestState.terminate_called = true;
-        }
-    }.func;
-
-    const registerEventHandler = struct {
-        fn func(comptime _: anytype) void {
-            TestState.event_handler_called = true;
-        }
-    }.func;
-
-    const registry = SystemRegistry.init(registerSystem, registerSystemWithConfig, registerStartup, registerTerminate, registerEventHandler, "TestPlugin", 0);
-
-    const dummySystem = struct {
-        fn run() !void {}
-    }.run;
-
-    registry.registerSystem(dummySystem, .update);
-    registry.registerStartupSystem(dummySystem, .first);
-    registry.registerTerminateSystem(dummySystem, .last);
-    registry.registerEventHandler(dummySystem);
-
-    try testing.expect(TestState.system_called);
-    try testing.expect(TestState.startup_called);
-    try testing.expect(TestState.terminate_called);
-    try testing.expect(TestState.event_handler_called);
 }
 
 test "SystemScheduler: catches and enqueues system errors" {
@@ -945,4 +858,108 @@ test "SystemScheduler: stable sort preserves registration order for equal priori
     try testing.expectEqual(@as(u32, 1), sequence.values[0]);
     try testing.expectEqual(@as(u32, 2), sequence.values[1]);
     try testing.expectEqual(@as(u32, 3), sequence.values[2]);
+}
+
+test "SystemScheduler: registerDecl with anonymous struct descriptors" {
+    const Scheduler = SystemScheduler(TestWorld);
+    var scheduler = Scheduler.init();
+
+    // System functions using Sparze parameter injection (not direct world access)
+    const system1 = struct {
+        fn run(seq: sparze.ResourceMut(SequenceResource)) !void {
+            seq.value.values[seq.value.index] = 1;
+            seq.value.index += 1;
+        }
+    }.run;
+
+    const system2 = struct {
+        fn run(seq: sparze.ResourceMut(SequenceResource)) !void {
+            seq.value.values[seq.value.index] = 2;
+            seq.value.index += 1;
+        }
+    }.run;
+
+    const system3 = struct {
+        fn run(seq: sparze.ResourceMut(SequenceResource)) !void {
+            seq.value.values[seq.value.index] = 3;
+            seq.value.index += 1;
+        }
+    }.run;
+
+    // Register using anonymous struct descriptors (like pub const systems declarations)
+    scheduler.registerDecl(.{ .system = system1, .stage = .update }, "TestPlugin", 0);
+    scheduler.registerDecl(.{ .system = system2, .stage = .update, .config = .{ .priority = 10 } }, "TestPlugin", 0);
+    scheduler.registerDecl(.{ .system = system3, .stage = .update, .config = .{ .tags = &.{"tagged"}, .priority = -10 } }, "TestPlugin", 0);
+
+    scheduler.finalize();
+
+    var world = TestWorld.init(testing.allocator);
+    defer world.deinit();
+
+    try world.setResource(SequenceResource, .{});
+    scheduler.run(&world);
+
+    const sequence = world.getResource(SequenceResource);
+    // Should run in priority order: system3 (priority -10), system1 (priority 0), system2 (priority 10)
+    try testing.expectEqual(@as(u32, 3), sequence.values[0]);
+    try testing.expectEqual(@as(u32, 1), sequence.values[1]);
+    try testing.expectEqual(@as(u32, 2), sequence.values[2]);
+}
+
+test "SystemScheduler: registerDecl with partial config builds complete SystemConfig" {
+    const Scheduler = SystemScheduler(TestWorld);
+    var scheduler = Scheduler.init();
+
+    const taggedSystem = struct {
+        fn run(counter: sparze.ResourceMut(CounterResource)) !void {
+            counter.value.value += 1;
+        }
+    }.run;
+
+    const constrainedSystem = struct {
+        fn run(counter: sparze.ResourceMut(CounterResource)) !void {
+            counter.value.value += 10;
+        }
+    }.run;
+
+    // Register with only tags (no priority specified)
+    scheduler.registerDecl(.{ .system = taggedSystem, .stage = .update, .config = .{ .tags = &.{"first"} } }, "TestPlugin", 0);
+
+    // Register with after constraint (depends on "first" tag)
+    scheduler.registerDecl(.{ .system = constrainedSystem, .stage = .update, .config = .{ .after = &.{"first"} } }, "TestPlugin", 0);
+
+    scheduler.finalize();
+
+    var world = TestWorld.init(testing.allocator);
+    defer world.deinit();
+
+    try world.setResource(CounterResource, .{});
+    scheduler.run(&world);
+
+    // Constrained system should run after tagged system: 1 + 10 = 11
+    try testing.expectEqual(@as(u32, 11), world.getResource(CounterResource).value);
+}
+
+test "SystemScheduler: registerDecl wraps system for runSystem parameter injection" {
+    const Scheduler = SystemScheduler(TestWorld);
+    var scheduler = Scheduler.init();
+
+    // System that uses Sparze parameter injection pattern
+    const resourceSystem = struct {
+        fn run(counter: sparze.ResourceMut(CounterResource)) !void {
+            counter.value.value += 42;
+        }
+    }.run;
+
+    scheduler.registerDecl(.{ .system = resourceSystem, .stage = .update }, "TestPlugin", 0);
+    scheduler.finalize();
+
+    var world = TestWorld.init(testing.allocator);
+    defer world.deinit();
+
+    try world.setResource(CounterResource, .{});
+    scheduler.run(&world);
+
+    // Verify parameter injection worked
+    try testing.expectEqual(@as(u32, 42), world.getResource(CounterResource).value);
 }

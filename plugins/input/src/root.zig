@@ -3,7 +3,7 @@ const sparze = @import("sparze");
 const sokol = @import("sokol");
 
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 
 /// Mouse input resource containing mouse position, deltas, scroll, and button states
 pub const Mouse = struct {
@@ -218,18 +218,19 @@ fn updateFrameCounts(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.Resource
     }
 }
 
-pub fn build(world: anytype, registry: SystemRegistry) !void {
-    // Initialize resources with default values
+// Declarative system registration
+pub const systems = .{
+    .main = &.{
+        .{ .system = updateFrameCounts, .stage = .last }, // Increment after systems check
+        .{ .system = resetPerFrameState, .stage = .last },
+    },
+    .event_handlers = &.{handleEvent},
+};
+
+// Resource initialization
+pub fn initResources(world: anytype) !void {
     try world.setResource(Mouse, .{});
-
     try world.setResource(Keyboard, .{});
-
-    // Register event handler for direct Sokol input (with World access)
-    registry.registerEventHandler(handleEvent);
-
-    // Register systems at frame end
-    registry.registerSystem(updateFrameCounts, .last); // Increment after systems check
-    registry.registerSystem(resetPerFrameState, .last);
 }
 
 // Tests

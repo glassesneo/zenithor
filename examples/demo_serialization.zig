@@ -1,6 +1,6 @@
 const std = @import("std");
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
@@ -9,7 +9,7 @@ const TimePlugin = @import("time_plugin");
 const SerializationPlugin = @import("serialization_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, TimePlugin, SerializationPlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, TimePlugin, SerializationPlugin, Game }, .{});
 }
 
 // ===== Component Definitions =====
@@ -58,8 +58,23 @@ const Game = struct {
     pub const Events = .{};
     pub const Groups = .{};
 
-    pub fn build(world: anytype, registry: SystemRegistry) !void {
-        // Initialize game state
+    pub const systems = .{
+        .startup = &.{
+            .{ .system = setup, .stage = .first },
+        },
+        .main = &.{
+            .{ .system = updateTimer, .stage = .first },
+            .{ .system = handleInput, .stage = .update },
+            .{ .system = spawnCollectibles, .stage = .update },
+            .{ .system = moveEntities, .stage = .update },
+            .{ .system = checkCollisions, .stage = .update },
+            .{ .system = updateLifetimes, .stage = .update },
+            .{ .system = nextLevel, .stage = .update },
+            .{ .system = displayGameUI, .stage = .render },
+        },
+    };
+
+    pub fn initResources(world: anytype) !void {
         try world.setResource(GameStatus, .{
             .state = .Playing,
             .level = 1,
@@ -73,17 +88,6 @@ const Game = struct {
             .point_multiplier = 1.0,
             .difficulty_scale = 1.0,
         });
-
-        // Register game systems
-        registry.registerStartupSystem(setup, .first);
-        registry.registerSystem(updateTimer, .first);
-        registry.registerSystem(handleInput, .update);
-        registry.registerSystem(spawnCollectibles, .update);
-        registry.registerSystem(moveEntities, .update);
-        registry.registerSystem(checkCollisions, .update);
-        registry.registerSystem(updateLifetimes, .update);
-        registry.registerSystem(nextLevel, .update);
-        registry.registerSystem(displayGameUI, .render);
     }
 };
 
@@ -347,4 +351,3 @@ fn displayGameUI(
     }
     ImGuiPlugin.end();
 }
-

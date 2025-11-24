@@ -77,11 +77,11 @@ const Time = @import("time_plugin");
 const Input = @import("input_plugin");
 
 pub fn main() void {
-    zenithor.run(.{ Graphics, Time, Input });
+    zenithor.run(.{ Graphics, Time, Input }, .{});
 }
 ```
 
-Entry point must call `zenithor.run()` with plugin tuple. BuiltinPlugin added automatically.
+Entry point must call `zenithor.run(plugins, .{})` with a plugin tuple and the options placeholder. BuiltinPlugin added automatically.
 
 ## Plugin Development
 
@@ -90,7 +90,8 @@ Entry point must call `zenithor.run()` with plugin tuple. BuiltinPlugin added au
 ```zig
 // plugins/my_plugin/src/root.zig
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
+const SystemConfig = zenithor.SystemConfig;
 const sparze = @import("sparze");
 
 pub const MyComponent = struct { value: f32 };
@@ -101,13 +102,44 @@ pub const Components = .{ MyComponent };
 pub const Resources = .{ MyResource };
 pub const Events = .{ MyEvent };
 
-pub fn build(world: anytype, registry: SystemRegistry) !void {
+// Declarative system registration
+pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
+    .main = &.{
+        .{ .system = mySystem, .stage = .update },
+        .{ .system = advancedSystem, .stage = .update, .config = .{ .priority = -10, .tags = &.{"my-tag"} } },
+    },
+    .terminate = &.{
+        .{ .system = cleanup, .stage = .last },
+    },
+    .event_handlers = &.{handleEvent},
+};
+
+// Optional: Resource initialization
+pub fn initResources(world: anytype) !void {
     try world.setResource(MyResource, .{ .state = 0 });
-    registry.registerSystem(mySystem, .update);
 }
 
-fn mySystem(res: sparze.Resource(MyResource)) !void {
+fn init() !void {
+    // Startup logic
+}
+
+fn mySystem(res: sparze.ResourceMut(MyResource)) !void {
     res.value.state += 1;
+}
+
+fn advancedSystem(res: sparze.Resource(MyResource)) !void {
+    // System with priority and tags
+}
+
+fn cleanup() !void {
+    // Cleanup logic
+}
+
+fn handleEvent(event: sokol.app.Event, world: anytype) !void {
+    // Event handler - must take (event, world) signature
 }
 ```
 
