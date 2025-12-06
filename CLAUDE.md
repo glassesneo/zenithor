@@ -41,7 +41,7 @@ zenithor/
 │   └── core/              # Engine core (see src/core/CLAUDE.md)
 │       ├── application.zig    # Main loop, plugin system, Sokol init
 │       ├── builtin.zig        # Transform, Color (always included)
-│       └── system.zig         # SystemScheduler, SystemRegistry
+│       └── system.zig         # SystemScheduler
 ├── plugins/               # Standard plugins (see plugin CLAUDE.md files)
 │   ├── graphics/          # 2D shapes (Point, Line, Triangle, Rectangle, Circle)
 │   ├── time/              # Delta time, FPS tracking
@@ -161,7 +161,6 @@ pub const Requires = .{ TimePlugin, InputPlugin, GraphicsPlugin };
 ### build() Parameters (any order, all optional)
 - `allocator: std.mem.Allocator`
 - `world: anytype` - For `setResource()`, `createGroup()`
-- `registry: SystemRegistry` - For system registration
 
 ### System Stages (execution order)
 1. `first` - Early setup
@@ -177,47 +176,15 @@ Systems within a stage are executed in a deterministic order based on:
 2. **Priority** (optional) - Lower priority values run first (default: 0)
 3. **Before/After constraints** (optional) - Explicit ordering via tags
 
-**Basic registration** (implicit plugin-based ordering):
-```zig
-registry.registerSystem(mySystem, .update);
-```
-
-**Advanced registration** with priority and constraints:
-```zig
-const SystemConfig = zenithor.SystemConfig;
-
-// High priority system (runs later)
-registry.registerSystemWithConfig(lateSystem, .update, .{
-    .priority = 100,
-});
-
-// Tagged system with constraints
-registry.registerSystemWithConfig(renderSystem, .render, .{
-    .tags = &.{"rendering"},
-    .after = &.{"physics"},  // Run after any system tagged "physics"
-});
-
-// Low priority system that others depend on
-registry.registerSystemWithConfig(physicsSystem, .update, .{
-    .priority = -50,
-    .tags = &.{"physics"},
-});
-```
-
-**Priority semantics:**
-- Default priority: `0`
-- Lower values run first: `-100` runs before `0` runs before `100`
-- Priority is **global** and can override plugin dependency ordering
-- Constraints (before/after) take precedence over priority
-
-**Constraint semantics:**
-- `.after = &.{"tag"}` - Run after all systems tagged with "tag"
-- `.before = &.{"tag"}` - Run before all systems tagged with "tag"
-- Tags are stage-scoped (cannot reference tags in different stages)
-- Circular constraints cause compile-time error (validated in Debug and ReleaseSafe builds)
+**System configuration semantics (declarative `systems` blocks):**
+- `.priority` (default `0`): lower values run first within a stage
+- `.tags`: tag this system for constraint references
+- `.after = &.{"tag"}`: run after all systems tagged with `tag`
+- `.before = &.{"tag"}`: run before all systems tagged with `tag`
+- Constraints are stage-scoped; circular constraints cause compile-time errors (Debug/ReleaseSafe)
 
 **Ordering resolution:**
-1. Systems sorted by priority within each stage (stable sort preserves registration order for equal priorities)
+1. Systems sorted by priority within each stage (stable sort preserves declaration order for equal priorities)
 2. Constraints applied via topological sort while preserving priority order
 3. Plugin dependency ordering is implicit (dependencies registered first)
 
