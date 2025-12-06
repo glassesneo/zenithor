@@ -424,7 +424,7 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
             .icon = .{ .sokol_default = true },
             .window_title = "window",
             .logger = .{ .func = sokol.log.func },
-            .win32_console_attach = true,
+            .win32 = .{ .console_attach = true },
         };
 
         sokol.app.run(desc);
