@@ -76,7 +76,10 @@ pub const Resources = .{
 
 pub const Events = .{};
 
-fn init(pass_action_resource: ResourceMut(PassAction)) !void {
+fn init(commands: anytype, pass_action_resource: ResourceMut(PassAction)) !void {
+    // Initialize resource
+    commands.setResource(sokol.gfx.PassAction, .{});
+
     var pass_action = pass_action_resource.value;
     pass_action.colors[0] = .{
         .load_action = .CLEAR,
@@ -231,8 +234,3 @@ pub const systems = .{
         .{ .system = endPass, .stage = .post_render },
     },
 };
-
-// Resource initialization
-pub fn initResources(world: anytype) !void {
-    try world.setResource(sokol.gfx.PassAction, .{});
-}

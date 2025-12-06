@@ -41,7 +41,14 @@ pub const Components = .{};
 pub const Resources = .{ExecutionLog};
 pub const Events = .{};
 
+fn init(commands: anytype) !void {
+    commands.setResource(ExecutionLog, .{});
+}
+
 pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
     .main = &.{
         .{ .system = clearLogSystem, .stage = .first },
         .{ .system = defaultSystem1, .stage = .update },
@@ -54,10 +61,6 @@ pub const systems = .{
         .{ .system = printLogSystem, .stage = .post_update, .config = .{ .priority = 1000 } },
     },
 };
-
-pub fn initResources(world: anytype) !void {
-    try world.setResource(ExecutionLog, .{});
-}
 
 fn defaultSystem1(log: ResourceMut(ExecutionLog)) !void {
     log.value.log("Default System 1 (priority: 0)");

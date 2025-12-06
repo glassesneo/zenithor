@@ -65,14 +65,16 @@ fn update(time: sparze.ResourceMut(Time)) !void {
     }
 }
 
+fn init(commands: anytype) !void {
+    commands.setResource(Time, .{});
+}
+
 // Declarative system registration
 pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
     .main = &.{
         .{ .system = update, .stage = .first },
     },
 };
-
-// Resource initialization
-pub fn initResources(world: anytype) !void {
-    try world.setResource(Time, .{});
-}

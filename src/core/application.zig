@@ -335,54 +335,6 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
                         }
                     }
                 }
-
-                // Call optional initResources hook for resource initialization
-                if (@hasDecl(Plugin, "initResources")) {
-                    const init_fn_info = @typeInfo(@TypeOf(Plugin.initResources)).@"fn";
-
-                    // Create wrapper to inject world parameter
-                    const wrapper = struct {
-                        fn call(w: *World) void {
-                            const ArgsType = comptime blk: {
-                                var fields: [init_fn_info.params.len]std.builtin.Type.StructField = undefined;
-                                for (init_fn_info.params, 0..) |param, i| {
-                                    const ArgType = param.type orelse *World;
-                                    fields[i] = std.builtin.Type.StructField{
-                                        .name = std.fmt.comptimePrint("{d}", .{i}),
-                                        .type = ArgType,
-                                        .is_comptime = false,
-                                        .alignment = @alignOf(ArgType),
-                                        .default_value_ptr = null,
-                                    };
-                                }
-                                break :blk @Type(.{ .@"struct" = .{
-                                    .layout = .auto,
-                                    .is_tuple = true,
-                                    .decls = &.{},
-                                    .fields = &fields,
-                                } });
-                            };
-
-                            var args: ArgsType = undefined;
-                            inline for (init_fn_info.params, 0..) |param, i| {
-                                const ParamType = param.type orelse *World;
-                                if (ParamType == *World) {
-                                    args[i] = w;
-                                }
-                            }
-
-                            if (init_fn_info.return_type.? == void) {
-                                @call(.auto, Plugin.initResources, args);
-                            } else {
-                                @call(.auto, Plugin.initResources, args) catch |err| if (is_debug) {
-                                    std.debug.print("Initializing resources for {s} failed: {any}\n", .{ @typeName(Plugin), err });
-                                };
-                            }
-                        }
-                    }.call;
-
-                    wrapper(&app_state.world);
-                }
             }
 
             // Finalize system registration - sort by priority and apply constraints

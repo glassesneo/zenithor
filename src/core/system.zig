@@ -414,7 +414,7 @@ test "SystemScheduler: registers and runs systems" {
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(CounterResource, .{});
+    world.setResource(CounterResource, .{});
     scheduler.run(&world);
 
     try testing.expectEqual(@as(u32, 1), world.getResource(CounterResource).value);
@@ -446,7 +446,7 @@ test "SystemScheduler: runs multiple systems in order" {
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(
+    world.setResource(
         SequenceResource,
         SequenceResource{ .values = .{ 0, 0, 0 }, .index = 0 },
     );
@@ -511,7 +511,7 @@ test "SystemScheduler: multiple failing systems accumulate errors" {
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(CounterResource, .{});
+    world.setResource(CounterResource, .{});
 
     // Run scheduler - should not throw despite errors
     scheduler.run(&world);
@@ -559,7 +559,7 @@ test "SystemScheduler: continues execution after system failure" {
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(
+    world.setResource(
         SequenceResource,
         SequenceResource{ .values = .{ 0, 0, 0 }, .index = 0 },
     );
@@ -632,7 +632,7 @@ test "SystemScheduler: stores priority and tags from SystemConfig" {
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(CounterResource, .{});
+    world.setResource(CounterResource, .{});
     scheduler.run(&world);
 
     // Both systems should have run
@@ -680,7 +680,7 @@ test "SystemScheduler: sorts systems by priority after finalize" {
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(SequenceResource, .{});
+    world.setResource(SequenceResource, .{});
     scheduler.run(&world);
 
     const sequence = world.getResource(SequenceResource);
@@ -738,7 +738,7 @@ test "SystemScheduler: applies before/after constraints" {
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(SequenceResource, .{});
+    world.setResource(SequenceResource, .{});
     scheduler.run(&world);
 
     const sequence = world.getResource(SequenceResource);
@@ -800,7 +800,7 @@ test "SystemScheduler: priority and constraints work together" {
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(SequenceResource, .{});
+    world.setResource(SequenceResource, .{});
     scheduler.run(&world);
 
     const sequence = world.getResource(SequenceResource);
@@ -850,7 +850,7 @@ test "SystemScheduler: stable sort preserves registration order for equal priori
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(SequenceResource, .{});
+    world.setResource(SequenceResource, .{});
     scheduler.run(&world);
 
     const sequence = world.getResource(SequenceResource);
@@ -896,7 +896,7 @@ test "SystemScheduler: registerDecl with anonymous struct descriptors" {
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(SequenceResource, .{});
+    world.setResource(SequenceResource, .{});
     scheduler.run(&world);
 
     const sequence = world.getResource(SequenceResource);
@@ -933,7 +933,7 @@ test "SystemScheduler: registerDecl with partial config builds complete SystemCo
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(CounterResource, .{});
+    world.setResource(CounterResource, .{});
     scheduler.run(&world);
 
     // Constrained system should run after tagged system: 1 + 10 = 11
@@ -957,7 +957,7 @@ test "SystemScheduler: registerDecl wraps system for runSystem parameter injecti
     var world = TestWorld.init(testing.allocator);
     defer world.deinit();
 
-    try world.setResource(CounterResource, .{});
+    world.setResource(CounterResource, .{});
     scheduler.run(&world);
 
     // Verify parameter injection worked

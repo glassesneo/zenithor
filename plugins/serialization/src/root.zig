@@ -89,11 +89,7 @@ pub fn loadGame(
     std.debug.print("✅ Load complete!\n", .{});
 }
 
-// Declarative system registration (no systems, just resources)
-pub const systems = .{};
-
-// Resource initialization
-pub fn initResources(world: anytype) !void {
+fn init(commands: anytype) !void {
     // Initialize resources with defaults
     const save_filename = "savegame.spze";
     var save_path: SaveFile = .{};
@@ -104,8 +100,15 @@ pub fn initResources(world: anytype) !void {
     }
     save_path.len = save_filename.len;
 
-    try world.setResource(SaveFile, save_path);
+    commands.setResource(SaveFile, save_path);
 
     std.debug.print("SerializationPlugin: Save/Load systems available\n", .{});
     std.debug.print("Default save path: {s}\n", .{save_path.getPath()});
 }
+
+// Declarative system registration
+pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
+};

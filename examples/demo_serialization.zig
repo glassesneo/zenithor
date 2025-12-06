@@ -73,22 +73,6 @@ const Game = struct {
             .{ .system = displayGameUI, .stage = .render },
         },
     };
-
-    pub fn initResources(world: anytype) !void {
-        try world.setResource(GameStatus, .{
-            .state = .Playing,
-            .level = 1,
-            .score = 0,
-            .lives = 3,
-            .timer = 60.0,
-        });
-
-        try world.setResource(GameSettings, .{
-            .spawn_rate = 1.0,
-            .point_multiplier = 1.0,
-            .difficulty_scale = 1.0,
-        });
-    }
 };
 
 // ===== Systems =====
@@ -97,6 +81,21 @@ fn setup(
     commands: anytype,
     pass_action_resource: zenithor.ResourceMut(GraphicsPlugin.PassAction),
 ) !void {
+    // Initialize resources
+    commands.setResource(GameStatus, .{
+        .state = .Playing,
+        .level = 1,
+        .score = 0,
+        .lives = 3,
+        .timer = 60.0,
+    });
+
+    commands.setResource(GameSettings, .{
+        .spawn_rate = 1.0,
+        .point_multiplier = 1.0,
+        .difficulty_scale = 1.0,
+    });
+
     var pass_action = pass_action_resource.value;
     pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
 

@@ -21,21 +21,24 @@ const ErrorDemoPlugin = struct {
         BuiltinPlugin.EventLoopError,
     };
 
+    fn init(commands: anytype) !void {
+        commands.setResource(ErrorLog, ErrorLog.init());
+        commands.setResource(ErrorConfig, ErrorConfig{
+            .trigger_system_error = false,
+            .error_count = 0,
+        });
+    }
+
     pub const systems = .{
+        .startup = &.{
+            .{ .system = init, .stage = .first },
+        },
         .main = &.{
             .{ .system = errorProneSystem, .stage = .update },
             .{ .system = errorMonitorSystem, .stage = .post_update },
             .{ .system = errorDisplaySystem, .stage = .render },
         },
     };
-
-    pub fn initResources(world: anytype) !void {
-        try world.setResource(ErrorLog, ErrorLog.init());
-        try world.setResource(ErrorConfig, ErrorConfig{
-            .trigger_system_error = false,
-            .error_count = 0,
-        });
-    }
 };
 
 /// Resource to store caught errors for display

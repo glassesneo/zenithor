@@ -16,7 +16,7 @@ Central engine components (application lifecycle, builtin types, system scheduli
 - Combines user plugins with BuiltinPlugin (Transform, Color)
 - Builds World from deduplicated Components/Resources/Events
 - Creates system schedulers (startup, main, terminate)
-- Introspects plugin declarations via `pub const systems` and `initResources()`
+- Introspects plugin declarations via `pub const systems`
 - Initializes Sokol modules (app, gfx, gl, time, imgui)
 - Runs main loop with frame timing
 
@@ -136,13 +136,6 @@ pub const systems = .{
 };
 ```
 
-**Optional initResources Hook** - Initialize resources without world parameter dance:
-```zig
-pub fn initResources(world: anytype) !void {
-    try world.setResource(MyResource, .{ .state = 0 });
-}
-```
-
 **SystemConfig** - Optional configuration for system ordering
 ```zig
 pub const SystemConfig = struct {
@@ -226,12 +219,6 @@ pub const Events = .{MyEvent};
 // Optional: Declare plugin dependencies
 pub const Requires = .{SomeOtherPlugin};
 
-// Optional: Initialize resources
-pub fn initResources(world: anytype) !void {
-    try world.setResource(MyResource, .{ .state = 0 });
-    try world.createGroup(MyGroup);
-}
-
 // Declarative system registration
 pub const systems = .{
     .startup = &.{
@@ -239,10 +226,10 @@ pub const systems = .{
     },
     .main = &.{
         .{ .system = update, .stage = .update },
-        .{ .system = render, .stage = .render, .config = .{ 
-            .priority = 10, 
-            .tags = &.{"rendering"}, 
-            .after = &.{"physics"} 
+        .{ .system = render, .stage = .render, .config = .{
+            .priority = 10,
+            .tags = &.{"rendering"},
+            .after = &.{"physics"}
         } },
     },
     .terminate = &.{
@@ -251,7 +238,10 @@ pub const systems = .{
     .event_handlers = &.{handleEvent},
 };
 
-fn init() !void { /* startup logic */ }
+fn init() !void {
+    //startup logic
+    commands.setResource(MyResource, .{ .state = 0 });
+}
 fn update(res: zenithor.Resource(MyResource)) !void { /* frame logic */ }
 fn render() !void { /* rendering */ }
 fn cleanup() !void { /* shutdown */ }
@@ -268,10 +258,9 @@ fn handleEvent(event: sokol.app.Event, world: anytype) !void { /* event processi
 - `pub const Resources = .{...}` - Resource types  
 - `pub const Events = .{...}` - Event types
 
-**Plugin hooks** (all optional):
+**Plugin declarations** (all optional except Components/Resources/Events):
 - `pub const Requires = .{...}` - Plugin dependencies (auto-included)
-- `pub fn initResources(world: anytype) !void` - Resource initialization
-- `pub const systems = .{...}` - System declarations
+- `pub const systems = .{...}` - System declarations (startup, main, terminate, event_handlers)
 
 ## Sokol Initialization
 
@@ -301,7 +290,6 @@ The engine uses `builtin.mode == .Debug` to gate defensive checks that help catc
 - **Event handler overflow** (application.zig) - Panics if event handlers exceed `max_event_handlers` (32)
 - **Graphics validation** (graphics plugin) - Panics if Circle.segments is 0 (division by zero)
 - **Serialization assertions** (serialization plugin) - Asserts null-termination of save file paths
-- **Plugin initResources failures** (application.zig) - Prints initialization errors to debug output
 
 In release builds, these checks are omitted. Code continues execution without panicking, which may lead to undefined behavior if constraints are violated.
 

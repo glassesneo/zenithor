@@ -218,20 +218,22 @@ fn updateFrameCounts(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.Resource
     }
 }
 
+fn init(commands: anytype) !void {
+    commands.setResource(Mouse, .{});
+    commands.setResource(Keyboard, .{});
+}
+
 // Declarative system registration
 pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
     .main = &.{
         .{ .system = updateFrameCounts, .stage = .last }, // Increment after systems check
         .{ .system = resetPerFrameState, .stage = .last },
     },
     .event_handlers = &.{handleEvent},
 };
-
-// Resource initialization
-pub fn initResources(world: anytype) !void {
-    try world.setResource(Mouse, .{});
-    try world.setResource(Keyboard, .{});
-}
 
 // Tests
 test "Mouse.isPressed returns true only on first frame" {

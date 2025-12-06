@@ -117,13 +117,9 @@ pub const systems = .{
     .event_handlers = &.{handleEvent},
 };
 
-// Optional: Resource initialization
-pub fn initResources(world: anytype) !void {
-    try world.setResource(MyResource, .{ .state = 0 });
-}
-
-fn init() !void {
+fn init(commands: anytype) !void {
     // Startup logic
+    commands.setResource(MyResource, .{ .state = 0 });
 }
 
 fn mySystem(res: sparze.ResourceMut(MyResource)) !void {

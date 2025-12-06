@@ -81,15 +81,14 @@ const Game = struct {
             .{ .system = displayUI, .stage = .render },
         },
     };
-
-    pub fn initResources(world: anytype) !void {
-        try world.setResource(GameStats, .{});
-    }
 };
 
 // ===== Systems =====
 
 fn setup(commands: anytype, pass_action: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
+    // Initialize resources
+    commands.setResource(GameStats, .{});
+
     // Set background
     var action = pass_action.value;
     action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
