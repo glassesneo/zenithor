@@ -4,7 +4,7 @@ const sparze = @import("sparze");
 
 const Resource = sparze.Resource;
 const ResourceMut = sparze.ResourceMut;
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const SystemConfig = zenithor.SystemConfig;
 
 // Resource to track system execution order
@@ -41,53 +41,26 @@ pub const Components = .{};
 pub const Resources = .{ExecutionLog};
 pub const Events = .{};
 
-pub fn build(world: anytype, registry: SystemRegistry) !void {
-    try world.setResource(ExecutionLog, .{});
-
-    // Clear log at the start of each frame
-    registry.registerSystem(clearLogSystem, .first);
-
-    // Register systems with different priorities and constraints
-    // These will demonstrate all three ordering mechanisms:
-
-    // 1. Default priority systems (will run in plugin dependency order)
-    registry.registerSystem(defaultSystem1, .update);
-    registry.registerSystem(defaultSystem2, .update);
-
-    // 2. Priority-based ordering
-    registry.registerSystemWithConfig(highPrioritySystem, .update, .{
-        .priority = 100, // Runs last (high priority = late)
-    });
-
-    registry.registerSystemWithConfig(lowPrioritySystem, .update, .{
-        .priority = -50, // Runs first (low priority = early)
-        .tags = &.{"early"},
-    });
-
-    // 3. Constraint-based ordering
-    registry.registerSystemWithConfig(physicsSystem, .update, .{
-        .priority = 10,
-        .tags = &.{"physics"},
-        .after = &.{"early"}, // Must run after "early" systems
-    });
-
-    registry.registerSystemWithConfig(renderingSystem, .update, .{
-        .priority = 20,
-        .tags = &.{"rendering"},
-        .after = &.{"physics"}, // Must run after physics
-    });
-
-    registry.registerSystemWithConfig(uiSystem, .update, .{
-        .tags = &.{"ui"},
-        .after = &.{"rendering"}, // Must run after rendering
-        .before = &.{}, // Optional: could specify systems that must run after this
-    });
-
-    // Print execution log system - runs at the end to display results
-    registry.registerSystemWithConfig(printLogSystem, .post_update, .{
-        .priority = 1000, // Ensure this runs last
-    });
+fn init(commands: anytype) !void {
+    commands.setResource(ExecutionLog, .{});
 }
+
+pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
+    .main = &.{
+        .{ .system = clearLogSystem, .stage = .first },
+        .{ .system = defaultSystem1, .stage = .update },
+        .{ .system = defaultSystem2, .stage = .update },
+        .{ .system = highPrioritySystem, .stage = .update, .config = .{ .priority = 100 } },
+        .{ .system = lowPrioritySystem, .stage = .update, .config = .{ .priority = -50, .tags = &.{"early"} } },
+        .{ .system = physicsSystem, .stage = .update, .config = .{ .priority = 10, .tags = &.{"physics"}, .after = &.{"early"} } },
+        .{ .system = renderingSystem, .stage = .update, .config = .{ .priority = 20, .tags = &.{"rendering"}, .after = &.{"physics"} } },
+        .{ .system = uiSystem, .stage = .update, .config = .{ .tags = &.{"ui"}, .after = &.{"rendering"}, .before = &.{} } },
+        .{ .system = printLogSystem, .stage = .post_update, .config = .{ .priority = 1000 } },
+    },
+};
 
 fn defaultSystem1(log: ResourceMut(ExecutionLog)) !void {
     log.value.log("Default System 1 (priority: 0)");
@@ -137,5 +110,5 @@ fn printLogSystem(log: Resource(ExecutionLog)) !void {
 }
 
 pub fn main() void {
-    zenithor.run(.{SystemOrderingPlugin});
+    zenithor.run(.{SystemOrderingPlugin}, .{});
 }

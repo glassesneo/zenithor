@@ -1,13 +1,13 @@
 const std = @import("std");
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const TimePlugin = @import("time_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, TimePlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, TimePlugin, Game }, .{});
 }
 
 fn setupPassAction(pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
@@ -30,12 +30,16 @@ const Game = struct {
     pub const Events = .{};
     pub const Groups = .{CoordinateGroup};
 
-    pub fn build(registry: SystemRegistry) !void {
-        registry.registerStartupSystem(setup, .first);
-        registry.registerSystem(movement, .update);
-        registry.registerSystem(displayTimeInfo, .render);
-        registry.registerSystem(timeControls, .render);
-    }
+    pub const systems = .{
+        .startup = &.{
+            .{ .system = setup, .stage = .first },
+        },
+        .main = &.{
+            .{ .system = movement, .stage = .update },
+            .{ .system = displayTimeInfo, .stage = .render },
+            .{ .system = timeControls, .stage = .render },
+        },
+    };
 };
 
 fn setup(commands: anytype) !void {
@@ -127,4 +131,3 @@ fn timeControls(time: zenithor.ResourceMut(TimePlugin.Time)) !void {
     }
     ImGuiPlugin.end();
 }
-

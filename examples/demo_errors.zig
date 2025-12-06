@@ -1,13 +1,13 @@
 const std = @import("std");
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const TimePlugin = @import("time_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, TimePlugin, ErrorDemoPlugin });
+    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, TimePlugin, ErrorDemoPlugin }, .{});
 }
 
 const ErrorDemoPlugin = struct {
@@ -21,19 +21,24 @@ const ErrorDemoPlugin = struct {
         BuiltinPlugin.EventLoopError,
     };
 
-    pub fn build(world: anytype, registry: SystemRegistry) !void {
-        // Initialize error tracking resources
-        try world.setResource(ErrorLog, ErrorLog.init());
-        try world.setResource(ErrorConfig, ErrorConfig{
+    fn init(commands: anytype) !void {
+        commands.setResource(ErrorLog, ErrorLog.init());
+        commands.setResource(ErrorConfig, ErrorConfig{
             .trigger_system_error = false,
             .error_count = 0,
         });
-
-        // Register systems
-        registry.registerSystem(errorProneSystem, .update);
-        registry.registerSystem(errorMonitorSystem, .post_update);
-        registry.registerSystem(errorDisplaySystem, .render);
     }
+
+    pub const systems = .{
+        .startup = &.{
+            .{ .system = init, .stage = .first },
+        },
+        .main = &.{
+            .{ .system = errorProneSystem, .stage = .update },
+            .{ .system = errorMonitorSystem, .stage = .post_update },
+            .{ .system = errorDisplaySystem, .stage = .render },
+        },
+    };
 };
 
 /// Resource to store caught errors for display

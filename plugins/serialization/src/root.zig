@@ -9,7 +9,7 @@ const Query = sparze.Query;
 const Resource = sparze.Resource;
 const ResourceMut = sparze.ResourceMut;
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
 
@@ -89,7 +89,7 @@ pub fn loadGame(
     std.debug.print("✅ Load complete!\n", .{});
 }
 
-pub fn build(_: SystemRegistry, world: anytype) !void {
+fn init(commands: anytype) !void {
     // Initialize resources with defaults
     const save_filename = "savegame.spze";
     var save_path: SaveFile = .{};
@@ -100,8 +100,15 @@ pub fn build(_: SystemRegistry, world: anytype) !void {
     }
     save_path.len = save_filename.len;
 
-    try world.setResource(SaveFile, save_path);
+    commands.setResource(SaveFile, save_path);
 
     std.debug.print("SerializationPlugin: Save/Load systems available\n", .{});
     std.debug.print("Default save path: {s}\n", .{save_path.getPath()});
 }
+
+// Declarative system registration
+pub const systems = .{
+    .startup = &.{
+        .{ .system = init, .stage = .first },
+    },
+};

@@ -1,6 +1,6 @@
 const std = @import("std");
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
@@ -9,7 +9,7 @@ const TimePlugin = @import("time_plugin");
 const SerializationPlugin = @import("serialization_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, TimePlugin, SerializationPlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, TimePlugin, SerializationPlugin, Game }, .{});
 }
 
 // ===== Component Definitions =====
@@ -58,33 +58,21 @@ const Game = struct {
     pub const Events = .{};
     pub const Groups = .{};
 
-    pub fn build(world: anytype, registry: SystemRegistry) !void {
-        // Initialize game state
-        try world.setResource(GameStatus, .{
-            .state = .Playing,
-            .level = 1,
-            .score = 0,
-            .lives = 3,
-            .timer = 60.0,
-        });
-
-        try world.setResource(GameSettings, .{
-            .spawn_rate = 1.0,
-            .point_multiplier = 1.0,
-            .difficulty_scale = 1.0,
-        });
-
-        // Register game systems
-        registry.registerStartupSystem(setup, .first);
-        registry.registerSystem(updateTimer, .first);
-        registry.registerSystem(handleInput, .update);
-        registry.registerSystem(spawnCollectibles, .update);
-        registry.registerSystem(moveEntities, .update);
-        registry.registerSystem(checkCollisions, .update);
-        registry.registerSystem(updateLifetimes, .update);
-        registry.registerSystem(nextLevel, .update);
-        registry.registerSystem(displayGameUI, .render);
-    }
+    pub const systems = .{
+        .startup = &.{
+            .{ .system = setup, .stage = .first },
+        },
+        .main = &.{
+            .{ .system = updateTimer, .stage = .first },
+            .{ .system = handleInput, .stage = .update },
+            .{ .system = spawnCollectibles, .stage = .update },
+            .{ .system = moveEntities, .stage = .update },
+            .{ .system = checkCollisions, .stage = .update },
+            .{ .system = updateLifetimes, .stage = .update },
+            .{ .system = nextLevel, .stage = .update },
+            .{ .system = displayGameUI, .stage = .render },
+        },
+    };
 };
 
 // ===== Systems =====
@@ -93,6 +81,21 @@ fn setup(
     commands: anytype,
     pass_action_resource: zenithor.ResourceMut(GraphicsPlugin.PassAction),
 ) !void {
+    // Initialize resources
+    commands.setResource(GameStatus, .{
+        .state = .Playing,
+        .level = 1,
+        .score = 0,
+        .lives = 3,
+        .timer = 60.0,
+    });
+
+    commands.setResource(GameSettings, .{
+        .spawn_rate = 1.0,
+        .point_multiplier = 1.0,
+        .difficulty_scale = 1.0,
+    });
+
     var pass_action = pass_action_resource.value;
     pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
 
@@ -347,4 +350,3 @@ fn displayGameUI(
     }
     ImGuiPlugin.end();
 }
-

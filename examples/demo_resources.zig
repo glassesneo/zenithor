@@ -1,13 +1,13 @@
 const std = @import("std");
 const zenithor = @import("zenithor");
-const SystemRegistry = zenithor.SystemRegistry;
+const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const GraphicsPlugin = @import("graphics_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const InputPlugin = @import("input_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game });
+    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game }, .{});
 }
 
 // ===== Resource Definitions =====
@@ -57,26 +57,29 @@ const Game = struct {
     pub const Events = .{};
     pub const Groups = .{MovementGroup};
 
-    pub fn build(world: anytype, registry: SystemRegistry) !void {
-        // Initialize resources with default values
-        try world.setResource(DeltaTime, .{ .dt = 0.016, .scale = 1.0 });
-        try world.setResource(Score, .{ .points = 0, .combo = 0, .high_score = 0 });
-        try world.setResource(GameConfig, .{ .spawn_rate = 2.0, .point_value = 10 });
-
-        // Register systems
-        registry.registerStartupSystem(setup, .first);
-        registry.registerSystem(updateDeltaTime, .first);
-        registry.registerSystem(spawnShapes, .update);
-        registry.registerSystem(movement, .update);
-        registry.registerSystem(updateLifetime, .update);
-        registry.registerSystem(handleClicks, .update);
-        registry.registerSystem(displayUI, .render);
-    }
+    pub const systems = .{
+        .startup = &.{
+            .{ .system = setup, .stage = .first },
+        },
+        .main = &.{
+            .{ .system = updateDeltaTime, .stage = .first },
+            .{ .system = spawnShapes, .stage = .update },
+            .{ .system = movement, .stage = .update },
+            .{ .system = updateLifetime, .stage = .update },
+            .{ .system = handleClicks, .stage = .update },
+            .{ .system = displayUI, .stage = .render },
+        },
+    };
 };
 
 // ===== Systems =====
 
-fn setup(pass_action_resource: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
+fn setup(commands: anytype, pass_action_resource: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
+    // Initialize resources
+    commands.setResource(DeltaTime, .{ .dt = 0.016, .scale = 1.0 });
+    commands.setResource(Score, .{ .points = 0, .combo = 0, .high_score = 0 });
+    commands.setResource(GameConfig, .{ .spawn_rate = 2.0, .point_value = 10 });
+
     var pass_action = pass_action_resource.value;
     // Set white background
     pass_action.colors[0].clear_value = .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
@@ -304,4 +307,3 @@ fn displayUI(
     }
     ImGuiPlugin.end();
 }
-
