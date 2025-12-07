@@ -173,6 +173,9 @@ pub const systems = .{
         .{ .system = setupFrame, .stage = .first },
         .{ .system = renderUi, .stage = .render_submit, .config = .{ .after = &.{"pass-begin"} } },
     },
+    .terminate = &.{
+        .{ .system = shutdown, .stage = .first },
+    },
     .event_handlers = &.{handleEvent},
 };
 
@@ -183,6 +186,10 @@ fn init() !void {
     if (imgui_docking) {
         ig.igGetIO().*.ConfigFlags |= ig.ImGuiConfigFlags_DockingEnable;
     }
+}
+
+fn shutdown() !void {
+    sokol.imgui.shutdown();
 }
 
 const std = @import("std");

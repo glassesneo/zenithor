@@ -3,27 +3,19 @@ const Build = std.Build;
 const sokol = @import("sokol");
 const cimgui = @import("cimgui");
 
-const standard_plugins_all = &.{
-    "graphics_plugin",
-    "time_plugin",
-    "imgui_plugin",
-    "input_plugin",
-    "serialization_plugin",
-};
-
 const examples = [_]Example{
-    .{ .name = "demo_window", .plugins = standard_plugins_all },
-    .{ .name = "demo_2d", .plugins = standard_plugins_all },
-    .{ .name = "demo_imgui", .plugins = standard_plugins_all },
-    .{ .name = "demo_input", .plugins = standard_plugins_all },
-    .{ .name = "demo_time", .plugins = standard_plugins_all },
-    .{ .name = "demo_zindex", .plugins = standard_plugins_all },
-    .{ .name = "demo_circle", .plugins = standard_plugins_all },
-    .{ .name = "demo_resources", .plugins = standard_plugins_all },
-    .{ .name = "demo_events", .plugins = standard_plugins_all },
-    .{ .name = "demo_serialization", .plugins = standard_plugins_all },
-    .{ .name = "demo_errors", .plugins = standard_plugins_all },
-    .{ .name = "demo_system_ordering", .plugins = standard_plugins_all },
+    .{ .name = "demo_window", .plugins = &.{} },
+    .{ .name = "demo_2d", .plugins = &.{"graphics_plugin"} },
+    .{ .name = "demo_imgui", .plugins = &.{ "graphics_plugin", "imgui_plugin" } },
+    .{ .name = "demo_input", .plugins = &.{ "graphics_plugin", "imgui_plugin", "input_plugin" } },
+    .{ .name = "demo_time", .plugins = &.{ "graphics_plugin", "imgui_plugin", "time_plugin" } },
+    .{ .name = "demo_zindex", .plugins = &.{ "graphics_plugin", "imgui_plugin", "time_plugin" } },
+    .{ .name = "demo_circle", .plugins = &.{ "graphics_plugin", "imgui_plugin", "time_plugin" } },
+    .{ .name = "demo_resources", .plugins = &.{ "graphics_plugin", "imgui_plugin", "input_plugin" } },
+    .{ .name = "demo_events", .plugins = &.{ "graphics_plugin", "imgui_plugin", "input_plugin", "time_plugin" } },
+    .{ .name = "demo_errors", .plugins = &.{ "graphics_plugin", "imgui_plugin", "time_plugin" } },
+    .{ .name = "demo_serialization", .plugins = &.{ "graphics_plugin", "imgui_plugin", "input_plugin", "time_plugin", "serialization_plugin" } },
+    .{ .name = "demo_system_ordering", .plugins = &.{} },
 };
 
 const Example = struct {
@@ -591,7 +583,7 @@ pub fn build(b: *Build) !void {
         .imgui_docking = setup.flags.imgui_docking,
         .filesystem = setup.flags.filesystem,
         .stack_size_mb = setup.flags.stack_size_mb,
-        .standard_plugins = standard_plugins_all,
+        .standard_plugins = &.{},
         .mod_zenithor = setup.lib_module,
     }, setup.deps);
 
@@ -600,3 +592,4 @@ pub fn build(b: *Build) !void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
 }
+

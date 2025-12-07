@@ -360,11 +360,6 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
             // 2. Time module - required by time-using plugins
             sokol.time.setup();
 
-            // 3. ImGui - depends on gfx/gl
-            sokol.imgui.setup(.{
-                .logger = .{ .func = sokol.log.func },
-            });
-
             app_state.world.beginFrame();
             app_state.startup_system_scheduler.run(&app_state.world);
             app_state.world.endFrame() catch unreachable;
@@ -385,7 +380,6 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
             app_state.deinit();
 
             // Shutdown sokol modules in reverse order of initialization
-            sokol.imgui.shutdown();
             // sokol.time does not require explicit shutdown
             sokol.gl.shutdown();
             sokol.gfx.shutdown();

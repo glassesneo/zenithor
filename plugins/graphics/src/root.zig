@@ -76,15 +76,14 @@ pub const Resources = .{
 
 pub const Events = .{};
 
-fn init(commands: anytype, pass_action_resource: ResourceMut(PassAction)) !void {
-    // Initialize resource
-    commands.setResource(sokol.gfx.PassAction, .{});
-
-    var pass_action = pass_action_resource.value;
+fn init(commands: anytype) !void {
+    // Initialize resource with default white background
+    var pass_action = sokol.gfx.PassAction{};
     pass_action.colors[0] = .{
         .load_action = .CLEAR,
         .clear_value = .{ .r = 1, .g = 1, .b = 1, .a = 0 },
     };
+    commands.setResource(sokol.gfx.PassAction, pass_action);
 }
 
 fn setDefaults() !void {
