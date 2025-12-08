@@ -185,6 +185,10 @@ pub const Light3D = struct {
 
 /// Internal state for 3D rendering
 pub const Render3DState = struct {
+    // Shaders for each type
+    shader_unlit: sokol.gfx.Shader = .{},
+    shader_blinn_phong: sokol.gfx.Shader = .{},
+    shader_pbr: sokol.gfx.Shader = .{},
     // Pipelines for each shader type
     pipeline_unlit: Pipeline = .{},
     pipeline_blinn_phong: Pipeline = .{},
@@ -412,27 +416,30 @@ fn init(commands: anytype) !void {
         .compare = .LESS_EQUAL,
     };
 
-    // Create pipeline for unlit shader
+    // Create shaders and pipelines for unlit shader
+    state.shader_unlit = sokol.gfx.makeShader(unlit_shader.unlitShaderDesc(sokol.gfx.queryBackend()));
     state.pipeline_unlit = sokol.gfx.makePipeline(.{
-        .shader = sokol.gfx.makeShader(unlit_shader.unlitShaderDesc(sokol.gfx.queryBackend())),
+        .shader = state.shader_unlit,
         .layout = layout,
         .index_type = .UINT16,
         .cull_mode = .BACK,
         .depth = depth_state,
     });
 
-    // Create pipeline for Blinn-Phong shader
+    // Create shaders and pipelines for Blinn-Phong shader
+    state.shader_blinn_phong = sokol.gfx.makeShader(blinn_phong_shader.blinnPhongShaderDesc(sokol.gfx.queryBackend()));
     state.pipeline_blinn_phong = sokol.gfx.makePipeline(.{
-        .shader = sokol.gfx.makeShader(blinn_phong_shader.blinnPhongShaderDesc(sokol.gfx.queryBackend())),
+        .shader = state.shader_blinn_phong,
         .layout = layout,
         .index_type = .UINT16,
         .cull_mode = .BACK,
         .depth = depth_state,
     });
 
-    // Create pipeline for PBR shader
+    // Create shaders and pipelines for PBR shader
+    state.shader_pbr = sokol.gfx.makeShader(pbr_shader.pbrShaderDesc(sokol.gfx.queryBackend()));
     state.pipeline_pbr = sokol.gfx.makePipeline(.{
-        .shader = sokol.gfx.makeShader(pbr_shader.pbrShaderDesc(sokol.gfx.queryBackend())),
+        .shader = state.shader_pbr,
         .layout = layout,
         .index_type = .UINT16,
         .cull_mode = .BACK,
@@ -619,7 +626,7 @@ fn draw3D(
     };
 
     // Draw command lists per shader type
-    const max_commands = 256;
+    const max_commands = 1024;
     var unlit_commands: [max_commands]DrawCommand = undefined;
     var unlit_count: usize = 0;
     var blinn_commands: [max_commands]DrawCommand = undefined;
@@ -664,9 +671,9 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity before building shape
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 1024 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 1024)
+        // Check buffer capacity before building shape (conservative 4KB margin for any tessellation)
+        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
+            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
         {
             if (is_debug) @panic("Vertex/index buffer overflow");
             break; // Skip remaining shapes in release mode
@@ -709,7 +716,7 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity
+        // Check buffer capacity (conservative 4KB margin for any tessellation)
         if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
             buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
         {
@@ -753,9 +760,9 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 2048 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 2048)
+        // Check buffer capacity (conservative 4KB margin for any tessellation)
+        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
+            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
         {
             if (is_debug) @panic("Vertex/index buffer overflow");
             break;
@@ -798,7 +805,7 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity
+        // Check buffer capacity (conservative 4KB margin for any tessellation)
         if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
             buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
         {
@@ -843,9 +850,9 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 1024 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 1024)
+        // Check buffer capacity (conservative 4KB margin for any tessellation)
+        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
+            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
         {
             if (is_debug) @panic("Vertex/index buffer overflow");
             break;
@@ -978,12 +985,16 @@ fn draw3D(
 
 fn cleanup(state: Resource(Render3DState)) !void {
     // Destroy GPU resources to prevent memory corruption on shutdown
+    // Note: Pipelines must be destroyed before shaders they reference
     const s = state.value;
     if (s.vertex_buffer.id != 0) sokol.gfx.destroyBuffer(s.vertex_buffer);
     if (s.index_buffer.id != 0) sokol.gfx.destroyBuffer(s.index_buffer);
     if (s.pipeline_unlit.id != 0) sokol.gfx.destroyPipeline(s.pipeline_unlit);
     if (s.pipeline_blinn_phong.id != 0) sokol.gfx.destroyPipeline(s.pipeline_blinn_phong);
     if (s.pipeline_pbr.id != 0) sokol.gfx.destroyPipeline(s.pipeline_pbr);
+    if (s.shader_unlit.id != 0) sokol.gfx.destroyShader(s.shader_unlit);
+    if (s.shader_blinn_phong.id != 0) sokol.gfx.destroyShader(s.shader_blinn_phong);
+    if (s.shader_pbr.id != 0) sokol.gfx.destroyShader(s.shader_pbr);
 }
 
 // Declarative system registration
