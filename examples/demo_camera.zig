@@ -133,8 +133,9 @@ fn updateCamera(
     const dt = time.value.delta_time;
     const kb = keyboard.value;
     const m = mouse.value;
-    var ctrl = controller.value;
-    var cam = camera.value;
+    // Use pointers to mutate resources directly (not copies)
+    const ctrl = controller.value;
+    const cam = camera.value;
 
     // Toggle mouse capture with Tab
     if (kb.isPressed(.TAB)) {
