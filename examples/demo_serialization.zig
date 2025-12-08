@@ -79,7 +79,7 @@ const Game = struct {
 
 fn setup(
     commands: anytype,
-    pass_action_resource: zenithor.ResourceMut(GraphicsPlugin.PassAction),
+    pass_action_resource: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions),
 ) !void {
     // Initialize resources
     commands.setResource(GameStatus, .{
@@ -96,8 +96,7 @@ fn setup(
         .difficulty_scale = 1.0,
     });
 
-    var pass_action = pass_action_resource.value;
-    pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
+    pass_action_resource.value.pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
 
     // Create player entity
     const player = commands.createEntity();

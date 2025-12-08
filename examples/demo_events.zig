@@ -85,13 +85,12 @@ const Game = struct {
 
 // ===== Systems =====
 
-fn setup(commands: anytype, pass_action: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
+fn setup(commands: anytype, pass_action: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions)) !void {
     // Initialize resources
     commands.setResource(GameStats, .{});
 
     // Set background
-    var action = pass_action.value;
-    action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
+    pass_action.value.pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
 
     // Create player at bottom center
     const player = try commands.createEntityWith(.{

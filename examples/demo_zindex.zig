@@ -26,9 +26,8 @@ const Game = struct {
 
 var animation_time: f32 = 0.0;
 
-fn setup(commands: anytype, pass_action: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
-    var action = pass_action.value;
-    action.colors[0].clear_value = .{ .r = 0.9, .g = 0.9, .b = 0.95, .a = 1.0 };
+fn setup(commands: anytype, pass_action: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions)) !void {
+    pass_action.value.pass_action.colors[0].clear_value = .{ .r = 0.9, .g = 0.9, .b = 0.95, .a = 1.0 };
 
     // Create overlapping rectangles at different z-depths
     _ = try commands.createEntityWith(.{
@@ -123,4 +122,3 @@ fn infoWindow() !void {
 }
 
 const std = @import("std");
-

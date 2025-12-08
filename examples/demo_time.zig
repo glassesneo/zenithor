@@ -10,9 +10,8 @@ pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, TimePlugin, Game }, .{});
 }
 
-fn setupPassAction(pass_action: zenithor.Resource(GraphicsPlugin.PassAction)) !void {
-    var action = pass_action.value;
-    action.colors[0].clear_value = .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
+fn setupPassAction(options: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions)) !void {
+    options.value.pass_action.colors[0].clear_value = .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
 }
 
 const Velocity = struct {
