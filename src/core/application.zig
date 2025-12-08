@@ -251,19 +251,28 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
         event_handlers: [max_event_handlers]*const fn ([*c]const sokol.app.Event, *World) anyerror!void,
         event_handler_count: usize = 0,
 
-        fn init(base_allocator: std.mem.Allocator) Self {
-            var arena = std.heap.ArenaAllocator.init(base_allocator);
-            const allocator = arena.allocator();
+        /// Creates an uninitialized AppState with arena allocator.
+        /// IMPORTANT: Call `finishInit()` on the result after it's in its final memory location
+        /// to avoid dangling pointer issues with the arena allocator.
+        fn initArena(base_allocator: std.mem.Allocator) Self {
             return .{
-                .arena = arena,
-                .allocator = allocator,
-                .world = .init(allocator),
+                .arena = std.heap.ArenaAllocator.init(base_allocator),
+                // These will be properly initialized by finishInit()
+                .allocator = undefined,
+                .world = undefined,
                 .system_scheduler = .init(),
                 .startup_system_scheduler = .init(),
                 .terminate_system_scheduler = .init(),
                 .event_handlers = undefined,
                 .event_handler_count = 0,
             };
+        }
+
+        /// Finishes initialization after the struct is in its final memory location.
+        /// This ensures the allocator pointer points to the stable arena location.
+        fn finishInit(self: *Self) void {
+            self.allocator = self.arena.allocator();
+            self.world = World.init(self.allocator);
         }
 
         fn deinit(self: *Self) void {
@@ -404,8 +413,10 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
         else
             options.allocator;
 
-        // AppState.init creates its own arena allocator internally
-        var app_state = AppState.init(base_allocator);
+        // Two-phase init: create struct first, then finish init after it's in final location
+        // This ensures the arena allocator's internal pointer is stable
+        var app_state = AppState.initArena(base_allocator);
+        app_state.finishInit();
 
         const desc: sokol.app.Desc = .{
             .user_data = &app_state,

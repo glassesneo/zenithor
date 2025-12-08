@@ -6,6 +6,8 @@ const cimgui = @import("cimgui");
 const examples = [_]Example{
     .{ .name = "demo_window", .plugins = &.{} },
     .{ .name = "demo_2d", .plugins = &.{"graphics_plugin"} },
+    .{ .name = "demo_3d", .plugins = &.{"graphics_plugin"} },
+    .{ .name = "demo_camera", .plugins = &.{ "graphics_plugin", "input_plugin", "time_plugin" } },
     .{ .name = "demo_imgui", .plugins = &.{ "graphics_plugin", "imgui_plugin" } },
     .{ .name = "demo_input", .plugins = &.{ "graphics_plugin", "imgui_plugin", "input_plugin" } },
     .{ .name = "demo_time", .plugins = &.{ "graphics_plugin", "imgui_plugin", "time_plugin" } },
@@ -134,6 +136,51 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .gles3 = flags.gles3,
         .wgpu = flags.wgpu,
     });
+    const sokol_mod = dep_sokol.module("sokol");
+    const dep_shdc = dep_sokol.builder.dependency("shdc", .{});
+
+    // PBR shader
+    const pbr_shader_mod = try sokol.shdc.createModule(b, "pbr_shader", sokol_mod, .{
+        .shdc_dep = dep_shdc,
+        .input = "plugins/graphics/src/shader.glsl",
+        .output = "pbr_shader.zig",
+        .slang = .{
+            .glsl430 = true,
+            .glsl300es = true,
+            .hlsl5 = true,
+            .metal_macos = true,
+            .wgsl = true,
+        },
+    });
+
+    // Blinn-Phong shader
+    const blinn_phong_shader_mod = try sokol.shdc.createModule(b, "blinn_phong_shader", sokol_mod, .{
+        .shdc_dep = dep_shdc,
+        .input = "plugins/graphics/src/blinn_phong.glsl",
+        .output = "blinn_phong_shader.zig",
+        .slang = .{
+            .glsl430 = true,
+            .glsl300es = true,
+            .hlsl5 = true,
+            .metal_macos = true,
+            .wgsl = true,
+        },
+    });
+
+    // Unlit shader
+    const unlit_shader_mod = try sokol.shdc.createModule(b, "unlit_shader", sokol_mod, .{
+        .shdc_dep = dep_shdc,
+        .input = "plugins/graphics/src/unlit.glsl",
+        .output = "unlit_shader.zig",
+        .slang = .{
+            .glsl430 = true,
+            .glsl300es = true,
+            .hlsl5 = true,
+            .metal_macos = true,
+            .wgsl = true,
+        },
+    });
+
     const dep_cimgui = b.dependency("cimgui", .{
         .target = target,
         .optimize = optimize,
@@ -151,7 +198,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .target = target,
         .optimize = optimize,
         .imports = &.{
-            .{ .name = "sokol", .module = dep_sokol.module("sokol") },
+            .{ .name = "sokol", .module = sokol_mod },
             .{ .name = cimgui_config.module_name, .module = dep_cimgui.module(cimgui_config.module_name) },
             .{ .name = "sparze", .module = sparze_mod },
         },
@@ -168,7 +215,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
 
     const exported_imports = [_]Build.Module.Import{
         .{ .name = "zenithor", .module = lib_module },
-        .{ .name = "sokol", .module = dep_sokol.module("sokol") },
+        .{ .name = "sokol", .module = sokol_mod },
         .{ .name = "sparze", .module = sparze_mod },
     };
     const exported_serialization_imports = [_]Build.Module.Import{
@@ -180,7 +227,11 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .root_source_file = b.path("plugins/graphics/src/root.zig"),
         .target = target,
         .optimize = optimize,
-        .imports = exported_imports[0..],
+        .imports = exported_imports[0..] ++ &[_]Build.Module.Import{
+            .{ .name = "pbr_shader", .module = pbr_shader_mod },
+            .{ .name = "blinn_phong_shader", .module = blinn_phong_shader_mod },
+            .{ .name = "unlit_shader", .module = unlit_shader_mod },
+        },
     });
     const time_mod = b.addModule("time_plugin", .{
         .root_source_file = b.path("plugins/time/src/root.zig"),
@@ -592,4 +643,3 @@ pub fn build(b: *Build) !void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
 }
-

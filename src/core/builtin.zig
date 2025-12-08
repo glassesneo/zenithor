@@ -2,12 +2,39 @@ const sparze = @import("sparze");
 const sokol = @import("sokol");
 
 pub const Transform = struct {
-    x: f32,
-    y: f32,
-    z: f32,
+    x: f32 = 0,
+    y: f32 = 0,
+    z: f32 = 0,
 
     pub fn format(self: Transform, writer: anytype) !void {
         try writer.print("Transform(x: {d:.2}, y: {d:.2}, z: {d:.2})", .{ self.x, self.y, self.z });
+    }
+};
+
+/// Rotation component for 3D objects (Euler angles in radians)
+pub const Rotation = struct {
+    x: f32 = 0, // Pitch (rotation around X axis)
+    y: f32 = 0, // Yaw (rotation around Y axis)
+    z: f32 = 0, // Roll (rotation around Z axis)
+
+    pub fn format(self: Rotation, writer: anytype) !void {
+        try writer.print("Rotation(x: {d:.2}, y: {d:.2}, z: {d:.2})", .{ self.x, self.y, self.z });
+    }
+};
+
+/// Scale component for 3D objects
+pub const Scale = struct {
+    x: f32 = 1,
+    y: f32 = 1,
+    z: f32 = 1,
+
+    /// Uniform scale (same value for all axes)
+    pub fn uniform(s: f32) Scale {
+        return .{ .x = s, .y = s, .z = s };
+    }
+
+    pub fn format(self: Scale, writer: anytype) !void {
+        try writer.print("Scale(x: {d:.2}, y: {d:.2}, z: {d:.2})", .{ self.x, self.y, self.z });
     }
 };
 
@@ -82,6 +109,8 @@ pub const EventLoopError = struct {
 
 pub const Components = .{
     Transform,
+    Rotation,
+    Scale,
     Color,
 };
 
