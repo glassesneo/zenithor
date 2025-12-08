@@ -7,6 +7,7 @@ const examples = [_]Example{
     .{ .name = "demo_window", .plugins = &.{} },
     .{ .name = "demo_2d", .plugins = &.{"graphics_plugin"} },
     .{ .name = "demo_3d", .plugins = &.{"graphics_plugin"} },
+    .{ .name = "demo_rotation_scale", .plugins = &.{ "graphics_plugin", "time_plugin" } },
     .{ .name = "demo_camera", .plugins = &.{ "graphics_plugin", "input_plugin", "time_plugin" } },
     .{ .name = "demo_imgui", .plugins = &.{ "graphics_plugin", "imgui_plugin" } },
     .{ .name = "demo_input", .plugins = &.{ "graphics_plugin", "imgui_plugin", "input_plugin" } },

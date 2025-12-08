@@ -21,6 +21,9 @@ out vec4 v_color;
 void main() {
     vec4 world_pos = model * vec4(a_position, 1.0);
     v_world_pos = world_pos.xyz;
+    // NOTE: mat3(model) is only correct for uniform scale (equal X, Y, Z).
+    // Non-uniform scaling causes incorrect lighting - would require inverse-transpose:
+    // transpose(inverse(mat3(model))). Accept visual artifacts or use uniform scale.
     v_normal = mat3(model) * a_normal;
     v_color = a_color;
     gl_Position = mvp * vec4(a_position, 1.0);

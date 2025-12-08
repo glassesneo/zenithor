@@ -171,7 +171,7 @@ pub const systems = .{
     },
     .main = &.{
         .{ .system = setupFrame, .stage = .first },
-        .{ .system = renderUi, .stage = .render_submit, .config = .{ .after = &.{"pass-begin"} } },
+        .{ .system = renderUi, .stage = .render_submit, .config = .{ .after = &.{"3d-render"} } },
     },
     .terminate = &.{
         .{ .system = shutdown, .stage = .first },

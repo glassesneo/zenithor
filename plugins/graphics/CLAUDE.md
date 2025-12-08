@@ -40,7 +40,7 @@ All 2D shapes use optional `Color` component (defaults to red if absent).
 **Torus3D** `{ radius: f32 = 0.5, ring_radius: f32 = 0.2, sides: u16 = 16, rings: u16 = 16 }`
 - Donut shape
 
-3D shapes use `Transform` for position. Optional `Color` component (defaults to white).
+3D shapes use `Transform` for position. Optional `Rotation` and `Scale` components for orientation and sizing. Optional `Color` component (defaults to white).
 
 ## Shader Selection
 
@@ -61,7 +61,7 @@ pub const Material = struct {
 
 ## Resources
 
-**RenderingOptions** - Pass action and pipeline configuration
+**RenderingOptions** - Background clear color and depth configuration (pass action)
 
 **Camera3D** - 3D camera for view/projection:
 ```zig
@@ -122,6 +122,15 @@ _ = try commands.createEntityWith(.{
     Graphics.Material{ .shader = .pbr, .metallic = 0.8, .roughness = 0.2 },
 });
 
+// Rotated and scaled cylinder
+_ = try commands.createEntityWith(.{
+    Graphics.Cylinder3D{ .radius = 0.3, .height = 2.0 },
+    Transform{ .x = -2.0, .y = 0, .z = 0 },
+    Rotation{ .x = 0, .y = 0, .z = std.math.pi / 4.0 },  // 45° roll
+    Scale{ .x = 1.0, .y = 2.0, .z = 1.0 },               // Stretch Y axis
+    Color.blue,
+});
+
 // Animate camera
 fn animateCamera(camera: ResourceMut(Graphics.Camera3D)) !void {
     camera.value.eye = .{ 5 * @cos(time), 3.0, 5 * @sin(time) };
@@ -133,3 +142,11 @@ fn animateCamera(camera: ResourceMut(Graphics.Camera3D)) !void {
 **Unlit** - Simple vertex color, no lighting calculations
 **Blinn-Phong** - Classic diffuse + specular lighting with ambient
 **PBR** - Physically-based rendering with Cook-Torrance BRDF, GGX distribution, Fresnel-Schlick
+
+## Known Limitations
+
+1. **Normal Transformation with Non-Uniform Scale**: The shaders use `mat3(model) * normal` for normal transformation, which is only correct for uniform scale (equal X, Y, Z scaling). Non-uniform scaling causes incorrect lighting. For accurate lighting with non-uniform scale, use uniform scale or accept the visual artifacts.
+
+2. **Per-Frame Geometry Rebuilding**: All 3D shapes are rebuilt into vertex/index buffers every frame. There is no static mesh caching. For large numbers of static objects, this may impact performance.
+
+3. **Stack-Allocated Buffers**: 3D rendering uses ~2-3MB of stack-allocated vertex/index buffers. On WASM with default 5MB stack, this may cause overflow with complex scenes. Use `-Dstack-size=8` or higher for larger scenes.
