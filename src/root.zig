@@ -8,6 +8,8 @@ pub const SystemConfig = system_module.SystemConfig;
 // Core engine exports
 pub const BuiltinPlugin = @import("core/builtin.zig");
 pub const Transform = BuiltinPlugin.Transform;
+pub const Rotation = BuiltinPlugin.Rotation;
+pub const Scale = BuiltinPlugin.Scale;
 pub const Color = BuiltinPlugin.Color;
 
 const sparze = @import("sparze");

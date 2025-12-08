@@ -74,15 +74,14 @@ const Game = struct {
 
 // ===== Systems =====
 
-fn setup(commands: anytype, pass_action_resource: zenithor.ResourceMut(GraphicsPlugin.PassAction)) !void {
+fn setup(commands: anytype, pass_action_resource: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions)) !void {
     // Initialize resources
     commands.setResource(DeltaTime, .{ .dt = 0.016, .scale = 1.0 });
     commands.setResource(Score, .{ .points = 0, .combo = 0, .high_score = 0 });
     commands.setResource(GameConfig, .{ .spawn_rate = 2.0, .point_value = 10 });
 
-    var pass_action = pass_action_resource.value;
     // Set white background
-    pass_action.colors[0].clear_value = .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
+    pass_action_resource.value.pass_action.colors[0].clear_value = .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
 }
 
 /// Update delta time resource

@@ -51,7 +51,7 @@ pub fn main() void {
 
 ## Plugin Catalog
 
-- **Graphics**: 2D Point/Line/Triangle/Rectangle/Circle rendering via Sokol GL; optional Color component; PassAction resource.
+- **Graphics**: 2D Point/Line/Triangle/Rectangle/Circle rendering via Sokol GL; 3D Box/Sphere/Cylinder/Torus/Plane rendering with Blinn-Phong, PBR, and unlit shaders; optional Color and Material components; Camera3D and Light3D resources.
 - **Time**: DeltaTime resource, FPS tracking.
 - **Input**: Mouse and Keyboard resources, event handlers.
 - **ImGui**: Dear ImGui frame setup/render submit, docking optional.
