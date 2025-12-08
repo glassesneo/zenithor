@@ -19,7 +19,6 @@ const Game = struct {
         },
         .main = &.{
             .{ .system = animate, .stage = .update },
-            // Debug info system removed - debug plugin dependency
             .{ .system = infoWindow, .stage = .render },
         },
     };
@@ -93,9 +92,6 @@ fn setup(commands: anytype, pass_action: zenithor.ResourceMut(GraphicsPlugin.Pas
 fn animate(time: zenithor.Resource(TimePlugin.Time)) !void {
     const dt = time.value.delta_time;
     animation_time += dt;
-
-    // Note: Without debug plugin, we can't easily track specific entities
-    // This function just updates the global animation time
 }
 
 fn infoWindow() !void {
@@ -122,9 +118,9 @@ fn infoWindow() !void {
         ImGuiPlugin.textFmt("{d:.2}s", .{animation_time});
 
         ImGuiPlugin.spacing();
-        ImGuiPlugin.textColored(ImGuiPlugin.ImVec4{ .x = 0.6, .y = 0.6, .z = 0.6, .w = 1.0 }, "Without debug plugin: no entity tracking available");
     }
     ImGuiPlugin.end();
 }
 
 const std = @import("std");
+

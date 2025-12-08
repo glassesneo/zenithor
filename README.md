@@ -1,40 +1,72 @@
 # Zenithor
 
-A Zig-based, plugin-driven game engine framework using Sokol for graphics/windowing, Sparze for ECS, and Dear ImGui for UI. Supports both native and WebAssembly targets.
+A 2D/3D "Game Engine Framework" for Zig, backed by Sokol and Sparze ECS. Native and WebAssembly targets with compile-time plugin architecture.
 
-## Features
+## Highlights
 
-- **Plugin System**: Modular architecture with compile-time plugin composition
-- **ECS Architecture**: Powered by Sparze ECS with efficient queries and groups
-- **Cross-Platform**: Native builds and WebAssembly support
-- **Graphics**: Sokol-based rendering with multiple backend options (OpenGL, OpenGL ES3, WebGPU)
-- **UI**: Dear ImGui integration for immediate-mode GUI
+- **Compile-time plugins**: Tuple-based plugin registration with automatic dependency expansion and builtin Transform/Color.
+- **Zero-cost ECS**: [Sparze](https://github.com/glassesneo/sparze) provides queries, groups, and events with deterministic system scheduling.
+- **Cross-platform**: Sokol backends for OpenGL, OpenGL ES3, and WebGPU.
+- **Minimal batteries included**: Graphics, Time, Input, ImGui, and Serialization plugins ready to drop in.
+- **Error-tolerant loop**: System and event handler failures become events instead of crashes (see `src/core/CLAUDE.md`).
 
 ## Quick Start
-
-Build and run examples:
 
 ```bash
 # Run tests
 zig build test
 
-# Build and run a native example
+# Native example (window, input, rendering)
 zig build run-demo_window
 
-# Build for WebAssembly
-zig build demo_2d -Dtarget=wasm32-emscripten
+# Other native demos
+zig build run-demo_2d
+zig build run-demo_imgui
 
-# Serve WebAssembly examples
-zig build serve-examples -Dtarget=wasm32-emscripten
+# WebAssembly build + local server
+zig build demo_2d -Dtarget=wasm32-emscripten
+zig build serve-examples -Dtarget=wasm32-emscripten       # serve all WASM demos
+zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem  # with IDBFS for serialization
+
+# Graphics backend override (default: -Dgl)
+zig build <target> -Dgl | -Dgles3 | -Dwgpu
 ```
 
-## Requirements
+Minimal app:
 
-- Zig 0.15.1 or later
+```zig
+const zenithor = @import("zenithor");
+const Graphics = @import("graphics_plugin");
+const Time = @import("time_plugin");
+const Input = @import("input_plugin");
 
-## Documentation
+pub fn main() void {
+    zenithor.run(.{ Graphics, Time, Input }, .{});
+}
+```
 
-See [CLAUDE.md](CLAUDE.md) for detailed development documentation, plugin system guide, and API references.
+## Examples
+
+`zig build run-<example>` for native; add `-Dtarget=wasm32-emscripten` for WASM builds. Available examples: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`, `demo_errors`, `demo_serialization`, `demo_system_ordering`.
+
+## Plugin Catalog
+
+- **Graphics**: 2D Point/Line/Triangle/Rectangle/Circle rendering via Sokol GL; optional Color component; PassAction resource.
+- **Time**: DeltaTime resource, FPS tracking.
+- **Input**: Mouse and Keyboard resources, event handlers.
+- **ImGui**: Dear ImGui frame setup/render submit, docking optional.
+- **Serialization**: Save/load game state, WASM filesystem support via `-Dfilesystem`.
+- **Builtin**: Transform and Color components always included.
+
+## Directory Layout
+
+```
+src/root.zig            # Public API exports
+src/core/               # Engine core (application, builtin, scheduler)
+plugins/                # Standard plugins (graphics, time, input, imgui, serialization)
+examples/               # Example programs
+build.zig               # Build graph and plugin module wiring
+```
 
 ## License
 
