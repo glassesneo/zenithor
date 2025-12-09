@@ -597,6 +597,143 @@ const DrawCommand = struct {
     material: Material,
 };
 
+/// Command buckets for batching draw calls by shader type
+const CommandBuckets = struct {
+    const max_commands = 1024;
+
+    unlit: [max_commands]DrawCommand = undefined,
+    unlit_count: usize = 0,
+    blinn: [max_commands]DrawCommand = undefined,
+    blinn_count: usize = 0,
+    pbr: [max_commands]DrawCommand = undefined,
+    pbr_count: usize = 0,
+
+    fn add(self: *CommandBuckets, shader: ShaderType, cmd: DrawCommand) void {
+        switch (shader) {
+            .unlit => {
+                if (self.unlit_count >= max_commands) {
+                    if (is_debug) @panic("Too many unlit draw commands");
+                    return;
+                }
+                self.unlit[self.unlit_count] = cmd;
+                self.unlit_count += 1;
+            },
+            .blinn_phong => {
+                if (self.blinn_count >= max_commands) {
+                    if (is_debug) @panic("Too many blinn_phong draw commands");
+                    return;
+                }
+                self.blinn[self.blinn_count] = cmd;
+                self.blinn_count += 1;
+            },
+            .pbr => {
+                if (self.pbr_count >= max_commands) {
+                    if (is_debug) @panic("Too many pbr draw commands");
+                    return;
+                }
+                self.pbr[self.pbr_count] = cmd;
+                self.pbr_count += 1;
+            },
+        }
+    }
+
+    fn total(self: *const CommandBuckets) usize {
+        return self.unlit_count + self.blinn_count + self.pbr_count;
+    }
+};
+
+/// Check if buffer has capacity for more geometry (with 4KB safety margin)
+fn checkBufferCapacity(buf: sokol.shape.Buffer, max_vertices: usize, max_indices: usize) bool {
+    const vertex_limit = max_vertices * @sizeOf(sokol.shape.Vertex) - 4096;
+    const index_limit = max_indices * @sizeOf(u16) - 4096;
+    if (buf.vertices.data_size >= vertex_limit or buf.indices.data_size >= index_limit) {
+        if (is_debug) @panic("Vertex/index buffer overflow");
+        return false;
+    }
+    return true;
+}
+
+/// Draw all commands in the unlit bucket
+fn drawUnlitBucket(
+    cmds: []const DrawCommand,
+    pip: Pipeline,
+    bindings: sokol.gfx.Bindings,
+) void {
+    if (cmds.len == 0) return;
+    sokol.gfx.applyPipeline(pip);
+    sokol.gfx.applyBindings(bindings);
+    for (cmds) |cmd| {
+        sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&unlit_shader.VsParams{
+            .mvp = cmd.mvp,
+        }));
+        sokol.gfx.draw(cmd.base_element, cmd.num_elements, 1);
+    }
+}
+
+/// Draw all commands in the Blinn-Phong bucket
+fn drawBlinnPhongBucket(
+    cmds: []const DrawCommand,
+    pip: Pipeline,
+    bindings: sokol.gfx.Bindings,
+    light: Light3D,
+    camera: Camera3D,
+) void {
+    if (cmds.len == 0) return;
+    sokol.gfx.applyPipeline(pip);
+    sokol.gfx.applyBindings(bindings);
+    for (cmds) |cmd| {
+        sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&blinn_phong_shader.VsParams{
+            .mvp = cmd.mvp,
+            .model = cmd.model,
+        }));
+        sokol.gfx.applyUniforms(1, sokol.gfx.asRange(&blinn_phong_shader.FsParams{
+            .light_pos = light.position,
+            ._pad0 = 0,
+            .view_pos = camera.eye,
+            .shininess = cmd.material.shininess,
+            .light_color = light.color,
+            .ambient_strength = light.ambient_strength,
+            .specular_strength = cmd.material.specular_strength,
+            ._pad1 = 0,
+            ._pad2 = 0,
+            ._pad3 = 0,
+        }));
+        sokol.gfx.draw(cmd.base_element, cmd.num_elements, 1);
+    }
+}
+
+/// Draw all commands in the PBR bucket
+fn drawPbrBucket(
+    cmds: []const DrawCommand,
+    pip: Pipeline,
+    bindings: sokol.gfx.Bindings,
+    light: Light3D,
+    camera: Camera3D,
+) void {
+    if (cmds.len == 0) return;
+    sokol.gfx.applyPipeline(pip);
+    sokol.gfx.applyBindings(bindings);
+    for (cmds) |cmd| {
+        sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&pbr_shader.VsParams{
+            .mvp = cmd.mvp,
+            .model = cmd.model,
+        }));
+        sokol.gfx.applyUniforms(1, sokol.gfx.asRange(&pbr_shader.FsParams{
+            .light_pos = light.position,
+            ._pad0 = 0,
+            .view_pos = camera.eye,
+            .metallic = cmd.material.metallic,
+            .light_color = light.color,
+            .roughness = cmd.material.roughness,
+            .ambient_strength = light.ambient_strength,
+            ._pad1 = 0,
+            ._pad2 = 0,
+            ._pad3 = 0,
+        }));
+        sokol.gfx.draw(cmd.base_element, cmd.num_elements, 1);
+    }
+}
+
 fn draw3D(
     boxes: Query(struct { Box3D, Transform, ?Color, ?Material }),
     spheres: Query(struct { Sphere3D, Transform, ?Color, ?Material }),
@@ -625,14 +762,8 @@ fn draw3D(
         .indices = .{ .buffer = sokol.shape.asRange(&indices) },
     };
 
-    // Draw command lists per shader type
-    const max_commands = 1024;
-    var unlit_commands: [max_commands]DrawCommand = undefined;
-    var unlit_count: usize = 0;
-    var blinn_commands: [max_commands]DrawCommand = undefined;
-    var blinn_count: usize = 0;
-    var pbr_commands: [max_commands]DrawCommand = undefined;
-    var pbr_count: usize = 0;
+    // Command buckets for batching draw calls by shader type
+    var buckets = CommandBuckets{};
 
     // Calculate view-projection matrix
     // Note: Mat4/multiply use row-major convention. When sent to column-major GLSL shaders,
@@ -641,22 +772,6 @@ fn draw3D(
     const view = lookAt(camera.value.eye, camera.value.target, camera.value.up);
     const proj = perspective(camera.value.fov, aspect, camera.value.near, camera.value.far);
     const vp = multiply(view, proj);
-
-    // Helper to add draw command with overflow check
-    const addCommand = struct {
-        fn add(
-            draw_commands: *[max_commands]DrawCommand,
-            count: *usize,
-            cmd: DrawCommand,
-        ) void {
-            if (count.* >= max_commands) {
-                if (is_debug) @panic("Too many draw commands for shader type");
-                return; // Skip in release mode
-            }
-            draw_commands[count.*] = cmd;
-            count.* += 1;
-        }
-    }.add;
 
     // Process Box3D entities
     for (boxes.entities) |entity| {
@@ -671,13 +786,8 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity before building shape (conservative 4KB margin for any tessellation)
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
-        {
-            if (is_debug) @panic("Vertex/index buffer overflow");
-            break; // Skip remaining shapes in release mode
-        }
+        // Check buffer capacity before building shape
+        if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
 
         buf = sokol.shape.buildBox(buf, .{
             .width = box.width,
@@ -697,11 +807,7 @@ fn draw3D(
             .material = material,
         };
 
-        switch (material.shader) {
-            .unlit => addCommand(&unlit_commands, &unlit_count, cmd),
-            .blinn_phong => addCommand(&blinn_commands, &blinn_count, cmd),
-            .pbr => addCommand(&pbr_commands, &pbr_count, cmd),
-        }
+        buckets.add(material.shader, cmd);
     }
 
     // Process Sphere3D entities
@@ -716,13 +822,8 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity (conservative 4KB margin for any tessellation)
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
-        {
-            if (is_debug) @panic("Vertex/index buffer overflow");
-            break;
-        }
+        // Check buffer capacity before building shape
+        if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
 
         buf = sokol.shape.buildSphere(buf, .{
             .radius = sphere.radius,
@@ -741,11 +842,7 @@ fn draw3D(
             .material = material,
         };
 
-        switch (material.shader) {
-            .unlit => addCommand(&unlit_commands, &unlit_count, cmd),
-            .blinn_phong => addCommand(&blinn_commands, &blinn_count, cmd),
-            .pbr => addCommand(&pbr_commands, &pbr_count, cmd),
-        }
+        buckets.add(material.shader, cmd);
     }
 
     // Process Cylinder3D entities
@@ -760,13 +857,8 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity (conservative 4KB margin for any tessellation)
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
-        {
-            if (is_debug) @panic("Vertex/index buffer overflow");
-            break;
-        }
+        // Check buffer capacity before building shape
+        if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
 
         buf = sokol.shape.buildCylinder(buf, .{
             .radius = cylinder.radius,
@@ -786,11 +878,7 @@ fn draw3D(
             .material = material,
         };
 
-        switch (material.shader) {
-            .unlit => addCommand(&unlit_commands, &unlit_count, cmd),
-            .blinn_phong => addCommand(&blinn_commands, &blinn_count, cmd),
-            .pbr => addCommand(&pbr_commands, &pbr_count, cmd),
-        }
+        buckets.add(material.shader, cmd);
     }
 
     // Process Torus3D entities
@@ -805,13 +893,8 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity (conservative 4KB margin for any tessellation)
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
-        {
-            if (is_debug) @panic("Vertex/index buffer overflow");
-            break;
-        }
+        // Check buffer capacity before building shape
+        if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
 
         buf = sokol.shape.buildTorus(buf, .{
             .radius = torus.radius,
@@ -831,11 +914,7 @@ fn draw3D(
             .material = material,
         };
 
-        switch (material.shader) {
-            .unlit => addCommand(&unlit_commands, &unlit_count, cmd),
-            .blinn_phong => addCommand(&blinn_commands, &blinn_count, cmd),
-            .pbr => addCommand(&pbr_commands, &pbr_count, cmd),
-        }
+        buckets.add(material.shader, cmd);
     }
 
     // Process Plane3D entities
@@ -850,13 +929,8 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity (conservative 4KB margin for any tessellation)
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
-        {
-            if (is_debug) @panic("Vertex/index buffer overflow");
-            break;
-        }
+        // Check buffer capacity before building shape
+        if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
 
         buf = sokol.shape.buildPlane(buf, .{
             .width = plane.width,
@@ -875,15 +949,11 @@ fn draw3D(
             .material = material,
         };
 
-        switch (material.shader) {
-            .unlit => addCommand(&unlit_commands, &unlit_count, cmd),
-            .blinn_phong => addCommand(&blinn_commands, &blinn_count, cmd),
-            .pbr => addCommand(&pbr_commands, &pbr_count, cmd),
-        }
+        buckets.add(material.shader, cmd);
     }
 
     // Total count for statistics
-    const total_count = unlit_count + blinn_count + pbr_count;
+    const total_count = buckets.total();
 
     // Always begin the render pass (even with no 3D objects, for 2D rendering)
     sokol.gfx.beginPass(.{
@@ -908,70 +978,10 @@ fn draw3D(
         bindings.vertex_buffers[0] = state.value.vertex_buffer;
         bindings.index_buffer = state.value.index_buffer;
 
-        // Draw unlit objects
-        if (unlit_count > 0) {
-            sokol.gfx.applyPipeline(state.value.pipeline_unlit);
-            sokol.gfx.applyBindings(bindings);
-
-            for (unlit_commands[0..unlit_count]) |cmd| {
-                sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&unlit_shader.VsParams{
-                    .mvp = cmd.mvp,
-                }));
-                sokol.gfx.draw(cmd.base_element, cmd.num_elements, 1);
-            }
-        }
-
-        // Draw Blinn-Phong objects
-        if (blinn_count > 0) {
-            sokol.gfx.applyPipeline(state.value.pipeline_blinn_phong);
-            sokol.gfx.applyBindings(bindings);
-
-            for (blinn_commands[0..blinn_count]) |cmd| {
-                sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&blinn_phong_shader.VsParams{
-                    .mvp = cmd.mvp,
-                    .model = cmd.model,
-                }));
-                sokol.gfx.applyUniforms(1, sokol.gfx.asRange(&blinn_phong_shader.FsParams{
-                    .light_pos = light.value.position,
-                    ._pad0 = 0,
-                    .view_pos = camera.value.eye,
-                    .shininess = cmd.material.shininess,
-                    .light_color = light.value.color,
-                    .ambient_strength = light.value.ambient_strength,
-                    .specular_strength = cmd.material.specular_strength,
-                    ._pad1 = 0,
-                    ._pad2 = 0,
-                    ._pad3 = 0,
-                }));
-                sokol.gfx.draw(cmd.base_element, cmd.num_elements, 1);
-            }
-        }
-
-        // Draw PBR objects
-        if (pbr_count > 0) {
-            sokol.gfx.applyPipeline(state.value.pipeline_pbr);
-            sokol.gfx.applyBindings(bindings);
-
-            for (pbr_commands[0..pbr_count]) |cmd| {
-                sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&pbr_shader.VsParams{
-                    .mvp = cmd.mvp,
-                    .model = cmd.model,
-                }));
-                sokol.gfx.applyUniforms(1, sokol.gfx.asRange(&pbr_shader.FsParams{
-                    .light_pos = light.value.position,
-                    ._pad0 = 0,
-                    .view_pos = camera.value.eye,
-                    .metallic = cmd.material.metallic,
-                    .light_color = light.value.color,
-                    .roughness = cmd.material.roughness,
-                    .ambient_strength = light.value.ambient_strength,
-                    ._pad1 = 0,
-                    ._pad2 = 0,
-                    ._pad3 = 0,
-                }));
-                sokol.gfx.draw(cmd.base_element, cmd.num_elements, 1);
-            }
-        }
+        // Draw each shader bucket using helper functions
+        drawUnlitBucket(buckets.unlit[0..buckets.unlit_count], state.value.pipeline_unlit, bindings);
+        drawBlinnPhongBucket(buckets.blinn[0..buckets.blinn_count], state.value.pipeline_blinn_phong, bindings, light.value.*, camera.value.*);
+        drawPbrBucket(buckets.pbr[0..buckets.pbr_count], state.value.pipeline_pbr, bindings, light.value.*, camera.value.*);
     }
 
     // Draw sokol.gl content (2D)
