@@ -481,8 +481,9 @@ fn buildWebExample(b: *Build, example: Example, options: ExampleOptions, deps: D
         "--allow-net",
         "--allow-read",
         "--watch",
-        "server/server.ts",
+        "server/shell.ts",
     });
+    deno.addArg(example.name);
     deno.step.dependOn(link_step);
 
     return .{ .build = link_step, .run = deno };
