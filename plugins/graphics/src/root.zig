@@ -786,13 +786,8 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity before building shape (conservative 4KB margin for any tessellation)
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
-        {
-            if (is_debug) @panic("Vertex/index buffer overflow");
-            break; // Skip remaining shapes in release mode
-        }
+        // Check buffer capacity before building shape
+        if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
 
         buf = sokol.shape.buildBox(buf, .{
             .width = box.width,
@@ -827,13 +822,8 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity (conservative 4KB margin for any tessellation)
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
-        {
-            if (is_debug) @panic("Vertex/index buffer overflow");
-            break;
-        }
+        // Check buffer capacity before building shape
+        if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
 
         buf = sokol.shape.buildSphere(buf, .{
             .radius = sphere.radius,
@@ -867,13 +857,8 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity (conservative 4KB margin for any tessellation)
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
-        {
-            if (is_debug) @panic("Vertex/index buffer overflow");
-            break;
-        }
+        // Check buffer capacity before building shape
+        if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
 
         buf = sokol.shape.buildCylinder(buf, .{
             .radius = cylinder.radius,
@@ -908,13 +893,8 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity (conservative 4KB margin for any tessellation)
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
-        {
-            if (is_debug) @panic("Vertex/index buffer overflow");
-            break;
-        }
+        // Check buffer capacity before building shape
+        if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
 
         buf = sokol.shape.buildTorus(buf, .{
             .radius = torus.radius,
@@ -949,13 +929,8 @@ fn draw3D(
 
         const model = buildModelMatrix(transform, rot, scl);
 
-        // Check buffer capacity (conservative 4KB margin for any tessellation)
-        if (buf.vertices.data_size >= max_vertices * @sizeOf(sokol.shape.Vertex) - 4096 or
-            buf.indices.data_size >= max_indices * @sizeOf(u16) - 4096)
-        {
-            if (is_debug) @panic("Vertex/index buffer overflow");
-            break;
-        }
+        // Check buffer capacity before building shape
+        if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
 
         buf = sokol.shape.buildPlane(buf, .{
             .width = plane.width,
