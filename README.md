@@ -45,10 +45,6 @@ pub fn main() void {
 }
 ```
 
-## Examples
-
-`zig build run-<example>` for native; add `-Dtarget=wasm32-emscripten` for WASM builds. Available examples: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`, `demo_errors`, `demo_serialization`, `demo_system_ordering`.
-
 ## Plugin Catalog
 
 - **Graphics**: 2D Point/Line/Triangle/Rectangle/Circle rendering via Sokol GL; 3D Box/Sphere/Cylinder/Torus/Plane rendering with Blinn-Phong, PBR, and unlit shaders; optional Color and Material components; Camera3D and Light3D resources.
