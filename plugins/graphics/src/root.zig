@@ -194,6 +194,9 @@ pub const Light3D = struct {
 
 /// Internal state for 3D rendering
 pub const Render3DState = struct {
+    // Skip serialization (runtime-only GPU state)
+    pub const serialized = false;
+
     // Shaders for each type
     shader_unlit: sokol.gfx.Shader = .{},
     shader_blinn_phong: sokol.gfx.Shader = .{},
