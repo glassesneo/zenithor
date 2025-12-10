@@ -157,6 +157,15 @@ pub const Material = struct {
 };
 
 // =============================================================================
+// Constants
+// =============================================================================
+
+/// Maximum vertices for 3D staging buffer
+const MAX_3D_VERTICES = 65536;
+/// Maximum indices for 3D staging buffer
+const MAX_3D_INDICES = 262144;
+
+// =============================================================================
 // Resources
 // =============================================================================
 
@@ -185,6 +194,9 @@ pub const Light3D = struct {
 
 /// Internal state for 3D rendering
 pub const Render3DState = struct {
+    // Skip serialization (runtime-only GPU state)
+    pub const serialized = false;
+
     // Shaders for each type
     shader_unlit: sokol.gfx.Shader = .{},
     shader_blinn_phong: sokol.gfx.Shader = .{},
@@ -193,9 +205,13 @@ pub const Render3DState = struct {
     pipeline_unlit: Pipeline = .{},
     pipeline_blinn_phong: Pipeline = .{},
     pipeline_pbr: Pipeline = .{},
-    // Shared vertex/index buffers
+    // GPU buffers (vertex/index)
     vertex_buffer: sokol.gfx.Buffer = .{},
     index_buffer: sokol.gfx.Buffer = .{},
+    // Heap-allocated staging buffers for per-frame geometry building
+    vertices: []sokol.shape.Vertex = &.{},
+    indices: []u16 = &.{},
+    allocator: ?std.mem.Allocator = null,
     // Current frame's element ranges for batched drawing
     draw_count: u32 = 0,
 };
@@ -387,7 +403,7 @@ fn colorToU32(c: Color) u32 {
 // Systems
 // =============================================================================
 
-fn init(commands: anytype) !void {
+fn init(commands: anytype, allocator: std.mem.Allocator) !void {
     // Initialize pass action (background color)
     var rendering_options = RenderingOptions{};
     rendering_options.pass_action.colors[0] = .{
@@ -400,8 +416,25 @@ fn init(commands: anytype) !void {
     };
     commands.setResource(RenderingOptions, rendering_options);
 
-    // Initialize 3D state
+    // Initialize 3D resources eagerly (not lazily)
     var state = Render3DState{};
+    state.allocator = allocator;
+    try init3DResources(&state);
+
+    commands.setResource(Render3DState, state);
+    commands.setResource(Camera3D, .{});
+    commands.setResource(Light3D, .{});
+}
+
+/// Initialize 3D resources (shaders, pipelines, buffers).
+/// Called by init() during application startup.
+fn init3DResources(state: *Render3DState) !void {
+    // Allocate heap buffers for per-frame geometry building (replaces stack allocation)
+    const allocator = state.allocator orelse return error.AllocatorNotSet;
+    state.vertices = try allocator.alloc(sokol.shape.Vertex, MAX_3D_VERTICES);
+    errdefer allocator.free(state.vertices);
+    state.indices = try allocator.alloc(u16, MAX_3D_INDICES);
+    errdefer allocator.free(state.indices);
 
     // Common pipeline settings for 3D
     var layout = sokol.gfx.VertexLayoutState{};
@@ -418,6 +451,7 @@ fn init(commands: anytype) !void {
 
     // Create shaders and pipelines for unlit shader
     state.shader_unlit = sokol.gfx.makeShader(unlit_shader.unlitShaderDesc(sokol.gfx.queryBackend()));
+    errdefer sokol.gfx.destroyShader(state.shader_unlit);
     state.pipeline_unlit = sokol.gfx.makePipeline(.{
         .shader = state.shader_unlit,
         .layout = layout,
@@ -425,9 +459,11 @@ fn init(commands: anytype) !void {
         .cull_mode = .BACK,
         .depth = depth_state,
     });
+    errdefer sokol.gfx.destroyPipeline(state.pipeline_unlit);
 
     // Create shaders and pipelines for Blinn-Phong shader
     state.shader_blinn_phong = sokol.gfx.makeShader(blinn_phong_shader.blinnPhongShaderDesc(sokol.gfx.queryBackend()));
+    errdefer sokol.gfx.destroyShader(state.shader_blinn_phong);
     state.pipeline_blinn_phong = sokol.gfx.makePipeline(.{
         .shader = state.shader_blinn_phong,
         .layout = layout,
@@ -435,9 +471,11 @@ fn init(commands: anytype) !void {
         .cull_mode = .BACK,
         .depth = depth_state,
     });
+    errdefer sokol.gfx.destroyPipeline(state.pipeline_blinn_phong);
 
     // Create shaders and pipelines for PBR shader
     state.shader_pbr = sokol.gfx.makeShader(pbr_shader.pbrShaderDesc(sokol.gfx.queryBackend()));
+    errdefer sokol.gfx.destroyShader(state.shader_pbr);
     state.pipeline_pbr = sokol.gfx.makePipeline(.{
         .shader = state.shader_pbr,
         .layout = layout,
@@ -445,24 +483,20 @@ fn init(commands: anytype) !void {
         .cull_mode = .BACK,
         .depth = depth_state,
     });
+    errdefer sokol.gfx.destroyPipeline(state.pipeline_pbr);
 
-    // Create dynamic vertex/index buffers
-    const max_vertices = 65536;
-    const max_indices = 262144;
-
+    // Create GPU vertex/index buffers
     state.vertex_buffer = sokol.gfx.makeBuffer(.{
-        .size = max_vertices * @sizeOf(sokol.shape.Vertex),
+        .size = MAX_3D_VERTICES * @sizeOf(sokol.shape.Vertex),
         .usage = .{ .vertex_buffer = true, .stream_update = true },
     });
+    errdefer sokol.gfx.destroyBuffer(state.vertex_buffer);
 
     state.index_buffer = sokol.gfx.makeBuffer(.{
-        .size = max_indices * @sizeOf(u16),
+        .size = MAX_3D_INDICES * @sizeOf(u16),
         .usage = .{ .index_buffer = true, .stream_update = true },
     });
-
-    commands.setResource(Render3DState, state);
-    commands.setResource(Camera3D, .{});
-    commands.setResource(Light3D, .{});
+    errdefer sokol.gfx.destroyBuffer(state.index_buffer);
 }
 
 fn setDefaults() !void {
@@ -734,6 +768,13 @@ fn drawPbrBucket(
     }
 }
 
+fn beginPass(options: Resource(RenderingOptions)) !void {
+    sokol.gfx.beginPass(.{
+        .action = options.value.pass_action,
+        .swapchain = sokol.glue.swapchain(),
+    });
+}
+
 fn draw3D(
     boxes: Query(struct { Box3D, Transform, ?Color, ?Material }),
     spheres: Query(struct { Sphere3D, Transform, ?Color, ?Material }),
@@ -743,7 +784,6 @@ fn draw3D(
     camera: Resource(Camera3D),
     light: Resource(Light3D),
     state: ResourceMut(Render3DState),
-    options: Resource(RenderingOptions),
     // Commands for Rotation/Scale lookup (avoids comptime branch quota explosion from adding
     // ?Rotation/?Scale to each shape query - would exceed Zig's 3000 branch limit)
     commands: anytype,
@@ -751,16 +791,16 @@ fn draw3D(
     // Access sparse sets for Rotation/Scale lookups
     const rotation_set = commands.getSparseSetPtr(Rotation);
     const scale_set = commands.getSparseSetPtr(Scale);
-    // Static buffers for shape generation
-    const max_vertices = 65536;
-    const max_indices = 262144;
-    var vertices: [max_vertices]sokol.shape.Vertex = undefined;
-    var indices: [max_indices]u16 = undefined;
 
+    // Use heap-allocated staging buffers from state (no stack allocation)
     var buf = sokol.shape.Buffer{
-        .vertices = .{ .buffer = sokol.shape.asRange(&vertices) },
-        .indices = .{ .buffer = sokol.shape.asRange(&indices) },
+        .vertices = .{ .buffer = sokol.shape.asRange(state.value.vertices) },
+        .indices = .{ .buffer = sokol.shape.asRange(state.value.indices) },
     };
+
+    // Derive capacity from actual slice lengths to ensure consistency
+    const max_vertices: usize = state.value.vertices.len;
+    const max_indices: usize = state.value.indices.len;
 
     // Command buckets for batching draw calls by shader type
     var buckets = CommandBuckets{};
@@ -955,21 +995,15 @@ fn draw3D(
     // Total count for statistics
     const total_count = buckets.total();
 
-    // Always begin the render pass (even with no 3D objects, for 2D rendering)
-    sokol.gfx.beginPass(.{
-        .action = options.value.pass_action,
-        .swapchain = sokol.glue.swapchain(),
-    });
-
     // Only upload and draw if we have 3D objects
     if (total_count > 0) {
         // Upload vertex/index data to GPU
         sokol.gfx.updateBuffer(state.value.vertex_buffer, .{
-            .ptr = &vertices,
+            .ptr = state.value.vertices.ptr,
             .size = buf.vertices.data_size,
         });
         sokol.gfx.updateBuffer(state.value.index_buffer, .{
-            .ptr = &indices,
+            .ptr = state.value.indices.ptr,
             .size = buf.indices.data_size,
         });
 
@@ -984,27 +1018,54 @@ fn draw3D(
         drawPbrBucket(buckets.pbr[0..buckets.pbr_count], state.value.pipeline_pbr, bindings, light.value.*, camera.value.*);
     }
 
-    // Draw sokol.gl content (2D)
-    sokol.gl.draw();
-
-    sokol.gfx.endPass();
-    sokol.gfx.commit();
-
     state.value.draw_count = @intCast(total_count);
 }
 
-fn cleanup(state: Resource(Render3DState)) !void {
+fn draw2D() !void {
+    // Draw sokol.gl content (2D)
+    // All the 2D rendering commands recorded (drawTriangle, drawCircle) are executed here
+    sokol.gl.draw();
+}
+
+fn endPass() !void {
+    sokol.gfx.endPass();
+}
+
+fn commit() !void {
+    sokol.gfx.commit();
+}
+
+fn cleanup(state: ResourceMut(Render3DState)) !void {
+    // Free heap-allocated staging buffers
+    if (state.value.allocator) |allocator| {
+        if (state.value.vertices.len > 0) allocator.free(state.value.vertices);
+        if (state.value.indices.len > 0) allocator.free(state.value.indices);
+    }
+
     // Destroy GPU resources to prevent memory corruption on shutdown
     // Note: Pipelines must be destroyed before shaders they reference
-    const s = state.value;
-    if (s.vertex_buffer.id != 0) sokol.gfx.destroyBuffer(s.vertex_buffer);
-    if (s.index_buffer.id != 0) sokol.gfx.destroyBuffer(s.index_buffer);
-    if (s.pipeline_unlit.id != 0) sokol.gfx.destroyPipeline(s.pipeline_unlit);
-    if (s.pipeline_blinn_phong.id != 0) sokol.gfx.destroyPipeline(s.pipeline_blinn_phong);
-    if (s.pipeline_pbr.id != 0) sokol.gfx.destroyPipeline(s.pipeline_pbr);
-    if (s.shader_unlit.id != 0) sokol.gfx.destroyShader(s.shader_unlit);
-    if (s.shader_blinn_phong.id != 0) sokol.gfx.destroyShader(s.shader_blinn_phong);
-    if (s.shader_pbr.id != 0) sokol.gfx.destroyShader(s.shader_pbr);
+    if (state.value.vertex_buffer.id != 0) sokol.gfx.destroyBuffer(state.value.vertex_buffer);
+    if (state.value.index_buffer.id != 0) sokol.gfx.destroyBuffer(state.value.index_buffer);
+    if (state.value.pipeline_unlit.id != 0) sokol.gfx.destroyPipeline(state.value.pipeline_unlit);
+    if (state.value.pipeline_blinn_phong.id != 0) sokol.gfx.destroyPipeline(state.value.pipeline_blinn_phong);
+    if (state.value.pipeline_pbr.id != 0) sokol.gfx.destroyPipeline(state.value.pipeline_pbr);
+    if (state.value.shader_unlit.id != 0) sokol.gfx.destroyShader(state.value.shader_unlit);
+    if (state.value.shader_blinn_phong.id != 0) sokol.gfx.destroyShader(state.value.shader_blinn_phong);
+    if (state.value.shader_pbr.id != 0) sokol.gfx.destroyShader(state.value.shader_pbr);
+
+    // Zero out all fields to prevent accidental reuse or double-free
+    state.value.vertices = &.{};
+    state.value.indices = &.{};
+    state.value.allocator = null;
+    state.value.vertex_buffer = .{};
+    state.value.index_buffer = .{};
+    state.value.pipeline_unlit = .{};
+    state.value.pipeline_blinn_phong = .{};
+    state.value.pipeline_pbr = .{};
+    state.value.shader_unlit = .{};
+    state.value.shader_blinn_phong = .{};
+    state.value.shader_pbr = .{};
+    state.value.draw_count = 0;
 }
 
 // Declarative system registration
@@ -1020,8 +1081,11 @@ pub const systems = .{
         .{ .system = drawTriangle, .stage = .render },
         .{ .system = drawRectangle, .stage = .render },
         .{ .system = drawCircle, .stage = .render },
-        // 3D drawing (includes pass management)
+        .{ .system = beginPass, .stage = .render },
         .{ .system = draw3D, .stage = .render_submit, .config = .{ .tags = &.{"3d-render"} } },
+        .{ .system = draw2D, .stage = .render_submit, .config = .{ .tags = &.{"2d-render"} } },
+        .{ .system = endPass, .stage = .post_render },
+        .{ .system = commit, .stage = .post_render, .config = .{} },
     },
     .terminate = &.{
         .{ .system = cleanup, .stage = .first },

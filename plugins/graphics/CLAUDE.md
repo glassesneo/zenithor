@@ -91,6 +91,17 @@ Systems run in stages:
 2. `.render`: Draw all 2D shapes (Point, Line, Triangle, Rectangle, Circle)
 3. `.render_submit`: Draw 3D shapes with depth testing, execute render pass
 
+### Memory Management
+
+3D rendering uses heap-allocated staging buffers for per-frame geometry building:
+- 65,536 vertices × 48 bytes = 3,145,728 bytes (~3MB)
+- 262,144 indices × 2 bytes = 524,288 bytes (~0.5MB)
+- Total: ~3.6MB allocated at startup via arena allocator
+- Buffers reused every frame (no per-frame allocation overhead)
+- Automatically freed on application shutdown
+
+This approach eliminates stack pressure on WASM targets while maintaining efficient batched rendering.
+
 ## Usage
 
 ### 2D Shapes
@@ -148,5 +159,3 @@ fn animateCamera(camera: ResourceMut(Graphics.Camera3D)) !void {
 1. **Normal Transformation with Non-Uniform Scale**: The shaders use `mat3(model) * normal` for normal transformation, which is only correct for uniform scale (equal X, Y, Z scaling). Non-uniform scaling causes incorrect lighting. For accurate lighting with non-uniform scale, use uniform scale or accept the visual artifacts.
 
 2. **Per-Frame Geometry Rebuilding**: All 3D shapes are rebuilt into vertex/index buffers every frame. There is no static mesh caching. For large numbers of static objects, this may impact performance.
-
-3. **Stack-Allocated Buffers**: 3D rendering uses ~2-3MB of stack-allocated vertex/index buffers. On WASM with default 5MB stack, this may cause overflow with complex scenes. Use `-Dstack-size=8` or higher for larger scenes.
