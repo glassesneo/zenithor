@@ -10,7 +10,7 @@ pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, TimePlugin, Game }, .{});
 }
 
-fn setupPassAction(options: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions)) !void {
+fn setupPassAction(options: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions)) void {
     options.value.pass_action.colors[0].clear_value = .{ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 };
 }
 
@@ -59,7 +59,7 @@ fn setup(commands: anytype) !void {
     // Set white background
 }
 
-fn movement(time: zenithor.Resource(TimePlugin.Time), movement_query: zenithor.Group(CoordinateGroup)) !void {
+fn movement(time: zenithor.Resource(TimePlugin.Time), movement_query: zenithor.Group(CoordinateGroup)) void {
     // Use scaled delta time for frame-rate independent movement
     const dt = time.value.delta_time * time.value.time_scale;
     const transforms = movement_query.getMutArrayOf(BuiltinPlugin.Transform);
@@ -86,7 +86,7 @@ fn movement(time: zenithor.Resource(TimePlugin.Time), movement_query: zenithor.G
     }
 }
 
-fn displayTimeInfo(time: zenithor.Resource(TimePlugin.Time)) !void {
+fn displayTimeInfo(time: zenithor.Resource(TimePlugin.Time)) void {
     ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 10 }, ImGuiPlugin.ImGuiCond.Once);
     ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 150 }, ImGuiPlugin.ImGuiCond.Once);
 
@@ -101,7 +101,7 @@ fn displayTimeInfo(time: zenithor.Resource(TimePlugin.Time)) !void {
     ImGuiPlugin.end();
 }
 
-fn timeControls(time: zenithor.ResourceMut(TimePlugin.Time)) !void {
+fn timeControls(time: zenithor.ResourceMut(TimePlugin.Time)) void {
     ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 170 }, ImGuiPlugin.ImGuiCond.Once);
     ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 150 }, ImGuiPlugin.ImGuiCond.Once);
 

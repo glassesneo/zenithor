@@ -14,7 +14,7 @@ fn setup(commands: anytype) !void {
     });
 }
 
-fn changeColor(rendering_options: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions)) !void {
+fn changeColor(rendering_options: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions)) void {
     const g = rendering_options.value.pass_action.colors[0].clear_value.g + 0.01;
     rendering_options.value.pass_action.colors[0].clear_value.g = if (g > 1.0) 0.0 else g;
 }

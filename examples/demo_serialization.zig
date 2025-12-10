@@ -113,7 +113,7 @@ fn setup(
 fn updateTimer(
     delta: zenithor.Resource(TimePlugin.Time),
     game_status: zenithor.ResourceMut(GameStatus),
-) !void {
+) void {
     if (game_status.value.state == .Playing) {
         game_status.value.timer -= delta.value.delta_time;
         if (game_status.value.timer <= 0) {
@@ -202,7 +202,7 @@ fn spawnCollectibles(
 fn moveEntities(
     delta: zenithor.Resource(TimePlugin.Time),
     movable_query: zenithor.Query(struct { BuiltinPlugin.Transform, Velocity }),
-) !void {
+) void {
     for (movable_query.entities) |entity| {
         if (!movable_query.filter(entity)) continue;
 
@@ -266,7 +266,7 @@ fn updateLifetimes(
 fn nextLevel(
     game_status: zenithor.ResourceMut(GameStatus),
     game_settings: zenithor.ResourceMut(GameSettings),
-) !void {
+) void {
     if (game_status.value.state == .GameOver) {
         // Check for restart
         if (game_status.value.lives > 0) {

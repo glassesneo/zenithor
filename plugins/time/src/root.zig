@@ -41,7 +41,7 @@ pub const Events = .{};
 
 // Note: sokol.time is initialized centrally in src/core/application.zig
 
-fn update(time: sparze.ResourceMut(Time)) !void {
+fn update(time: sparze.ResourceMut(Time)) void {
     // Measure frame time using sokol_time's laptime
     const frame_ticks = sokol.time.laptime(&time.value.last_frame_ticks);
     const raw_delta_time = sokol.time.sec(frame_ticks);
@@ -65,7 +65,7 @@ fn update(time: sparze.ResourceMut(Time)) !void {
     }
 }
 
-fn init(commands: anytype) !void {
+fn init(commands: anytype) void {
     commands.setResource(Time, .{});
 }
 

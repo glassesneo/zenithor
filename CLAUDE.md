@@ -202,6 +202,29 @@ fn mySystem(
 
 See [Sparze CLAUDE.md](https://github.com/glassesneo/sparze/blob/main/CLAUDE.md) for full parameter types and query filters.
 
+### System Return Types
+
+System functions and event handlers support both `void` and `!void` return types:
+
+```zig
+// Use void when the system cannot fail
+fn simpleSystem(res: Resource(MyResource)) void {
+    // No error handling needed
+}
+
+// Use !void when the system may return errors
+fn fallibleSystem(commands: anytype) !void {
+    _ = try commands.createEntityWith(.{ MyComponent{} });
+}
+
+// Event handlers also support both return types
+fn handleEvent(event: sokol.app.Event, world: anytype) void {
+    // Handle event without errors
+}
+```
+
+Prefer `void` when the system doesn't use `try` or return errors.
+
 ## Build Configuration
 
 **WASM filesystem** (required for serialization):

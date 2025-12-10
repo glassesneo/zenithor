@@ -499,17 +499,17 @@ fn init3DResources(state: *Render3DState) !void {
     errdefer sokol.gfx.destroyBuffer(state.index_buffer);
 }
 
-fn setDefaults() !void {
+fn setDefaults() void {
     sokol.gl.defaults();
 }
 
-fn setup2d() !void {
+fn setup2d() void {
     sokol.gl.matrixModeProjection();
     sokol.gl.ortho(0, sokol.app.widthf(), sokol.app.heightf(), 0, -1, 1);
 }
 
 // 2D drawing systems (unchanged)
-fn drawPoint(points: Query(struct { Point, Transform, ?Color })) !void {
+fn drawPoint(points: Query(struct { Point, Transform, ?Color })) void {
     sokol.gl.beginPoints();
     for (points.entities) |entity| {
         if (!points.filter(entity)) continue;
@@ -524,7 +524,7 @@ fn drawPoint(points: Query(struct { Point, Transform, ?Color })) !void {
     sokol.gl.end();
 }
 
-fn drawLine(lines: Query(struct { Line, Transform, ?Color })) !void {
+fn drawLine(lines: Query(struct { Line, Transform, ?Color })) void {
     sokol.gl.beginLines();
     for (lines.entities) |entity| {
         if (!lines.filter(entity)) continue;
@@ -541,7 +541,7 @@ fn drawLine(lines: Query(struct { Line, Transform, ?Color })) !void {
     sokol.gl.end();
 }
 
-fn drawTriangle(triangles: Query(struct { Triangle, Transform, ?Color })) !void {
+fn drawTriangle(triangles: Query(struct { Triangle, Transform, ?Color })) void {
     sokol.gl.beginTriangles();
     for (triangles.entities) |entity| {
         if (!triangles.filter(entity)) continue;
@@ -559,7 +559,7 @@ fn drawTriangle(triangles: Query(struct { Triangle, Transform, ?Color })) !void 
     sokol.gl.end();
 }
 
-fn drawRectangle(rectangles: Query(struct { Rectangle, Transform, ?Color })) !void {
+fn drawRectangle(rectangles: Query(struct { Rectangle, Transform, ?Color })) void {
     sokol.gl.beginQuads();
     for (rectangles.entities) |entity| {
         if (!rectangles.filter(entity)) continue;
@@ -578,7 +578,7 @@ fn drawRectangle(rectangles: Query(struct { Rectangle, Transform, ?Color })) !vo
     sokol.gl.end();
 }
 
-fn drawCircle(circles: Query(struct { Circle, Transform, ?Color })) !void {
+fn drawCircle(circles: Query(struct { Circle, Transform, ?Color })) void {
     sokol.gl.beginTriangles();
     for (circles.entities) |entity| {
         if (!circles.filter(entity)) continue;
@@ -768,7 +768,7 @@ fn drawPbrBucket(
     }
 }
 
-fn beginPass(options: Resource(RenderingOptions)) !void {
+fn beginPass(options: Resource(RenderingOptions)) void {
     sokol.gfx.beginPass(.{
         .action = options.value.pass_action,
         .swapchain = sokol.glue.swapchain(),
@@ -1021,21 +1021,21 @@ fn draw3D(
     state.value.draw_count = @intCast(total_count);
 }
 
-fn draw2D() !void {
+fn draw2D() void {
     // Draw sokol.gl content (2D)
     // All the 2D rendering commands recorded (drawTriangle, drawCircle) are executed here
     sokol.gl.draw();
 }
 
-fn endPass() !void {
+fn endPass() void {
     sokol.gfx.endPass();
 }
 
-fn commit() !void {
+fn commit() void {
     sokol.gfx.commit();
 }
 
-fn cleanup(state: ResourceMut(Render3DState)) !void {
+fn cleanup(state: ResourceMut(Render3DState)) void {
     // Free heap-allocated staging buffers
     if (state.value.allocator) |allocator| {
         if (state.value.vertices.len > 0) allocator.free(state.value.vertices);

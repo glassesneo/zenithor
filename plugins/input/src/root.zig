@@ -118,7 +118,7 @@ pub const Resources = .{
 
 pub const Events = .{};
 
-fn handleEvent(event: sokol.app.Event, world: anytype) !void {
+fn handleEvent(event: sokol.app.Event, world: anytype) void {
     const mouse: *Mouse = world.getResourcePtrMut(Mouse);
     const keyboard: *Keyboard = world.getResourcePtrMut(Keyboard);
 
@@ -184,7 +184,7 @@ fn handleEvent(event: sokol.app.Event, world: anytype) !void {
     }
 }
 
-fn resetPerFrameState(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.ResourceMut(Keyboard)) !void {
+fn resetPerFrameState(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.ResourceMut(Keyboard)) void {
     // Reset per-frame deltas and buffers
     mouse.value.dx = 0.0;
     mouse.value.dy = 0.0;
@@ -193,7 +193,7 @@ fn resetPerFrameState(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.Resourc
     keyboard.value.char_count = 0;
 }
 
-fn updateFrameCounts(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.ResourceMut(Keyboard)) !void {
+fn updateFrameCounts(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.ResourceMut(Keyboard)) void {
     keyboard.value.incrementHeldKeyFrames();
     keyboard.value.cleanupReleasedKeys();
 
@@ -218,7 +218,7 @@ fn updateFrameCounts(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.Resource
     }
 }
 
-fn init(commands: anytype) !void {
+fn init(commands: anytype) void {
     commands.setResource(Mouse, .{});
     commands.setResource(Keyboard, .{});
 }

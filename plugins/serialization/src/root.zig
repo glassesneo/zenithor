@@ -89,7 +89,7 @@ pub fn loadGame(
     std.debug.print("✅ Load complete!\n", .{});
 }
 
-fn init(commands: anytype) !void {
+fn init(commands: anytype) void {
     // Initialize resources with defaults
     const save_filename = "savegame.spze";
     var save_path: SaveFile = .{};

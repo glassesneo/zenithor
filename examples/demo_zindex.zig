@@ -88,12 +88,12 @@ fn setup(commands: anytype, pass_action: zenithor.ResourceMut(GraphicsPlugin.Ren
     });
 }
 
-fn animate(time: zenithor.Resource(TimePlugin.Time)) !void {
+fn animate(time: zenithor.Resource(TimePlugin.Time)) void {
     const dt = time.value.delta_time;
     animation_time += dt;
 }
 
-fn infoWindow() !void {
+fn infoWindow() void {
     const pos = ImGuiPlugin.ImVec2{ .x = 10, .y = 720 };
     ImGuiPlugin.setNextWindowPos(pos, ImGuiPlugin.ImGuiCond.Once);
 

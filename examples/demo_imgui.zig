@@ -30,12 +30,12 @@ const Game = struct {
     };
 };
 
-fn uiSystem() !void {
+fn uiSystem() void {
     // Using ImGui plugin helper functions
     var window_open = true;
     ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 10 }, ImGuiPlugin.ImGuiCond.Once);
     ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 400, .y = 200 }, ImGuiPlugin.ImGuiCond.Once);
-    
+
     if (ImGuiPlugin.begin("ImGui ECS Integration Demo", &window_open, .None)) {
         ImGuiPlugin.text("ImGui Plugin - ECS Focused");
         ImGuiPlugin.separator();
@@ -43,12 +43,11 @@ fn uiSystem() !void {
         ImGuiPlugin.text("Use helper functions as shown in this example.");
         ImGuiPlugin.separator();
         ImGuiPlugin.text("Example of dynamic text display:");
-        
+
         // Show the example from the user request
         const player_pos = .{ .x = 400.0, .y = 300.0, .z = 0.0 };
-        ImGuiPlugin.textFmt("Player position:\n{d:.1}, {d:.1}, {d:.1}", 
-            .{ player_pos.x, player_pos.y, player_pos.z });
-        
+        ImGuiPlugin.textFmt("Player position:\n{d:.1}, {d:.1}, {d:.1}", .{ player_pos.x, player_pos.y, player_pos.z });
+
         ImGuiPlugin.separator();
         ImGuiPlugin.text("Benefits of this approach:");
         ImGuiPlugin.bulletText("Direct ECS integration");
@@ -59,17 +58,16 @@ fn uiSystem() !void {
     ImGuiPlugin.end();
 }
 
-fn playerInfoSystem(transforms: zenithor.SingleQuery(BuiltinPlugin.Transform)) !void {
+fn playerInfoSystem(transforms: zenithor.SingleQuery(BuiltinPlugin.Transform)) void {
     ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 220 }, ImGuiPlugin.ImGuiCond.Once);
     ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 400, .y = 150 }, ImGuiPlugin.ImGuiCond.Once);
-    
+
     if (ImGuiPlugin.begin("Player Info", null, .None)) {
         ImGuiPlugin.text("Player Entities:");
         ImGuiPlugin.separator();
-        
+
         for (transforms.entities, transforms.components) |entity, transform| {
-            ImGuiPlugin.textFmt("Entity {any}: ({d:.0}, {d:.0}, {d:.0})", 
-                .{ entity, transform.x, transform.y, transform.z });
+            ImGuiPlugin.textFmt("Entity {any}: ({d:.0}, {d:.0}, {d:.0})", .{ entity, transform.x, transform.y, transform.z });
         }
     }
     ImGuiPlugin.end();

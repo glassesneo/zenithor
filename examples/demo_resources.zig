@@ -85,7 +85,7 @@ fn setup(commands: anytype, pass_action_resource: zenithor.ResourceMut(GraphicsP
 }
 
 /// Update delta time resource
-fn updateDeltaTime(delta: zenithor.ResourceMut(DeltaTime)) !void {
+fn updateDeltaTime(delta: zenithor.ResourceMut(DeltaTime)) void {
     // In a real implementation, this would get actual frame delta
     // For this demo, we'll simulate it
     const raw_dt: f32 = 1.0 / 60.0; // Assume 60 FPS
@@ -152,7 +152,7 @@ fn spawnShapes(
 fn movement(
     delta: zenithor.Resource(DeltaTime),
     movement_query: zenithor.Group(MovementGroup),
-) !void {
+) void {
     const dt = delta.value.dt * delta.value.scale;
     const transforms = movement_query.getMutArrayOf(BuiltinPlugin.Transform);
     const velocities = movement_query.getMutArrayOf(Velocity);
@@ -250,7 +250,7 @@ fn displayUI(
     delta: zenithor.ResourceMut(DeltaTime),
     score: zenithor.ResourceMut(Score),
     config: zenithor.ResourceMut(GameConfig),
-) !void {
+) void {
     // Score display
     ImGuiPlugin.setNextWindowPos(ImGuiPlugin.ImVec2{ .x = 10, .y = 10 }, ImGuiPlugin.ImGuiCond.Once);
     ImGuiPlugin.setNextWindowSize(ImGuiPlugin.ImVec2{ .x = 300, .y = 150 }, ImGuiPlugin.ImGuiCond.Once);

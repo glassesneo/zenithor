@@ -11,14 +11,14 @@ pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, InputPlugin, Game }, .{});
 }
 
-fn setupPassAction(options: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions)) !void {
+fn setupPassAction(options: zenithor.ResourceMut(GraphicsPlugin.RenderingOptions)) void {
     options.value.pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.15, .b = 0.2, .a = 1.0 };
 }
 
 fn displayInputState(
     mouse: zenithor.Resource(InputPlugin.Mouse),
     keyboard: zenithor.Resource(InputPlugin.Keyboard),
-) !void {
+) void {
     const pos = ImGuiPlugin.ImVec2{ .x = 10, .y = 10 };
     ImGuiPlugin.setNextWindowPos(pos, .Once);
 

@@ -129,7 +129,7 @@ fn updateCamera(
     keyboard: Resource(InputPlugin.Keyboard),
     mouse: Resource(InputPlugin.Mouse),
     time: Resource(TimePlugin.Time),
-) !void {
+) void {
     const dt = time.value.delta_time;
     const kb = keyboard.value;
     const m = mouse.value;

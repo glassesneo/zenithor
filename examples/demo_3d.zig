@@ -60,7 +60,7 @@ fn setup(commands: anytype) !void {
 fn animateCamera(
     camera: ResourceMut(GraphicsPlugin.Camera3D),
     demo: ResourceMut(DemoState),
-) !void {
+) void {
     // Update time
     demo.value.time += 0.016; // Approximate frame time
 

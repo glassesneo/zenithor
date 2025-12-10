@@ -335,7 +335,12 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
                             // Create compile-time wrapper that captures handler_fn
                             const HandlerWrapper = struct {
                                 fn call(ev: [*c]const sokol.app.Event, w: *World) !void {
-                                    try handler_fn(ev.*, w);
+                                    const handler_type_info = @typeInfo(@TypeOf(handler_fn));
+                                    if (handler_type_info.@"fn".return_type.? == void) {
+                                        handler_fn(ev.*, w);
+                                    } else {
+                                        try handler_fn(ev.*, w);
+                                    }
                                 }
                             };
                             // Store compile-time generated wrapper function

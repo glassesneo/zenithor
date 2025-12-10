@@ -160,7 +160,7 @@ fn handleInput(
     stats.value.shots_fired += 1;
 }
 
-fn moveEntities(query: zenithor.Query(struct { BuiltinPlugin.Transform, Velocity }), time: zenithor.Resource(TimePlugin.Time)) !void {
+fn moveEntities(query: zenithor.Query(struct { BuiltinPlugin.Transform, Velocity }), time: zenithor.Resource(TimePlugin.Time)) void {
     const dt = time.value.delta_time;
 
     // Move all entities with both Transform and Velocity
@@ -257,7 +257,7 @@ fn handleDeath(
     }
 }
 
-fn displayUI(stats: zenithor.Resource(GameStats)) !void {
+fn displayUI(stats: zenithor.Resource(GameStats)) void {
     const pos = ImGuiPlugin.ImVec2{ .x = 10, .y = 10 };
     ImGuiPlugin.setNextWindowPos(pos, .Once);
 

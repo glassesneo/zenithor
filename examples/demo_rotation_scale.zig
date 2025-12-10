@@ -117,7 +117,7 @@ fn setup(commands: anytype) !void {
 fn animateRotatingBox(
     time: Resource(TimePlugin.Time),
     query: Query(struct { RotatingBox, Rotation }),
-) !void {
+) void {
     const t = @as(f32, @floatCast(time.value.total_time));
     for (query.entities) |entity| {
         if (!query.filter(entity)) continue;
@@ -131,7 +131,7 @@ fn animateRotatingBox(
 fn animateScalingBox(
     time: Resource(TimePlugin.Time),
     query: Query(struct { ScalingBox, Scale }),
-) !void {
+) void {
     const t = @as(f32, @floatCast(time.value.total_time));
     for (query.entities) |entity| {
         if (!query.filter(entity)) continue;
@@ -147,7 +147,7 @@ fn animateScalingBox(
 fn animateRotatingScalingSphere(
     time: Resource(TimePlugin.Time),
     query: Query(struct { RotatingScalingSphere, Rotation, Scale }),
-) !void {
+) void {
     const t = @as(f32, @floatCast(time.value.total_time));
     for (query.entities) |entity| {
         if (!query.filter(entity)) continue;
@@ -169,7 +169,7 @@ fn animateRotatingScalingSphere(
 fn animateOrbitingCylinder(
     time: Resource(TimePlugin.Time),
     query: Query(struct { OrbitingCylinder, Transform, Rotation }),
-) !void {
+) void {
     const t = @as(f32, @floatCast(time.value.total_time));
     for (query.entities) |entity| {
         if (!query.filter(entity)) continue;

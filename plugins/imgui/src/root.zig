@@ -146,7 +146,7 @@ pub fn textWrapped(text_content: [:0]const u8) void {
     ig.igTextWrapped("%s", text_content.ptr);
 }
 
-fn setupFrame() !void {
+fn setupFrame() void {
     sokol.imgui.newFrame(.{
         .width = sokol.app.width(),
         .height = sokol.app.height(),
@@ -155,11 +155,11 @@ fn setupFrame() !void {
     });
 }
 
-fn renderUi() !void {
+fn renderUi() void {
     sokol.imgui.render();
 }
 
-fn handleEvent(event: sokol.app.Event, world: anytype) !void {
+fn handleEvent(event: sokol.app.Event, world: anytype) void {
     _ = world; // Unused but required for standardized signature
     _ = sokol.imgui.handleEvent(event);
 }
@@ -179,7 +179,7 @@ pub const systems = .{
     .event_handlers = &.{handleEvent},
 };
 
-fn init() !void {
+fn init() void {
     sokol.imgui.setup(.{
         .logger = .{ .func = sokol.log.func },
     });
@@ -188,7 +188,7 @@ fn init() !void {
     }
 }
 
-fn shutdown() !void {
+fn shutdown() void {
     sokol.imgui.shutdown();
 }
 

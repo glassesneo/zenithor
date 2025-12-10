@@ -145,7 +145,7 @@ fn setup(commands: anytype, pass_action: zenithor.ResourceMut(GraphicsPlugin.Ren
     });
 }
 
-fn animate(time: zenithor.Resource(TimePlugin.Time), transforms: zenithor.SingleQuery(Transform)) !void {
+fn animate(time: zenithor.Resource(TimePlugin.Time), transforms: zenithor.SingleQuery(Transform)) void {
     const dt = time.value.delta_time;
     animation_time += dt;
 
@@ -181,7 +181,7 @@ fn animate(time: zenithor.Resource(TimePlugin.Time), transforms: zenithor.Single
     }
 }
 
-fn infoWindow() !void {
+fn infoWindow() void {
     const pos = ImGuiPlugin.ImVec2{ .x = 10, .y = 10 };
     ImGuiPlugin.setNextWindowPos(pos, ImGuiPlugin.ImGuiCond.Once);
 

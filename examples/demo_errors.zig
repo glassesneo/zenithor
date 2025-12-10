@@ -111,7 +111,7 @@ fn errorMonitorSystem(
     log: zenithor.ResourceMut(ErrorLog),
     time: zenithor.Resource(TimePlugin.Time),
     config: zenithor.ResourceMut(ErrorConfig),
-) !void {
+) void {
     const timestamp = time.value.total_time;
 
     // Check for game loop errors
@@ -132,7 +132,7 @@ fn errorDisplaySystem(
     log: zenithor.ResourceMut(ErrorLog),
     config: zenithor.ResourceMut(ErrorConfig),
     time: zenithor.Resource(TimePlugin.Time),
-) !void {
+) void {
     const window_flags = ImGuiPlugin.ImGuiWindowFlags.None;
 
     // Main control window

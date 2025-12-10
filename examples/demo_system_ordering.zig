@@ -41,7 +41,7 @@ pub const Components = .{};
 pub const Resources = .{ExecutionLog};
 pub const Events = .{};
 
-fn init(commands: anytype) !void {
+fn init(commands: anytype) void {
     commands.setResource(ExecutionLog, .{});
 }
 
@@ -62,39 +62,39 @@ pub const systems = .{
     },
 };
 
-fn defaultSystem1(log: ResourceMut(ExecutionLog)) !void {
+fn defaultSystem1(log: ResourceMut(ExecutionLog)) void {
     log.value.log("Default System 1 (priority: 0)");
 }
 
-fn defaultSystem2(log: ResourceMut(ExecutionLog)) !void {
+fn defaultSystem2(log: ResourceMut(ExecutionLog)) void {
     log.value.log("Default System 2 (priority: 0)");
 }
 
-fn lowPrioritySystem(log: ResourceMut(ExecutionLog)) !void {
+fn lowPrioritySystem(log: ResourceMut(ExecutionLog)) void {
     log.value.log("Low Priority System (priority: -50, tags: early)");
 }
 
-fn highPrioritySystem(log: ResourceMut(ExecutionLog)) !void {
+fn highPrioritySystem(log: ResourceMut(ExecutionLog)) void {
     log.value.log("High Priority System (priority: 100)");
 }
 
-fn physicsSystem(log: ResourceMut(ExecutionLog)) !void {
+fn physicsSystem(log: ResourceMut(ExecutionLog)) void {
     log.value.log("Physics System (priority: 10, tags: physics, after: early)");
 }
 
-fn renderingSystem(log: ResourceMut(ExecutionLog)) !void {
+fn renderingSystem(log: ResourceMut(ExecutionLog)) void {
     log.value.log("Rendering System (priority: 20, tags: rendering, after: physics)");
 }
 
-fn uiSystem(log: ResourceMut(ExecutionLog)) !void {
+fn uiSystem(log: ResourceMut(ExecutionLog)) void {
     log.value.log("UI System (tags: ui, after: rendering)");
 }
 
-fn clearLogSystem(log: ResourceMut(ExecutionLog)) !void {
+fn clearLogSystem(log: ResourceMut(ExecutionLog)) void {
     log.value.clear();
 }
 
-fn printLogSystem(log: Resource(ExecutionLog)) !void {
+fn printLogSystem(log: Resource(ExecutionLog)) void {
     log.value.print();
 
     std.debug.print("Expected order:\n", .{});
