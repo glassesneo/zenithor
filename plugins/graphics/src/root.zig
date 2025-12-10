@@ -1023,6 +1023,7 @@ fn draw3D(
 
 fn draw2D() !void {
     // Draw sokol.gl content (2D)
+    // All the 2D rendering commands recorded (drawTriangle, drawCircle) are executed here
     sokol.gl.draw();
 }
 
