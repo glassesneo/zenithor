@@ -709,12 +709,17 @@ pub fn Plugin(comptime shaders: anytype) type {
             }
         };
 
-        /// Check if buffer has capacity for more geometry (with 4KB safety margin)
-        fn checkBufferCapacity(buf: sokol.shape.Buffer, max_vertices: usize, max_indices: usize) bool {
-            const vertex_limit = max_vertices * @sizeOf(sokol.shape.Vertex) - 4096;
-            const index_limit = max_indices * @sizeOf(u16) - 4096;
-            if (buf.vertices.data_size >= vertex_limit or buf.indices.data_size >= index_limit) {
-                if (is_debug) @panic("Vertex/index buffer overflow");
+        /// Check if buffer has capacity for the upcoming shape geometry.
+        /// Uses the exact size needed for the shape rather than a fixed margin.
+        fn hasCapacityForShape(buf: sokol.shape.Buffer, max_vertices: usize, max_indices: usize, shape_sizes: sokol.shape.Sizes) bool {
+            const vertex_capacity = max_vertices * @sizeOf(sokol.shape.Vertex);
+            const index_capacity = max_indices * @sizeOf(u16);
+
+            const needed_vertex_space = buf.vertices.data_size + shape_sizes.vertices.size;
+            const needed_index_space = buf.indices.data_size + shape_sizes.indices.size;
+
+            if (needed_vertex_space > vertex_capacity or needed_index_space > index_capacity) {
+                if (is_debug) @panic("Vertex/index buffer overflow: shape requires more space than available");
                 return false;
             }
             return true;
@@ -865,8 +870,9 @@ pub fn Plugin(comptime shaders: anytype) type {
 
                 const model = buildModelMatrix(transform, rot, scl);
 
-                // Check buffer capacity before building shape
-                if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
+                // Check buffer capacity for this specific box shape
+                const box_sizes = sokol.shape.boxSizes(box.tiles);
+                if (!hasCapacityForShape(buf, max_vertices, max_indices, box_sizes)) break;
 
                 buf = sokol.shape.buildBox(buf, .{
                     .width = box.width,
@@ -901,8 +907,9 @@ pub fn Plugin(comptime shaders: anytype) type {
 
                 const model = buildModelMatrix(transform, rot, scl);
 
-                // Check buffer capacity before building shape
-                if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
+                // Check buffer capacity for this specific sphere shape
+                const sphere_sizes = sokol.shape.sphereSizes(sphere.slices, sphere.stacks);
+                if (!hasCapacityForShape(buf, max_vertices, max_indices, sphere_sizes)) break;
 
                 buf = sokol.shape.buildSphere(buf, .{
                     .radius = sphere.radius,
@@ -936,8 +943,9 @@ pub fn Plugin(comptime shaders: anytype) type {
 
                 const model = buildModelMatrix(transform, rot, scl);
 
-                // Check buffer capacity before building shape
-                if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
+                // Check buffer capacity for this specific cylinder shape
+                const cylinder_sizes = sokol.shape.cylinderSizes(cylinder.slices, cylinder.stacks);
+                if (!hasCapacityForShape(buf, max_vertices, max_indices, cylinder_sizes)) break;
 
                 buf = sokol.shape.buildCylinder(buf, .{
                     .radius = cylinder.radius,
@@ -972,8 +980,9 @@ pub fn Plugin(comptime shaders: anytype) type {
 
                 const model = buildModelMatrix(transform, rot, scl);
 
-                // Check buffer capacity before building shape
-                if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
+                // Check buffer capacity for this specific torus shape
+                const torus_sizes = sokol.shape.torusSizes(torus.sides, torus.rings);
+                if (!hasCapacityForShape(buf, max_vertices, max_indices, torus_sizes)) break;
 
                 buf = sokol.shape.buildTorus(buf, .{
                     .radius = torus.radius,
@@ -1008,8 +1017,9 @@ pub fn Plugin(comptime shaders: anytype) type {
 
                 const model = buildModelMatrix(transform, rot, scl);
 
-                // Check buffer capacity before building shape
-                if (!checkBufferCapacity(buf, max_vertices, max_indices)) break;
+                // Check buffer capacity for this specific plane shape
+                const plane_sizes = sokol.shape.planeSizes(plane.tiles);
+                if (!hasCapacityForShape(buf, max_vertices, max_indices, plane_sizes)) break;
 
                 buf = sokol.shape.buildPlane(buf, .{
                     .width = plane.width,
