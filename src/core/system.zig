@@ -7,6 +7,9 @@ const sparze = @import("sparze");
 const is_debug = builtin.mode == .Debug;
 
 const max_systems_per_stage = 1024;
+// Maximum dependencies a single system can have (for adjacency list)
+// Much smaller than max_systems_per_stage to avoid stack overflow on WASM
+const max_deps_per_system = 32;
 
 // SystemConfig provides optional configuration for system registration
 pub const SystemConfig = struct {
@@ -272,7 +275,9 @@ pub fn SystemScheduler(comptime World: type) type {
             @memset(in_degree[0..n], 0);
 
             // Build adjacency list: adj[i] contains indices of systems that depend on i
-            var adj: [max_systems_per_stage][max_systems_per_stage]u16 = undefined;
+            // Use max_deps_per_system instead of max_systems_per_stage to avoid stack overflow on WASM
+            // (1024 * 1024 * 2 = 2MB would overflow the stack)
+            var adj: [max_systems_per_stage][max_deps_per_system]u16 = undefined;
             var adj_counts: [max_systems_per_stage]u16 = undefined;
             @memset(adj_counts[0..n], 0);
 
@@ -285,6 +290,10 @@ pub fn SystemScheduler(comptime World: type) type {
                         for (other.tags) |tag| {
                             if (std.mem.eql(u8, tag, after_tag)) {
                                 // j must run before i
+                                if (adj_counts[j] >= max_deps_per_system) {
+                                    if (is_debug) @panic("Too many dependencies for system - increase max_deps_per_system");
+                                    continue;
+                                }
                                 adj[j][adj_counts[j]] = @intCast(i);
                                 adj_counts[j] += 1;
                                 in_degree[i] += 1;
@@ -300,6 +309,10 @@ pub fn SystemScheduler(comptime World: type) type {
                         for (other.tags) |tag| {
                             if (std.mem.eql(u8, tag, before_tag)) {
                                 // i must run before j
+                                if (adj_counts[i] >= max_deps_per_system) {
+                                    if (is_debug) @panic("Too many dependencies for system - increase max_deps_per_system");
+                                    continue;
+                                }
                                 adj[i][adj_counts[i]] = @intCast(j);
                                 adj_counts[i] += 1;
                                 in_degree[j] += 1;

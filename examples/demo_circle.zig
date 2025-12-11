@@ -3,7 +3,8 @@ const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const Transform = BuiltinPlugin.Transform;
 const Color = BuiltinPlugin.Color;
-const GraphicsPlugin = @import("graphics_plugin");
+const graphics_plugin = @import("graphics_plugin");
+const GraphicsPlugin = graphics_plugin.DefaultPlugin;
 const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 
