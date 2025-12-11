@@ -418,25 +418,53 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
         else
             options.allocator;
 
-        // Two-phase init: create struct first, then finish init after it's in final location
-        // This ensures the arena allocator's internal pointer is stable
-        var app_state = AppState.initArena(base_allocator);
-        app_state.finishInit();
+        // On WASM, sokol.app.run() returns immediately (event-driven model),
+        // so we must heap-allocate AppState to prevent dangling pointer issues.
+        // On native platforms, sokol.app.run() blocks, so stack allocation works.
+        const is_wasm = builtin.os.tag == .emscripten or builtin.cpu.arch.isWasm();
 
-        const desc: sokol.app.Desc = .{
-            .user_data = &app_state,
-            .init_userdata_cb = Callbacks.appInit,
-            .frame_userdata_cb = Callbacks.appFrame,
-            .cleanup_userdata_cb = Callbacks.appCleanup,
-            .event_userdata_cb = Callbacks.appEvent,
-            .width = 1280,
-            .height = 800,
-            .icon = .{ .sokol_default = true },
-            .window_title = "window",
-            .logger = .{ .func = sokol.log.func },
-            .win32 = .{ .console_attach = true },
-        };
+        if (is_wasm) {
+            // Heap allocate for WASM - memory is managed by the arena and never freed
+            // (the program runs until the browser tab is closed)
+            const app_state = base_allocator.create(AppState) catch @panic("Failed to allocate AppState");
+            app_state.* = AppState.initArena(base_allocator);
+            app_state.finishInit();
 
-        sokol.app.run(desc);
+            const desc: sokol.app.Desc = .{
+                .user_data = app_state,
+                .init_userdata_cb = Callbacks.appInit,
+                .frame_userdata_cb = Callbacks.appFrame,
+                .cleanup_userdata_cb = Callbacks.appCleanup,
+                .event_userdata_cb = Callbacks.appEvent,
+                .width = 1280,
+                .height = 800,
+                .icon = .{ .sokol_default = true },
+                .window_title = "window",
+                .logger = .{ .func = sokol.log.func },
+                .win32 = .{ .console_attach = true },
+            };
+
+            sokol.app.run(desc);
+        } else {
+            // Stack allocate for native - sokol.app.run() blocks until exit
+            var app_state = AppState.initArena(base_allocator);
+            app_state.finishInit();
+
+            const desc: sokol.app.Desc = .{
+                .user_data = &app_state,
+                .init_userdata_cb = Callbacks.appInit,
+                .frame_userdata_cb = Callbacks.appFrame,
+                .cleanup_userdata_cb = Callbacks.appCleanup,
+                .event_userdata_cb = Callbacks.appEvent,
+                .width = 1280,
+                .height = 800,
+                .icon = .{ .sokol_default = true },
+                .window_title = "window",
+                .logger = .{ .func = sokol.log.func },
+                .win32 = .{ .console_attach = true },
+            };
+
+            sokol.app.run(desc);
+        }
     }
 }

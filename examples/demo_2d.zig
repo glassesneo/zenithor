@@ -1,7 +1,8 @@
 const zenithor = @import("zenithor");
 const Stage = zenithor.Stage;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
-const GraphicsPlugin = @import("graphics_plugin");
+const graphics_plugin = @import("graphics_plugin");
+const GraphicsPlugin = graphics_plugin.DefaultPlugin;
 
 pub fn main() !void {
     zenithor.run(.{ GraphicsPlugin, Game }, .{});

@@ -7,6 +7,7 @@ const examples = [_]Example{
     .{ .name = "demo_window", .plugins = &.{} },
     .{ .name = "demo_2d", .plugins = &.{"graphics_plugin"} },
     .{ .name = "demo_3d", .plugins = &.{"graphics_plugin"} },
+    .{ .name = "demo_shaders", .plugins = &.{ "graphics_plugin", "time_plugin", "imgui_plugin" } },
     .{ .name = "demo_rotation_scale", .plugins = &.{ "graphics_plugin", "time_plugin" } },
     .{ .name = "demo_camera", .plugins = &.{ "graphics_plugin", "input_plugin", "time_plugin" } },
     .{ .name = "demo_imgui", .plugins = &.{ "graphics_plugin", "imgui_plugin" } },
@@ -146,10 +147,12 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .input = "plugins/graphics/src/shader.glsl",
         .output = "pbr_shader.zig",
         .slang = .{
-            .glsl430 = true,
+            .glsl410 = true,
             .glsl300es = true,
             .hlsl5 = true,
             .metal_macos = true,
+            .metal_ios = true,
+            .metal_sim = true,
             .wgsl = true,
         },
     });
@@ -160,10 +163,12 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .input = "plugins/graphics/src/blinn_phong.glsl",
         .output = "blinn_phong_shader.zig",
         .slang = .{
-            .glsl430 = true,
+            .glsl410 = true,
             .glsl300es = true,
             .hlsl5 = true,
             .metal_macos = true,
+            .metal_ios = true,
+            .metal_sim = true,
             .wgsl = true,
         },
     });
@@ -174,10 +179,12 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .input = "plugins/graphics/src/unlit.glsl",
         .output = "unlit_shader.zig",
         .slang = .{
-            .glsl430 = true,
+            .glsl410 = true,
             .glsl300es = true,
             .hlsl5 = true,
             .metal_macos = true,
+            .metal_ios = true,
+            .metal_sim = true,
             .wgsl = true,
         },
     });

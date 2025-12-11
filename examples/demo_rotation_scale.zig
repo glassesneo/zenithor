@@ -8,7 +8,8 @@ const Color = zenithor.Color;
 const ResourceMut = zenithor.ResourceMut;
 const Resource = zenithor.Resource;
 const Query = zenithor.Query;
-const GraphicsPlugin = @import("graphics_plugin");
+const graphics_plugin = @import("graphics_plugin");
+const GraphicsPlugin = graphics_plugin.DefaultPlugin;
 const TimePlugin = @import("time_plugin");
 
 pub fn main() !void {
