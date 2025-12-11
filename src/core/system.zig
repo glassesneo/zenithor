@@ -4,8 +4,6 @@ const EnumArray = std.EnumArray;
 const BuiltinPlugin = @import("builtin.zig");
 const sparze = @import("sparze");
 
-const is_debug = builtin.mode == .Debug;
-
 const max_systems_per_stage = 1024;
 // Maximum dependencies a single system can have (for adjacency list)
 // Much smaller than max_systems_per_stage to avoid stack overflow on WASM
@@ -291,7 +289,11 @@ pub fn SystemScheduler(comptime World: type) type {
                             if (std.mem.eql(u8, tag, after_tag)) {
                                 // j must run before i
                                 if (adj_counts[j] >= max_deps_per_system) {
-                                    if (is_debug) @panic("Too many dependencies for system - increase max_deps_per_system");
+                                    // In debug/release-safe: panic to alert developer
+                                    // In release-fast/release-small: skip silently (validated at build time)
+                                    if (builtin.mode == .Debug or builtin.mode == .ReleaseSafe) {
+                                        @panic("Too many dependencies for system - increase max_deps_per_system");
+                                    }
                                     continue;
                                 }
                                 adj[j][adj_counts[j]] = @intCast(i);
@@ -310,7 +312,11 @@ pub fn SystemScheduler(comptime World: type) type {
                             if (std.mem.eql(u8, tag, before_tag)) {
                                 // i must run before j
                                 if (adj_counts[i] >= max_deps_per_system) {
-                                    if (is_debug) @panic("Too many dependencies for system - increase max_deps_per_system");
+                                    // In debug/release-safe: panic to alert developer
+                                    // In release-fast/release-small: skip silently (validated at build time)
+                                    if (builtin.mode == .Debug or builtin.mode == .ReleaseSafe) {
+                                        @panic("Too many dependencies for system - increase max_deps_per_system");
+                                    }
                                     continue;
                                 }
                                 adj[i][adj_counts[i]] = @intCast(j);

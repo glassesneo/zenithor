@@ -42,10 +42,13 @@ const is_debug = builtin.mode == .Debug;
 /// const Graphics = graphics_plugin.Plugin(.{ UnlitShader, BlinnPhongShader, PbrShader });
 /// ```
 pub fn Plugin(comptime shaders: anytype) type {
-    // Validate shaders at compile time
+    // Validate shaders at compile time - ensures all conform to ShaderSpec contract
     shader_spec.validateShaderSpecs(shaders);
 
     return struct {
+        // Store validated shaders for future dynamic shader configuration.
+        // Currently the implementation uses the three built-in shaders (unlit, blinn_phong, pbr).
+        pub const validated_shaders = shaders;
         // =============================================================================
         // Constants
         // =============================================================================
@@ -411,14 +414,8 @@ pub fn Plugin(comptime shaders: anytype) type {
         // =============================================================================
 
         // Debug logging helper (native debug builds only)
-        fn debugLog(comptime fmt: []const u8, args: anytype) void {
-            if (is_debug and !builtin.target.cpu.arch.isWasm()) {
-                std.debug.print(fmt ++ "\n", args);
-            }
-        }
 
         fn init(commands: anytype, allocator: std.mem.Allocator) !void {
-            debugLog("Graphics init starting", .{});
 
             // Initialize pass action (background color)
             var rendering_options = RenderingOptions{};
@@ -447,31 +444,24 @@ pub fn Plugin(comptime shaders: anytype) type {
 
             // Create shaders directly (WASM-compatible)
             const backend = sokol.gfx.queryBackend();
-            debugLog("Backend: {any}", .{backend});
 
             const shader_unlit = sokol.gfx.makeShader(UnlitShader.shaderDesc(backend));
-            debugLog("Unlit shader ID: {d}", .{shader_unlit.id});
             var pipeline_desc_unlit = UnlitShader.pipelineDesc(layout);
             pipeline_desc_unlit.shader = shader_unlit;
             pipeline_desc_unlit.depth = depth_state;
             const pipeline_unlit = sokol.gfx.makePipeline(pipeline_desc_unlit);
-            debugLog("Unlit pipeline ID: {d}", .{pipeline_unlit.id});
 
             const shader_blinn_phong = sokol.gfx.makeShader(BlinnPhongShader.shaderDesc(backend));
-            debugLog("Blinn-Phong shader ID: {d}", .{shader_blinn_phong.id});
             var pipeline_desc_blinn_phong = BlinnPhongShader.pipelineDesc(layout);
             pipeline_desc_blinn_phong.shader = shader_blinn_phong;
             pipeline_desc_blinn_phong.depth = depth_state;
             const pipeline_blinn_phong = sokol.gfx.makePipeline(pipeline_desc_blinn_phong);
-            debugLog("Blinn-Phong pipeline ID: {d}", .{pipeline_blinn_phong.id});
 
             const shader_pbr = sokol.gfx.makeShader(PbrShader.shaderDesc(backend));
-            debugLog("PBR shader ID: {d}", .{shader_pbr.id});
             var pipeline_desc_pbr = PbrShader.pipelineDesc(layout);
             pipeline_desc_pbr.shader = shader_pbr;
             pipeline_desc_pbr.depth = depth_state;
             const pipeline_pbr = sokol.gfx.makePipeline(pipeline_desc_pbr);
-            debugLog("PBR pipeline ID: {d}", .{pipeline_pbr.id});
 
             // Store shaders in simple resource
             commands.setResource(Render3DShaders, .{
@@ -491,7 +481,6 @@ pub fn Plugin(comptime shaders: anytype) type {
             // Initialize 3D camera and lighting
             commands.setResource(Camera3D, .{});
             commands.setResource(Light3D, .{});
-            debugLog("Graphics init complete", .{});
         }
 
         /// Ensure 3D buffers are initialized before rendering
@@ -516,20 +505,9 @@ pub fn Plugin(comptime shaders: anytype) type {
                 tori.entities.len > 0 or
                 planes.entities.len > 0;
 
-            debugLog("ensure3DBuffers: boxes={d} spheres={d} cylinders={d} tori={d} planes={d}", .{
-                boxes.entities.len,
-                spheres.entities.len,
-                cylinders.entities.len,
-                tori.entities.len,
-                planes.entities.len,
-            });
-
             if (!has_3d_entities) {
-                debugLog("ensure3DBuffers: no 3D entities, skipping buffer init", .{});
                 return;
             }
-
-            debugLog("ensure3DBuffers: initializing 3D buffers", .{});
 
             // Allocate heap buffers for per-frame geometry building
             const allocator = buffers.value.allocator orelse return error.AllocatorNotSet;
@@ -690,12 +668,12 @@ pub fn Plugin(comptime shaders: anytype) type {
         const CommandBuckets = struct {
             const max_commands = 1024;
 
-            unlit: [max_commands]DrawCommand,
-            unlit_count: usize,
-            blinn: [max_commands]DrawCommand,
-            blinn_count: usize,
-            pbr: [max_commands]DrawCommand,
-            pbr_count: usize,
+            unlit: [max_commands]DrawCommand = undefined,
+            unlit_count: usize = 0,
+            blinn: [max_commands]DrawCommand = undefined,
+            blinn_count: usize = 0,
+            pbr: [max_commands]DrawCommand = undefined,
+            pbr_count: usize = 0,
 
             fn add(self: *CommandBuckets, shader: ShaderType, cmd: DrawCommand) void {
                 switch (shader) {
@@ -728,14 +706,6 @@ pub fn Plugin(comptime shaders: anytype) type {
 
             fn total(self: *const CommandBuckets) usize {
                 return self.unlit_count + self.blinn_count + self.pbr_count;
-            }
-
-            /// Sanitize counts to prevent index out of bounds on WASM
-            /// WASM struct initialization bug workaround
-            fn sanitize(self: *CommandBuckets) void {
-                if (self.unlit_count > max_commands) self.unlit_count = 0;
-                if (self.blinn_count > max_commands) self.blinn_count = 0;
-                if (self.pbr_count > max_commands) self.pbr_count = 0;
             }
         };
 
@@ -1064,22 +1034,10 @@ pub fn Plugin(comptime shaders: anytype) type {
             // Total count for statistics
             const total_count = buckets.total();
 
-            debugLog("draw3D: total_count={d} unlit={d} blinn={d} pbr={d}", .{
-                total_count,
-                buckets.unlit_count,
-                buckets.blinn_count,
-                buckets.pbr_count,
-            });
-
             // Only upload and draw if we have 3D objects
             if (total_count > 0) {
                 // Shaders are eagerly initialized at startup (see init())
                 // No lazy initialization needed - safe for WASM/WebGPU
-
-                debugLog("draw3D: vertex_data_size={d} index_data_size={d}", .{
-                    buf.vertices.data_size,
-                    buf.indices.data_size,
-                });
 
                 // Upload vertex/index data to GPU
                 sokol.gfx.updateBuffer(buffers.value.vertex_buffer, .{
@@ -1096,20 +1054,11 @@ pub fn Plugin(comptime shaders: anytype) type {
                 bindings.vertex_buffers[0] = buffers.value.vertex_buffer;
                 bindings.index_buffer = buffers.value.index_buffer;
 
-                debugLog("draw3D: vertex_buffer_id={d} index_buffer_id={d}", .{
-                    buffers.value.vertex_buffer.id,
-                    buffers.value.index_buffer.id,
-                });
-
                 // Draw each shader bucket (pipelines created at startup)
                 if (buckets.unlit_count > 0) {
                     drawUnlitBucket(buckets.unlit[0..buckets.unlit_count], shader_res.value.pipeline_unlit, bindings);
                 }
                 if (buckets.blinn_count > 0) {
-                    debugLog("draw3D: drawing {d} blinn-phong objects with pipeline {d}", .{
-                        buckets.blinn_count,
-                        shader_res.value.pipeline_blinn_phong.id,
-                    });
                     drawBlinnPhongBucket(buckets.blinn[0..buckets.blinn_count], shader_res.value.pipeline_blinn_phong, bindings, light.value.*, camera.value.*);
                 }
                 if (buckets.pbr_count > 0) {
@@ -1173,12 +1122,12 @@ pub fn Plugin(comptime shaders: anytype) type {
             .main = &.{
                 .{ .system = setDefaults, .stage = .pre_render },
                 .{ .system = setup2d, .stage = .pre_render },
-                .{ .system = beginPass, .stage = .pre_render },
-                .{ .system = drawPoint, .stage = .render },
-                .{ .system = drawLine, .stage = .render },
-                .{ .system = drawTriangle, .stage = .render },
-                .{ .system = drawRectangle, .stage = .render },
-                .{ .system = drawCircle, .stage = .render },
+                .{ .system = beginPass, .stage = .render, .config = .{ .tags = &.{"begin-pass"} } },
+                .{ .system = drawPoint, .stage = .render, .config = .{ .after = &.{"begin-pass"} } },
+                .{ .system = drawLine, .stage = .render, .config = .{ .after = &.{"begin-pass"} } },
+                .{ .system = drawTriangle, .stage = .render, .config = .{ .after = &.{"begin-pass"} } },
+                .{ .system = drawRectangle, .stage = .render, .config = .{ .after = &.{"begin-pass"} } },
+                .{ .system = drawCircle, .stage = .render, .config = .{ .after = &.{"begin-pass"} } },
                 .{ .system = ensure3DBuffers, .stage = .render_submit, .config = .{ .tags = &.{"3d-init"}, .before = &.{"3d-render"} } },
                 .{ .system = draw3D, .stage = .render_submit, .config = .{ .tags = &.{"3d-render"} } },
                 .{ .system = draw2D, .stage = .render_submit, .config = .{ .tags = &.{"2d-render"} } },
