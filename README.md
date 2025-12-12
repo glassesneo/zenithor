@@ -16,15 +16,13 @@ A 2D/3D "Game Engine Framework" for Zig, backed by Sokol and Sparze ECS. Native 
 # Run tests
 zig build test
 
-# Native example (window, input, rendering)
-zig build run-demo_window
-
-# Other native demos
-zig build run-demo_2d
-zig build run-demo_imgui
+# Native examples
+zig build run-minimal_app       # Minimal app + plugin wiring
+zig build run-rendering_2d      # 2D rendering + layering
+zig build run-scene_3d          # 3D scene basics
 
 # WebAssembly build + local server
-zig build demo_2d -Dtarget=wasm32-emscripten
+zig build rendering_2d -Dtarget=wasm32-emscripten
 zig build serve-examples -Dtarget=wasm32-emscripten       # serve all WASM demos
 zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem  # with IDBFS for serialization
 
@@ -44,6 +42,21 @@ pub fn main() void {
     zenithor.run(.{ Graphics, Time, Input }, .{});
 }
 ```
+
+## Examples
+
+All examples are in `examples/` and can be built with `zig build <name>` or run with `zig build run-<name>`:
+
+- **minimal_app**: Minimal app + plugin wiring
+- **input_movement**: Input + time driven movement
+- **rendering_2d**: 2D rendering + layering
+- **scene_3d**: 3D scene basics
+- **system_ordering**: System staging and ordering
+- **error_handling**: Event flow and error handling
+- **serialization**: Serialization round-trip
+- **imgui_overlay**: ImGui debug overlay
+- **plugin_authoring**: Plugin authoring + Requires
+- **showcase_3d**: Comprehensive 3D showcase (demonstrates all features)
 
 ## Plugin Catalog
 

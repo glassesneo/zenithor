@@ -105,7 +105,7 @@ fn drawSaveLoadUI(
 
 ## Demo Game Features
 
-The `demo_serialization.zig` example demonstrates:
+The `serialization.zig` example demonstrates:
 
 ### Components
 - **Player** - Player entity with movement
@@ -242,7 +242,7 @@ To enable save/load in browser environments, build with the `-Dfilesystem` flag:
 
 ```bash
 # Build with filesystem support
-zig build demo_serialization -Dtarget=wasm32-emscripten -Dfilesystem
+zig build serialization -Dtarget=wasm32-emscripten -Dfilesystem
 
 # Serve examples with filesystem support
 zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem
@@ -279,7 +279,7 @@ IDBFS is supported on all modern browsers:
 zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem
 
 # 2. Open browser to http://localhost:8000
-# 3. Select demo_serialization.html
+# 3. Select serialization.html
 # 4. Press F5 to save, F9 to load
 # 5. Refresh page - save persists!
 ```
@@ -305,7 +305,7 @@ Aborted(stack overflow (Attempt to set SP to 0x..., with stack limits [0x... - 0
 1. **Increase stack size** (recommended): Build with `-Dstack-size=<MB>`
    ```bash
    # Default is 5MB
-   zig build demo_serialization -Dtarget=wasm32-emscripten -Dstack-size=8
+   zig build serialization -Dtarget=wasm32-emscripten -Dstack-size=8
 
    # For very large games
    zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem -Dstack-size=16
@@ -406,7 +406,7 @@ fn handleSaveError(err: anyerror, save_file: zenithor.Resource(SerializationPlug
 
 ## Next Steps
 
-1. **Run the demo** - `zig build run-demo_serialization` (native) or `zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem` (web)
+1. **Run the demo** - `zig build run-serialization` (native) or `zig build serve-examples -Dtarget=wasm32-emscripten -Dfilesystem` (web)
 2. **Integrate into your game** - Add SerializationPlugin to `zenithor.run(plugins, .{})`
 3. **Implement save/load systems** - Add input handlers and UI
 4. **Custom serializers** - Implement for complex, non-POD component types

@@ -115,7 +115,7 @@ fn errorMonitor(
 - Plugin `build()` failures are logged in debug builds only (application.zig:297-299)
 - Release builds skip plugin initialization error printing for performance
 
-**See Also**: `examples/demo_errors.zig` for complete error handling demonstration
+**See Also**: `examples/error_handling.zig` for complete error handling demonstration
 
 ## System Scheduling
 

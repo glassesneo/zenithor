@@ -6,11 +6,11 @@ Plugin-driven 2D/3D game engine for Zig using Sokol (graphics), Sparze (ECS), an
 
 ```bash
 zig build test                  # Run tests
-zig build demo_window           # Build native example
-zig build run-demo_window       # Run native example
+zig build minimal_app           # Build native example
+zig build run-minimal_app       # Run native example
 
 # WASM builds
-zig build demo_2d -Dtarget=wasm32-emscripten
+zig build rendering_2d -Dtarget=wasm32-emscripten
 zig build serve-examples -Dtarget=wasm32-emscripten
 
 # With WASM filesystem support (for serialization)
@@ -22,7 +22,7 @@ zig build <target> -Dgles3     # OpenGL ES3
 zig build <target> -Dwgpu      # WebGPU
 ```
 
-**Available examples**: `demo_window`, `demo_2d`, `demo_imgui`, `demo_input`, `demo_time`, `demo_zindex`, `demo_circle`, `demo_resources`, `demo_events`, `demo_errors`, `demo_serialization`, `demo_system_ordering`
+**Available examples**: `minimal_app`, `input_movement`, `rendering_2d`, `scene_3d`, `system_ordering`, `error_handling`, `serialization`, `imgui_overlay`, `plugin_authoring`, `showcase_3d`
 
 ## Architecture
 
