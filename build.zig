@@ -4,22 +4,26 @@ const sokol = @import("sokol");
 const cimgui = @import("cimgui");
 
 const examples = [_]Example{
-    .{ .name = "demo_window", .plugins = &.{} },
-    .{ .name = "demo_2d", .plugins = &.{"graphics_plugin"} },
-    .{ .name = "demo_3d", .plugins = &.{"graphics_plugin"} },
-    .{ .name = "demo_shaders", .plugins = &.{ "graphics_plugin", "time_plugin", "imgui_plugin" } },
-    .{ .name = "demo_rotation_scale", .plugins = &.{ "graphics_plugin", "time_plugin" } },
-    .{ .name = "demo_camera", .plugins = &.{ "graphics_plugin", "input_plugin", "time_plugin" } },
-    .{ .name = "demo_imgui", .plugins = &.{ "graphics_plugin", "imgui_plugin" } },
-    .{ .name = "demo_input", .plugins = &.{ "graphics_plugin", "imgui_plugin", "input_plugin" } },
-    .{ .name = "demo_time", .plugins = &.{ "graphics_plugin", "imgui_plugin", "time_plugin" } },
-    .{ .name = "demo_zindex", .plugins = &.{ "graphics_plugin", "imgui_plugin", "time_plugin" } },
-    .{ .name = "demo_circle", .plugins = &.{ "graphics_plugin", "imgui_plugin", "time_plugin" } },
-    .{ .name = "demo_resources", .plugins = &.{ "graphics_plugin", "imgui_plugin", "input_plugin" } },
-    .{ .name = "demo_events", .plugins = &.{ "graphics_plugin", "imgui_plugin", "input_plugin", "time_plugin" } },
-    .{ .name = "demo_errors", .plugins = &.{ "graphics_plugin", "imgui_plugin", "time_plugin" } },
-    .{ .name = "demo_serialization", .plugins = &.{ "graphics_plugin", "imgui_plugin", "input_plugin", "time_plugin", "serialization_plugin" } },
-    .{ .name = "demo_system_ordering", .plugins = &.{} },
+    // Minimal app + plugin wiring
+    .{ .name = "minimal_app", .plugins = &.{ "graphics_plugin", "time_plugin", "input_plugin" } },
+    // Input + time driven movement
+    .{ .name = "input_movement", .plugins = &.{ "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
+    // 2D rendering + layering
+    .{ .name = "rendering_2d", .plugins = &.{ "graphics_plugin", "imgui_plugin" } },
+    // 3D scene basics
+    .{ .name = "scene_3d", .plugins = &.{ "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
+    // System staging and ordering
+    .{ .name = "system_ordering", .plugins = &.{} },
+    // Event flow and error handling
+    .{ .name = "error_handling", .plugins = &.{ "graphics_plugin", "time_plugin", "imgui_plugin" } },
+    // Serialization round-trip
+    .{ .name = "serialization", .plugins = &.{ "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
+    // ImGui debug overlay
+    .{ .name = "imgui_overlay", .plugins = &.{ "graphics_plugin", "time_plugin", "imgui_plugin" } },
+    // Plugin authoring + Requires
+    .{ .name = "plugin_authoring", .plugins = &.{ "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
+    // Comprehensive 3D showcase - demonstrates ALL features
+    .{ .name = "showcase_3d", .plugins = &.{ "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
 };
 
 const Example = struct {
