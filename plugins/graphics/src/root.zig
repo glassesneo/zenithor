@@ -1177,4 +1177,4 @@ pub fn Plugin(comptime shaders: anytype) type {
     };
 }
 
-pub const DefaultPlugin = Plugin(.{ UnlitShader, BlinnPhongShader, PbrShader });
+pub const Default = Plugin(.{ UnlitShader, BlinnPhongShader, PbrShader });

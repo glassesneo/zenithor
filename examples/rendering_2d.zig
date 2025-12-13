@@ -10,8 +10,7 @@
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
-const graphics_plugin = @import("graphics_plugin");
-const GraphicsPlugin = graphics_plugin.DefaultPlugin;
+const GraphicsPlugin = @import("graphics_plugin").Default;
 const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {

@@ -8,8 +8,7 @@
 ///
 /// See: src/core/CLAUDE.md
 const zenithor = @import("zenithor");
-const graphics_plugin = @import("graphics_plugin");
-const GraphicsPlugin = graphics_plugin.DefaultPlugin;
+const GraphicsPlugin = @import("graphics_plugin").Default;
 const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
 

@@ -16,8 +16,7 @@ const BuiltinPlugin = zenithor.BuiltinPlugin;
 const Resource = zenithor.Resource;
 const ResourceMut = zenithor.ResourceMut;
 const EventReader = zenithor.EventReader;
-const graphics_plugin = @import("graphics_plugin");
-const GraphicsPlugin = graphics_plugin.DefaultPlugin;
+const GraphicsPlugin = @import("graphics_plugin").Default;
 const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 
