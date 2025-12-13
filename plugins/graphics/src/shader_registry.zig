@@ -9,7 +9,6 @@
 /// - Lazy GPU resource creation (only on first use)
 /// - Type-safe shader handles
 /// - Automatic cleanup of initialized resources
-
 const std = @import("std");
 const sokol = @import("sokol");
 const shader_spec = @import("shader_spec.zig");

@@ -3,7 +3,6 @@
 /// This shader passes through vertex colors without any lighting calculations.
 /// Ideal for UI elements, wireframes, debug visualization, and objects that
 /// should maintain their exact colors without shading.
-
 const sokol = @import("sokol");
 const unlit_shader = @import("unlit_shader");
 

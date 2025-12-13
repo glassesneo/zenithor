@@ -8,7 +8,6 @@
 /// - Ambient: Base lighting independent of light direction
 /// - Diffuse: Light scattered equally in all directions (Lambertian)
 /// - Specular: Mirror-like reflections (Blinn half-vector optimization)
-
 const sokol = @import("sokol");
 const blinn_phong_shader = @import("blinn_phong_shader");
 

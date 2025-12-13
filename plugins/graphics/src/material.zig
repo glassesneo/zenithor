@@ -17,7 +17,6 @@
 ///     BlinnPhongMaterial{ .params = .{ .shininess = 64.0 } },
 /// });
 /// ```
-
 const shader_spec = @import("shader_spec.zig");
 
 /// Generate a material component type for a specific shader

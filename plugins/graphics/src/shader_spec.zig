@@ -37,7 +37,6 @@
 ///     }
 /// };
 /// ```
-
 const std = @import("std");
 
 /// Validates that a type conforms to the ShaderSpec contract at compile time.

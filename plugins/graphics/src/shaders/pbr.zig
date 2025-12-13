@@ -10,7 +10,6 @@
 /// PBR provides more realistic and consistent lighting across different lighting
 /// conditions compared to empirical models like Blinn-Phong. It uses physical
 /// parameters (metallic, roughness) instead of artistic parameters (shininess, specular).
-
 const sokol = @import("sokol");
 const pbr_shader = @import("pbr_shader");
 
