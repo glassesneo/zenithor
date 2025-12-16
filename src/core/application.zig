@@ -220,7 +220,46 @@ pub fn buildWorld(comptime plugins: anytype) type {
     };
     const Events = std.meta.Tuple(&events);
 
-    return sparze.World(Components, Resources, Events);
+    // === Collect and deduplicate Groups ===
+
+    // compute max possible length for groups
+    var total_group_len: usize = 0;
+    inline for (plugins) |P| {
+        if (!@hasDecl(P, "Groups")) continue;
+        inline for (P.Groups) |_| {
+            total_group_len += 1;
+        }
+    }
+
+    // dedup groups into temporary list
+    var tmp_groups: [total_group_len]type = undefined;
+    var group_count: usize = 0;
+    inline for (plugins) |P| {
+        if (!@hasDecl(P, "Groups")) continue;
+        inline for (P.Groups) |G| {
+            if (!containsType(tmp_groups, G, group_count)) {
+                tmp_groups[group_count] = G;
+                group_count += 1;
+            }
+        }
+    }
+
+    // finalize exact-sized group list as tuple
+    const Groups = blk: {
+        if (group_count == 0) {
+            // Empty tuple for no groups
+            break :blk .{};
+        } else {
+            // Build tuple from collected groups
+            var groups: [group_count]type = undefined;
+            inline for (0..group_count) |i| {
+                groups[i] = tmp_groups[i];
+            }
+            break :blk std.meta.Tuple(&groups);
+        }
+    };
+
+    return sparze.World(Components, Resources, Events, Groups);
 }
 
 const ZenithorOptions = struct {
@@ -284,14 +323,6 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
     const Callbacks = struct {
         export fn appInit(state: ?*anyopaque) callconv(.c) void {
             var app_state = @as(*AppState, @ptrCast(@alignCast(state)));
-
-            // Create groups
-            inline for (allPlugins) |P| {
-                if (!@hasDecl(P, "Groups")) continue;
-                inline for (P.Groups) |Group| {
-                    app_state.world.createGroup(Group) catch unreachable;
-                }
-            }
 
             // Initialize resources and register systems for each plugin
             inline for (allPlugins, 0..) |Plugin, plugin_idx| {

@@ -164,12 +164,10 @@ fn safeSave(commands: anytype, path: []const u8) !void {
 }
 ```
 
-### Group Recreation
-```zig
-// After deserialization, recreate groups
-try world.createGroup(struct { Position, Velocity });
-try world.createGroup(struct { Collectible, Transform });
-```
+### Group Handling
+Groups are defined at compile-time in plugin declarations (`pub const Groups`).
+They are automatically included in the World type signature and do not need
+recreation after deserialization.
 
 ### Data Validation
 ```zig
@@ -417,18 +415,6 @@ fn handleSaveError(err: anyerror, save_file: zenithor.Resource(SerializationPlug
 ## Troubleshooting
 
 ### Common Issues and Solutions
-
-#### Groups not working after load
-```zig
-// Problem: Groups store memory layout info not serialized
-// Solution: Recreate groups after loading
-
-fn postLoadSetup(commands: anytype) !void {
-    // Recreate all groups used by your game
-    try commands.createGroup(struct { Transform, Velocity });
-    try commands.createGroup(struct { Collectible, Transform });
-}
-```
 
 #### Type mismatch errors during load
 ```zig

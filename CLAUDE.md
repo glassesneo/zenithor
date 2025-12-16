@@ -160,7 +160,7 @@ pub const Requires = .{ TimePlugin, InputPlugin, GraphicsPlugin };
 
 ### build() Parameters (any order, all optional)
 - `allocator: std.mem.Allocator`
-- `world: anytype` - For `setResource()`, `createGroup()`
+- `world: anytype` - For `setResource()`
 
 ### System Stages (execution order)
 1. `first` - Early setup
@@ -258,7 +258,7 @@ nix develop  # Zig 0.15.1, ZLS, zon2nix, Deno
 
 - **Zig 0.15.1+** required
 - **Plugins must NOT** call `sokol.*.setup()`/`shutdown()` (centrally initialized)
-- **Groups** are full-owning, cannot overlap (validated at compile time)
+- **Groups** must be declared at compile-time in plugin's `pub const Groups` tuple; they are automatically included in the World type signature (4th parameter)
 - **Tag components** are empty structs (`struct {}`) using TagStorage
 - **Debug and ReleaseSafe builds** include defensive validations (overflow checks, constraint validation, assertions) that are removed in ReleaseFast/ReleaseSmall builds for performance (see [Debug vs Release Builds](src/core/CLAUDE.md#debug-vs-release-builds))
 

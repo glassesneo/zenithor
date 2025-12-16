@@ -77,10 +77,6 @@ pub fn loadGame(
 
     try commands.deserializeFromFile(path);
 
-    // Recreate groups after load (groups are not serialized)
-    // Note: Add any group recreation here if needed
-    // try commands.createGroup(MyGroup);
-
     // Update metadata
     const stat = file.stat() catch return;
     save_file.value.timestamp = stat.mtime;

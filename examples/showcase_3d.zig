@@ -913,10 +913,10 @@ const GamePlugin = struct {
         event_errors: EventReader(BuiltinPlugin.EventLoopError),
     ) void {
         // Log any errors that occurred
-        for (game_errors.queue) |err| {
+        for (game_errors.read()) |err| {
             std.debug.print("GameLoopError: {any}\n", .{err.err});
         }
-        for (event_errors.queue) |err| {
+        for (event_errors.read()) |err| {
             std.debug.print("EventLoopError: {any}\n", .{err.err});
         }
     }

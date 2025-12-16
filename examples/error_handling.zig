@@ -113,13 +113,13 @@ fn errorMonitor(
     const timestamp = time.value.total_time;
 
     // Check for game loop errors (from systems)
-    for (game_errors.queue) |err_event| {
+    for (game_errors.read()) |err_event| {
         log.value.add(err_event.err, timestamp);
         config.value.error_count += 1;
     }
 
     // Check for event loop errors (from event handlers)
-    for (event_errors.queue) |err_event| {
+    for (event_errors.read()) |err_event| {
         log.value.add(err_event.err, timestamp);
         config.value.error_count += 1;
     }
@@ -187,7 +187,7 @@ fn drawUI(
 
         ImGuiPlugin.spacing();
         ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Recovery Pattern:");
-        ImGuiPlugin.textWrapped("fn errorMonitor(\n  errors: EventReader(GameLoopError)\n) void {\n  for (errors.queue) |e| {\n    // Handle error\n  }\n}");
+        ImGuiPlugin.textWrapped("fn errorMonitor(\n  errors: EventReader(GameLoopError)\n) void {\n  for (errors.read()) |e| {\n    // Handle error\n  }\n}");
     }
     ImGuiPlugin.end();
 }

@@ -85,14 +85,14 @@ const HealthPlugin = struct {
         health_query: SingleQuery(Health),
     ) void {
         // Process damage events
-        for (damage_events.queue) |event| {
+        for (damage_events.read()) |event| {
             for (health_query.entities, health_query.components) |_, *health| {
                 health.current = @max(0, health.current - event.amount);
             }
         }
 
         // Process heal events
-        for (heal_events.queue) |event| {
+        for (heal_events.read()) |event| {
             for (health_query.entities, health_query.components) |_, *health| {
                 health.current = @min(health.max, health.current + event.amount);
             }

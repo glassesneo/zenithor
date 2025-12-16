@@ -37,16 +37,16 @@
     // internet connectivity.
     .dependencies = .{
         .sokol = .{
-            .url = "git+https://github.com/floooh/sokol-zig.git#f4f4118471e98a13f17c37515577b48631fc8d76",
-            .hash = "sokol-0.1.0-pb1HK4zoMgBCStBhW2YL4CgxvvHtwZGo_H83n6Hmdk__",
+            .url = "git+https://github.com/floooh/sokol-zig.git#fce014e268a47bcf7473f1ef2d026020e3a17360",
+            .hash = "sokol-0.1.0-pb1HK-xlNgA1VENc1Hma_6RwNBWC9uGyOi2qdvOnsUsH",
         },
         .sparze = .{
-            .url = "git+https://github.com/glassesneo/sparze.git#86ef49719c0fba172bd5ba8c6e46327066a1fd54",
-            .hash = "sparze-0.0.0-IVywrcU1BwCuLDuDRUNDttvlEzvXRfQQ5nrJN5hBewWQ",
+            .url = "git+https://github.com/glassesneo/sparze.git#e70b22af47d6357243a8ec7e2297a0a9384e8537",
+            .hash = "sparze-0.0.0-IVywrenMBgDoihdUNn12_S5V46hM1uQJsT_-gDnOL0_z",
         },
         .cimgui = .{
-            .url = "git+https://github.com/floooh/dcimgui.git#a89e0594214cf315de033c7cb6c144c7b54da09b",
-            .hash = "cimgui-0.1.0-44Clkd6YlAAYULKHDwsDX9EPmka-VAVEjUl-o6ve307E",
+            .url = "git+https://github.com/floooh/dcimgui.git#6c2c7f0452d9f44c95094c3f7dc2969c2c6a5e1a",
+            .hash = "cimgui-0.1.0-44ClkQYjlQCl0iQX5wlquJ-mFZMqSxXA3hE2MG_3i1BT",
         },
     },
     .paths = .{

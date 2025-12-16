@@ -413,7 +413,8 @@ const TestEvents = struct {
     BuiltinPlugin.GameLoopError,
     BuiltinPlugin.EventLoopError,
 };
-const TestWorld = sparze.World(TestComponents, TestResources, TestEvents);
+const TestGroups = .{}; // No groups for tests
+const TestWorld = sparze.World(TestComponents, TestResources, TestEvents, TestGroups);
 
 const testing = std.testing;
 

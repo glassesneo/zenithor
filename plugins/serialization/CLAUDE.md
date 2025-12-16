@@ -23,7 +23,6 @@ Methods:
 **loadGame(commands, save_file: Resource(SaveFile))**
 - Deserializes world from file via `commands.deserializeFromFile()`
 - Updates SaveFile metadata
-- **Must recreate Groups** after load (groups not serialized)
 
 ## Usage
 
@@ -41,8 +40,6 @@ fn handleInput(
 
     if (keyboard.value.isPressed(.F9)) {
         try Serialization.loadGame(commands, save_file);
-        // Recreate groups after deserialization
-        try commands.createGroup(MyGroup);
     }
 }
 ```
@@ -51,7 +48,7 @@ fn handleInput(
 
 Inherited from Sparze (see sparze CLAUDE.md):
 - **Serialized**: Entities, components, resources, events (read buffer)
-- **Not serialized**: Groups, command buffers, event write buffer, types with `pub const serialized = false`
+- **Not serialized**: command buffers, event write buffer, types with `pub const serialized = false`
 - **POD types**: Auto-serialized
 - **Non-POD**: Require custom `Serializer` with `serialize()`/`deserialize()` methods
 

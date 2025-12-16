@@ -4,7 +4,6 @@
 /// - Save game state with F5 or button
 /// - Load game state with F9 or button
 /// - Resources are serialized automatically (POD types)
-/// - Groups must be recreated after deserialization
 /// - Mark transient resources with `pub const serialized = false`
 ///
 /// WASM Note: Requires `-Dfilesystem` build flag for IDBFS support.
@@ -97,9 +96,6 @@ fn handleInput(
     if (kb.isPressed(.F9)) {
         try SerializationPlugin.loadGame(commands, save_file);
         std.debug.print("Game loaded! Score: {}, Level: {}\n", .{ game.value.score, game.value.level });
-
-        // IMPORTANT: Groups must be recreated after deserialization
-        // Example: try commands.createGroup(MyGroup);
     }
 
     // Simulate gameplay
@@ -177,7 +173,6 @@ fn drawUI(
 
         ImGuiPlugin.spacing();
         ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "NOT Serialized:");
-        ImGuiPlugin.bulletText("Groups (recreate after load)");
         ImGuiPlugin.bulletText("Types with serialized=false");
         ImGuiPlugin.bulletText("Time, Input resources");
 
