@@ -31,6 +31,7 @@ zig build <target> -Dwgpu      # WebGPU
 **ECS via Sparze** - Compile-time type resolution, zero runtime lookup, cache-friendly storage. See [Sparze docs](https://github.com/glassesneo/sparze/blob/main/CLAUDE.md) for Query/Group/Event details.
 
 **Sokol for I/O** - Cross-platform graphics, windowing, input, audio (initialized centrally in core).
+**World assembly** - `sparze.World(.{Components}, .{Resources}, .{Events}, .{Groups})` built from plugin declarations; tuples are **values** like `.{ Position, Velocity }`, produced via compile-time type tuples (see `src/core/application.zig`).
 
 ## Directory Structure
 
@@ -258,7 +259,8 @@ nix develop  # Zig 0.15.1, ZLS, zon2nix, Deno
 
 - **Zig 0.15.1+** required
 - **Plugins must NOT** call `sokol.*.setup()`/`shutdown()` (centrally initialized)
-- **Groups** must be declared at compile-time in plugin's `pub const Groups` tuple; they are automatically included in the World type signature (4th parameter)
+- **World type** is constructed from tuple **values**: `sparze.World(.{ Components... }, .{ Resources... }, .{ Events... }, .{ Groups... })`
+- **Groups** must be declared at compile-time in plugin's `pub const Groups` tuple; they are automatically included in the World signature (4th parameter)
 - **Tag components** are empty structs (`struct {}`) using TagStorage
 - **Debug and ReleaseSafe builds** include defensive validations (overflow checks, constraint validation, assertions) that are removed in ReleaseFast/ReleaseSmall builds for performance (see [Debug vs Release Builds](src/core/CLAUDE.md#debug-vs-release-builds))
 

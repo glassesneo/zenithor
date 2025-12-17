@@ -17,6 +17,72 @@ fn containsType(comptime arr: anytype, comptime T: type, comptime n: usize) bool
     } else false;
 }
 
+/// Creates a type tuple struct that holds type values for Sparze World.
+/// Returns a struct type like `struct { comptime type = Position, comptime type = Velocity }`.
+/// When instantiated with `.{}`, it creates the tuple value `.{ Position, Velocity }`.
+fn TypeTupleType(comptime count: usize, comptime types: [count]type) type {
+    var fields: [count]std.builtin.Type.StructField = undefined;
+    inline for (0..count) |i| {
+        fields[i] = .{
+            .name = std.fmt.comptimePrint("{d}", .{i}),
+            .type = type,
+            .default_value_ptr = @ptrCast(&types[i]),
+            .is_comptime = true,
+            .alignment = 0,
+        };
+    }
+    return @Type(.{
+        .@"struct" = .{
+            .layout = .auto,
+            .fields = &fields,
+            .decls = &.{},
+            .is_tuple = true,
+        },
+    });
+}
+
+/// Helper to calculate max possible types from plugins for array sizing.
+fn maxTypesFromPlugins(comptime plugins: anytype, comptime type_kind: []const u8) usize {
+    var total: usize = 0;
+    inline for (plugins) |P| {
+        if (@hasDecl(P, type_kind)) {
+            total += @field(P, type_kind).len;
+        }
+    }
+    return total;
+}
+
+/// Collects and deduplicates types from plugins into a tuple.
+/// Returns a tuple value like `.{ Position, Velocity }` for Sparze World.
+fn collectPluginTypes(comptime plugins: anytype, comptime type_kind: []const u8) blk: {
+    @setEvalBranchQuota(10000);
+    const max_types = maxTypesFromPlugins(plugins, type_kind);
+
+    // Collect and deduplicate types
+    var tmp_list: [max_types]type = undefined;
+    var count: usize = 0;
+    for (plugins) |P| {
+        if (@hasDecl(P, type_kind)) {
+            for (@field(P, type_kind)) |T| {
+                if (!containsType(tmp_list, T, count)) {
+                    tmp_list[count] = T;
+                    count += 1;
+                }
+            }
+        }
+    }
+
+    // Build final array
+    var types: [count]type = undefined;
+    for (0..count) |i| {
+        types[i] = tmp_list[i];
+    }
+
+    break :blk TypeTupleType(count, types);
+} {
+    return .{};
+}
+
 /// Expands plugin dependencies recursively, auto-including all required plugins
 /// and detecting circular dependencies at compile time.
 ///
@@ -118,146 +184,11 @@ fn expandPluginDependencies(comptime user_plugins: anytype) type {
 }
 
 pub fn buildWorld(comptime plugins: anytype) type {
-    // === Collect and deduplicate Components ===
-
-    // compute max possible length for components
-    var total_component_len: usize = 0;
-    inline for (plugins) |P| {
-        if (!@hasDecl(P, "Components")) continue;
-        inline for (P.Components) |_| {
-            total_component_len += 1;
-        }
-    }
-
-    // dedup components into temporary list
-    var tmp_components: [total_component_len]type = undefined;
-    var component_count: usize = 0;
-    inline for (plugins) |P| {
-        if (!@hasDecl(P, "Components")) continue;
-        inline for (P.Components) |C| {
-            if (!containsType(tmp_components, C, component_count)) {
-                tmp_components[component_count] = C;
-                component_count += 1;
-            }
-        }
-    }
-
-    // finalize exact-sized component list
-    const components: [component_count]type = blk: {
-        var components: [component_count]type = undefined;
-        inline for (0..component_count) |i| {
-            components[i] = tmp_components[i];
-        }
-        break :blk components;
-    };
-    const Components = std.meta.Tuple(&components);
-
-    // === Collect and deduplicate Resources ===
-
-    // compute max possible length for resources
-    var total_resource_len: usize = 0;
-    inline for (plugins) |P| {
-        if (!@hasDecl(P, "Resources")) continue;
-        inline for (P.Resources) |_| {
-            total_resource_len += 1;
-        }
-    }
-
-    // dedup resources into temporary list
-    var tmp_resources: [total_resource_len]type = undefined;
-    var resource_count: usize = 0;
-    inline for (plugins) |P| {
-        if (!@hasDecl(P, "Resources")) continue;
-        inline for (P.Resources) |R| {
-            if (!containsType(tmp_resources, R, resource_count)) {
-                tmp_resources[resource_count] = R;
-                resource_count += 1;
-            }
-        }
-    }
-
-    // finalize exact-sized resource list
-    const resources: [resource_count]type = blk: {
-        var resources: [resource_count]type = undefined;
-        inline for (0..resource_count) |i| {
-            resources[i] = tmp_resources[i];
-        }
-        break :blk resources;
-    };
-    const Resources = std.meta.Tuple(&resources);
-
-    // === Collect and deduplicate Events ===
-
-    // compute max possible length for events
-    var total_event_len: usize = 0;
-    inline for (plugins) |P| {
-        if (!@hasDecl(P, "Events")) continue;
-        inline for (P.Events) |_| {
-            total_event_len += 1;
-        }
-    }
-
-    // dedup events into temporary list
-    var tmp_events: [total_event_len]type = undefined;
-    var event_count: usize = 0;
-    inline for (plugins) |P| {
-        if (!@hasDecl(P, "Events")) continue;
-        inline for (P.Events) |E| {
-            if (!containsType(tmp_events, E, event_count)) {
-                tmp_events[event_count] = E;
-                event_count += 1;
-            }
-        }
-    }
-
-    // finalize exact-sized event list
-    const events: [event_count]type = blk: {
-        var events: [event_count]type = undefined;
-        inline for (0..event_count) |i| {
-            events[i] = tmp_events[i];
-        }
-        break :blk events;
-    };
-    const Events = std.meta.Tuple(&events);
-
-    // === Collect and deduplicate Groups ===
-
-    // compute max possible length for groups
-    var total_group_len: usize = 0;
-    inline for (plugins) |P| {
-        if (!@hasDecl(P, "Groups")) continue;
-        inline for (P.Groups) |_| {
-            total_group_len += 1;
-        }
-    }
-
-    // dedup groups into temporary list
-    var tmp_groups: [total_group_len]type = undefined;
-    var group_count: usize = 0;
-    inline for (plugins) |P| {
-        if (!@hasDecl(P, "Groups")) continue;
-        inline for (P.Groups) |G| {
-            if (!containsType(tmp_groups, G, group_count)) {
-                tmp_groups[group_count] = G;
-                group_count += 1;
-            }
-        }
-    }
-
-    // finalize exact-sized group list as tuple
-    const Groups = blk: {
-        if (group_count == 0) {
-            // Empty tuple for no groups
-            break :blk .{};
-        } else {
-            // Build tuple from collected groups
-            var groups: [group_count]type = undefined;
-            inline for (0..group_count) |i| {
-                groups[i] = tmp_groups[i];
-            }
-            break :blk std.meta.Tuple(&groups);
-        }
-    };
+    @setEvalBranchQuota(25000);
+    const Components = collectPluginTypes(plugins, "Components");
+    const Resources = collectPluginTypes(plugins, "Resources");
+    const Events = collectPluginTypes(plugins, "Events");
+    const Groups = collectPluginTypes(plugins, "Groups");
 
     return sparze.World(Components, Resources, Events, Groups);
 }

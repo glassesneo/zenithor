@@ -404,16 +404,37 @@ const SequenceResource = struct {
     index: usize = 0,
 };
 
-const TestComponents = struct {};
-const TestResources = struct {
+const TestPosition = struct {
+    x: f32,
+    y: f32,
+};
+
+const TestVelocity = struct {
+    dx: f32,
+    dy: f32,
+};
+
+const TestComponents = .{
+    TestPosition,
+    TestVelocity,
+};
+
+const TestMovementGroup = struct {
+    TestPosition,
+    TestVelocity,
+};
+
+const TestResources = .{
     CounterResource,
     SequenceResource,
 };
-const TestEvents = struct {
+const TestEvents = .{
     BuiltinPlugin.GameLoopError,
     BuiltinPlugin.EventLoopError,
 };
-const TestGroups = .{}; // No groups for tests
+const TestGroups = .{
+    TestMovementGroup,
+};
 const TestWorld = sparze.World(TestComponents, TestResources, TestEvents, TestGroups);
 
 const testing = std.testing;

@@ -14,16 +14,32 @@ Central engine components (application lifecycle, builtin types, system scheduli
 - Entry point for all Zenithor applications
 - Expands plugin dependencies automatically via `expandPluginDependencies()`
 - Combines user plugins with BuiltinPlugin (Transform, Color)
-- Builds World from deduplicated Components/Resources/Events
+- Builds World from deduplicated Components/Resources/Events/Groups
+- Passes tuple **values** (not `std.meta.Tuple` types) into `sparze.World`
 - Creates system schedulers (startup, main, terminate)
 - Introspects plugin declarations via `pub const systems`
 - Initializes Sokol modules (app, gfx, gl, time, imgui)
 - Runs main loop with frame timing
 
 **buildWorld(plugins: anytype) type**
-- Compile-time deduplication of Components, Resources, Events across all plugins
-- Returns Sparze World type with merged declarations
-- Validates plugin structure (`Components`, `Resources`, `Events` tuples)
+- Compile-time deduplication of Components, Resources, Events, Groups across all plugins
+- Uses `collectPluginTypes()` to gather declarations into tuple **values** (e.g. `.{ Position, Velocity }`)
+- Tuple values are built via `TypeTupleType`, a struct-of-comptime-types that materializes into a tuple when instantiated
+- Returns Sparze World type built from those tuple values (signature: `sparze.World(.{ comps }, .{ resources }, .{ events }, .{ groups })`)
+
+## World Construction
+
+- **TypeTupleType**: creates a struct type with comptime type fields. Instantiating it (`.{}`) produces a tuple value like `.{ Position, Velocity }` that Sparze expects.
+- **collectPluginTypes**: gathers and deduplicates plugin declarations (`Components`, `Resources`, `Events`, `Groups`), builds the TypeTupleType for the deduped list, and returns the tuple value.
+- **World signature** (what `buildWorld` passes):
+```zig
+sparze.World(
+    .{ Position, Velocity },              // Components (tuple of types)
+    .{ DeltaTime },                       // Resources (tuple of types)
+    .{},                                  // Events (tuple of types)
+    .{ struct { Position, Velocity } },   // Groups (tuple of group structs)
+);
+```
 
 ## Builtin Components
 
