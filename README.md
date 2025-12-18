@@ -67,13 +67,28 @@ All examples are in `examples/` and can be built with `zig build <name>` or run 
 - **Serialization**: Save/load game state, WASM filesystem support via `-Dfilesystem`.
 - **Builtin**: Transform and Color components always included.
 
+## Documentation
+
+Comprehensive documentation with AI-first design for discoverability:
+
+- **[docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md)** - Step-by-step guide for creating plugins
+- **[docs/SYSTEM_ORDERING.md](docs/SYSTEM_ORDERING.md)** - System execution order, priority, and constraints
+- **[docs/APPLICATION_LIFECYCLE.md](docs/APPLICATION_LIFECYCLE.md)** - Internal flow of `zenithor.run()`
+- **[docs/WASM_DEVELOPMENT.md](docs/WASM_DEVELOPMENT.md)** - WebAssembly builds and deployment
+- **[CLAUDE.md](CLAUDE.md)** - Quick reference (commands, constraints, links)
+- **[src/core/CLAUDE.md](src/core/CLAUDE.md)** - Core engine internals
+- **Plugin docs**: Each plugin has a `CLAUDE.md` for quick reference
+
+The codebase also includes extensive DocComments on public APIs with ubiquitous language tags for AI agent discoverability.
+
 ## Directory Layout
 
 ```
-src/root.zig            # Public API exports
+src/root.zig            # Public API exports (with comprehensive DocComments)
 src/core/               # Engine core (application, builtin, scheduler)
 plugins/                # Standard plugins (graphics, time, input, imgui, serialization)
 examples/               # Example programs
+docs/                   # Detailed documentation
 build.zig               # Build graph and plugin module wiring
 ```
 
