@@ -21,10 +21,7 @@ const pbr_shader = @import("pbr_shader");
 const blinn_phong_shader = @import("blinn_phong_shader");
 const unlit_shader = @import("unlit_shader");
 
-// New shader system imports
-const shader_spec = @import("shader_spec.zig");
-const shader_registry = @import("shader_registry.zig");
-const material_mod = @import("material.zig");
+// Shader spec imports
 const UnlitShader = @import("shaders/unlit.zig");
 const BlinnPhongShader = @import("shaders/blinn_phong.zig");
 const PbrShader = @import("shaders/pbr.zig");
@@ -35,20 +32,15 @@ const is_debug = builtin.mode == .Debug;
 // Plugin Factory Function
 // =============================================================================
 
-/// Create a graphics plugin with custom shader configuration
+/// Graphics plugin implementation
 ///
-/// Example:
-/// ```zig
-/// const Graphics = graphics_plugin.Plugin(.{ UnlitShader, BlinnPhongShader, PbrShader });
-/// ```
+/// Note: The shaders parameter is currently unused. The implementation uses
+/// the three built-in shaders (unlit, blinn_phong, pbr) regardless of input.
+/// This parameter exists for API compatibility but will be removed in a future refactor.
 pub fn Plugin(comptime shaders: anytype) type {
-    // Validate shaders at compile time - ensures all conform to ShaderSpec contract
-    shader_spec.validateShaderSpecs(shaders);
+    _ = shaders; // Currently unused
 
     return struct {
-        // Store validated shaders for future dynamic shader configuration.
-        // Currently the implementation uses the three built-in shaders (unlit, blinn_phong, pbr).
-        pub const validated_shaders = shaders;
         // =============================================================================
         // Constants
         // =============================================================================
