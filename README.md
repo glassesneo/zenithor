@@ -1,6 +1,6 @@
 # Zenithor
 
-A 2D/3D "Game Engine Framework" for Zig, backed by Sokol and Sparze ECS. Native and WebAssembly targets with compile-time plugin architecture.
+A 2D/3D Application Framework for Zig, backed by Sokol and Sparze ECS. Native and WebAssembly targets with compile-time plugin architecture.
 
 ## Highlights
 

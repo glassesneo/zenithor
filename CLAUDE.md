@@ -1,6 +1,6 @@
 # Zenithor
 
-Plugin-driven 2D/3D game engine for Zig using Sokol, Sparze (ECS), and Dear ImGui.
+Plugin-driven 2D/3D Application Framework for Zig using Sokol, Sparze (ECS), and Dear ImGui.
 
 ## Quick Start
 
