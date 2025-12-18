@@ -34,7 +34,7 @@ Minimal app:
 
 ```zig
 const zenithor = @import("zenithor");
-const Graphics = @import("graphics_plugin");
+const Graphics = @import("graphics_plugin").Default;
 const Time = @import("time_plugin");
 const Input = @import("input_plugin");
 
