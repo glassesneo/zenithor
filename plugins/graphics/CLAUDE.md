@@ -12,7 +12,6 @@ All shapes use optional Color component (defaults: 2D=red, 3D=white).
 
 ## Resources
 
-- **RenderingOptions** - Clear color, depth configuration
 - **Camera3D** - Position, target, up, FOV, near/far planes
 - **Light3D** - Position, color, ambient strength
 
@@ -47,6 +46,8 @@ _ = try commands.createEntityWith(.{
 ```
 
 ## Critical Notes
+
+**IMPORTANT**: Graphics depends on RenderContext plugin for render pass lifecycle. RenderContext provides `beginPass/endPass/commit` with stable tags and owns the `PassAction` resource for controlling clear color and depth.
 
 **2D Coordinate System**: Origin (0,0) at top-left, Y increases downward
 **3D Normal Transformation**: Correct only for uniform scale. Non-uniform scale causes lighting artifacts.

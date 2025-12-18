@@ -13,7 +13,7 @@
 /// - Camera3D resource with orbit/fly controls
 /// - Light3D resource with position and ambient
 /// - Material component with shader selection (.unlit, .blinn_phong, .pbr)
-/// - RenderingOptions for background color
+/// - PassAction resource for background color
 ///
 /// TIME PLUGIN:
 /// - delta_time for frame-rate independent movement
@@ -71,6 +71,7 @@ const EventReader = zenithor.EventReader;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const Stage = zenithor.Stage;
 const GraphicsPlugin = @import("graphics_plugin").Default;
+const RenderContext = @import("render_context_plugin");
 const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
@@ -307,7 +308,7 @@ const GamePlugin = struct {
 
     fn setupScene(
         commands: anytype,
-        options: ResourceMut(GraphicsPlugin.RenderingOptions),
+        pass_action: ResourceMut(RenderContext.PassAction),
     ) !void {
         // Initialize resources
         commands.setResource(GameState, .{});
@@ -318,7 +319,7 @@ const GamePlugin = struct {
         sokol.app.lockMouse(true);
 
         // Set background color
-        options.value.pass_action.colors[0].clear_value = .{ .r = 0.05, .g = 0.05, .b = 0.1, .a = 1.0 };
+        pass_action.value.colors[0].clear_value = .{ .r = 0.05, .g = 0.05, .b = 0.1, .a = 1.0 };
 
         // Configure camera
         commands.setResource(GraphicsPlugin.Camera3D, .{
@@ -1119,7 +1120,7 @@ const GamePlugin = struct {
 
     fn drawSceneWindow(
         game: Resource(GameState),
-        options: ResourceMut(GraphicsPlugin.RenderingOptions),
+        pass_action: ResourceMut(RenderContext.PassAction),
     ) void {
         if (!game.value.show_scene) return;
 
@@ -1131,14 +1132,14 @@ const GamePlugin = struct {
             ImGuiPlugin.separator();
 
             var bg_color: [3]f32 = .{
-                options.value.pass_action.colors[0].clear_value.r,
-                options.value.pass_action.colors[0].clear_value.g,
-                options.value.pass_action.colors[0].clear_value.b,
+                pass_action.value.colors[0].clear_value.r,
+                pass_action.value.colors[0].clear_value.g,
+                pass_action.value.colors[0].clear_value.b,
             };
             if (ig.igColorEdit3("Color", &bg_color, 0)) {
-                options.value.pass_action.colors[0].clear_value.r = bg_color[0];
-                options.value.pass_action.colors[0].clear_value.g = bg_color[1];
-                options.value.pass_action.colors[0].clear_value.b = bg_color[2];
+                pass_action.value.colors[0].clear_value.r = bg_color[0];
+                pass_action.value.colors[0].clear_value.g = bg_color[1];
+                pass_action.value.colors[0].clear_value.b = bg_color[2];
             }
 
             ImGuiPlugin.spacing();

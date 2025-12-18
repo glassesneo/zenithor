@@ -15,6 +15,7 @@ const Stage = zenithor.Stage;
 const SystemConfig = zenithor.SystemConfig;
 const std = @import("std");
 const builtin = @import("builtin");
+const RenderContextPlugin = @import("render_context_plugin");
 
 // Shader imports (generated modules from build.zig)
 const pbr_shader = @import("pbr_shader");
@@ -191,10 +192,6 @@ pub fn Plugin(comptime shaders: anytype) type {
         // =============================================================================
         // Resources
         // =============================================================================
-
-        pub const RenderingOptions = struct {
-            pass_action: PassAction = .{},
-        };
 
         /// Camera for 3D rendering
         pub const Camera3D = struct {
@@ -408,19 +405,6 @@ pub fn Plugin(comptime shaders: anytype) type {
         // Debug logging helper (native debug builds only)
 
         fn init(commands: anytype, allocator: std.mem.Allocator) !void {
-
-            // Initialize pass action (background color)
-            var rendering_options = RenderingOptions{};
-            rendering_options.pass_action.colors[0] = .{
-                .load_action = .CLEAR,
-                .clear_value = .{ .r = 0.2, .g = 0.2, .b = 0.3, .a = 1 },
-            };
-            rendering_options.pass_action.depth = .{
-                .load_action = .CLEAR,
-                .clear_value = 1.0,
-            };
-            commands.setResource(RenderingOptions, rendering_options);
-
             // Initialize shader registry with layout and depth state
             var layout = sokol.gfx.VertexLayoutState{};
             layout.buffers[0] = sokol.shape.vertexBufferLayoutState();
@@ -798,13 +782,6 @@ pub fn Plugin(comptime shaders: anytype) type {
             }
         }
 
-        fn beginPass(options: Resource(RenderingOptions)) void {
-            sokol.gfx.beginPass(.{
-                .action = options.value.pass_action,
-                .swapchain = sokol.glue.swapchain(),
-            });
-        }
-
         fn draw3D(
             boxes: Query(struct { Box3D, Transform, ?Color, ?Material }),
             spheres: Query(struct { Sphere3D, Transform, ?Color, ?Material }),
@@ -1077,14 +1054,6 @@ pub fn Plugin(comptime shaders: anytype) type {
             sokol.gl.draw();
         }
 
-        fn endPass() void {
-            sokol.gfx.endPass();
-        }
-
-        fn commit() void {
-            sokol.gfx.commit();
-        }
-
         fn cleanup(buffers: ResourceMut(Render3DBuffers), shader_res: Resource(Render3DShaders)) void {
             // Free heap-allocated staging buffers
             if (buffers.value.allocator) |allocator| {
@@ -1124,17 +1093,23 @@ pub fn Plugin(comptime shaders: anytype) type {
             .main = &.{
                 .{ .system = setDefaults, .stage = .pre_render },
                 .{ .system = setup2d, .stage = .pre_render },
-                .{ .system = beginPass, .stage = .render, .config = .{ .tags = &.{"begin-pass"} } },
-                .{ .system = drawPoint, .stage = .render, .config = .{ .after = &.{"begin-pass"} } },
-                .{ .system = drawLine, .stage = .render, .config = .{ .after = &.{"begin-pass"} } },
-                .{ .system = drawTriangle, .stage = .render, .config = .{ .after = &.{"begin-pass"} } },
-                .{ .system = drawRectangle, .stage = .render, .config = .{ .after = &.{"begin-pass"} } },
-                .{ .system = drawCircle, .stage = .render, .config = .{ .after = &.{"begin-pass"} } },
-                .{ .system = ensure3DBuffers, .stage = .render_submit, .config = .{ .tags = &.{"3d-init"}, .before = &.{"3d-render"} } },
-                .{ .system = draw3D, .stage = .render_submit, .config = .{ .tags = &.{"3d-render"} } },
-                .{ .system = draw2D, .stage = .render_submit, .config = .{ .tags = &.{"2d-render"} } },
-                .{ .system = endPass, .stage = .post_render },
-                .{ .system = commit, .stage = .post_render, .config = .{} },
+                .{ .system = drawPoint, .stage = .render },
+                .{ .system = drawLine, .stage = .render },
+                .{ .system = drawTriangle, .stage = .render },
+                .{ .system = drawRectangle, .stage = .render },
+                .{ .system = drawCircle, .stage = .render },
+                .{ .system = ensure3DBuffers, .stage = .render, .config = .{
+                    .priority = 100,
+                    .tags = &.{"3d-init"},
+                } },
+                .{ .system = draw3D, .stage = .render, .config = .{
+                    .priority = 110,
+                    .after = &.{"3d-init"},
+                    .tags = &.{"3d-render"},
+                } },
+                .{ .system = draw2D, .stage = .render, .config = .{
+                    .priority = 120,
+                } },
             },
             .terminate = &.{
                 .{ .system = cleanup, .stage = .first },
@@ -1156,7 +1131,6 @@ pub fn Plugin(comptime shaders: anytype) type {
         };
 
         pub const Resources = .{
-            RenderingOptions,
             Camera3D,
             Light3D,
             Render3DBuffers,
@@ -1164,6 +1138,8 @@ pub fn Plugin(comptime shaders: anytype) type {
         };
 
         pub const Events = .{};
+
+        pub const Requires = .{RenderContextPlugin};
 
         pub const systems = graphics_systems;
     };

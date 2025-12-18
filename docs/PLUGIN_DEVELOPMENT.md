@@ -247,7 +247,7 @@ fn handleInput(event: sokol.app.Event, world: anytype) void {
 
 Each system descriptor supports:
 - `.system` (required) - Function reference
-- `.stage` (required) - Stage enum (`.first`, `.pre_update`, `.update`, `.post_update`, `.pre_render`, `.render`, `.render_submit`, `.post_render`, `.last`, `.post_process`)
+- `.stage` (required) - Stage enum (`.first`, `.pre_update`, `.update`, `.post_update`, `.pre_render`, `.render`, `.post_render`, `.last`, `.post_process`)
 - `.config` (optional) - SystemConfig struct:
   - `priority: i16 = 0` - Lower values run first
   - `tags: []const []const u8 = &.{}` - Tags for this system
@@ -266,6 +266,46 @@ pub const Requires = .{ TimePlugin, InputPlugin };
 ```
 
 The engine automatically includes dependencies (transitively) and detects circular dependencies at compile time.
+
+## Integrating with Render Pass
+
+If your plugin needs to render content, depend on `render_context_plugin`:
+
+```zig
+const RenderContext = @import("render_context_plugin");
+
+pub const Requires = .{RenderContext};
+
+fn myRenderSystem() void {
+    // Draw calls here - automatically inside render pass
+}
+
+pub const systems = .{
+    .main = &.{
+        .{ .system = myRenderSystem, .stage = .render },
+    },
+};
+```
+
+**System guarantees**:
+- `beginPass` runs FIRST in `.render` stage (priority -32768, lowest)
+- `endPass` runs LAST in `.render` stage (priority 32760, very high)
+- `commit` runs FIRST in `.post_render` stage (priority -32768, lowest)
+- All `.render` systems run inside a valid render pass
+
+**Modifying background color**:
+```zig
+fn setBackgroundColor(pass_action: ResourceMut(RenderContext.PassAction)) void {
+    pass_action.value.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.2, .a = 1.0 };
+}
+```
+
+For late rendering (overlays, UI), use high priority in `.render` stage:
+```zig
+.{ .system = overlaySystem, .stage = .render, .config = .{
+    .priority = 1000,  // Renders late, before endPass
+} },
+```
 
 ## Step 8: Integrate with Build System
 
@@ -414,7 +454,7 @@ zig build run-my_plugin_test    # Integration test (after adding example to buil
 - ✅ Use tag components (empty structs) for entity classification
 
 ### Don'ts
-- ❌ Don't call `sokol.gfx.setup()`/`sokol.gl.setup()`/`sokol.time.setup()` or the corresponding shutdowns (core owns these)
+- ❌ Don't call `sokol.gfx.setup()`/`sokol.gl.setup()` (render_context plugin owns these) or `sokol.time.setup()` (core owns this)
 - ❌ Don't use `try` in void return systems (use `!void` signature)
 - ❌ Don't create circular plugin dependencies
 - ❌ Don't store allocators in components (use commands parameter)

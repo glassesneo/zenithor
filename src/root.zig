@@ -49,13 +49,12 @@ const system_module = @import("core/system.zig");
 
 /// Frame execution stages (fixed order).
 ///
-/// **Ubiquitous Language**: Frame Stages, Render Submit, Post-Process
+/// **Ubiquitous Language**: Frame Stages, Post-Process
 ///
 /// Systems run in stage order every frame:
 /// ```
 /// .first → .pre_update → .update → .post_update →
-/// .pre_render → .render → .render_submit → .post_render →
-/// .last → .post_process
+/// .pre_render → .render → .post_render → .last → .post_process
 /// ```
 ///
 /// Stage ordering is **fixed**. System order **within a stage** is configurable
@@ -64,8 +63,8 @@ const system_module = @import("core/system.zig");
 /// **Common stage usage**:
 /// - `.first` - Early setup (Time update, ImGui frame start)
 /// - `.update` - Main game logic (movement, AI, physics)
-/// - `.render` - Drawing operations (2D shapes, 3D meshes)
-/// - `.render_submit` - Batch submission (Graphics flush, ImGui render)
+/// - `.render` - Drawing operations (2D shapes, 3D meshes, ImGui render)
+/// - `.post_render` - Render finalization (Pass commit)
 /// - `.last` - Late cleanup (Input reset, frame counters)
 ///
 /// **See Also**: docs/SYSTEM_ORDERING.md

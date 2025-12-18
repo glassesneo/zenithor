@@ -339,22 +339,9 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
             app_state.startup_system_scheduler.finalize();
             app_state.terminate_system_scheduler.finalize();
 
-            // Initialize sokol modules in dependency order:
-            // 1. Graphics backend (gfx + gl) - required by imgui
-            sokol.gfx.setup(.{
-                .environment = sokol.glue.environment(),
-                .logger = .{ .func = sokol.log.func },
-            });
-
-            sokol.gl.setup(.{
-                .logger = .{ .func = sokol.log.func },
-            });
-
-            if (is_debug) {
-                std.debug.print("Backend: {}\n", .{sokol.gfx.queryBackend()});
-            }
-
-            // 2. Time module - required by time-using plugins
+            // Initialize core sokol modules
+            // Graphics (gfx + gl) initialized by render_context plugin
+            // Time module - universal, not graphics-specific
             sokol.time.setup();
 
             app_state.world.beginFrame();
@@ -376,10 +363,9 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
             app_state.world.endFrame() catch unreachable;
             app_state.deinit();
 
-            // Shutdown sokol modules in reverse order of initialization
+            // Shutdown sokol modules
+            // Graphics (gfx + gl) shutdown by render_context plugin
             // sokol.time does not require explicit shutdown
-            sokol.gl.shutdown();
-            sokol.gfx.shutdown();
         }
 
         export fn appEvent(ev: [*c]const sokol.app.Event, state: ?*anyopaque) callconv(.c) void {

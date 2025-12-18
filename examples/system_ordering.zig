@@ -1,7 +1,7 @@
 /// Example: System Staging and Ordering
 ///
 /// Demonstrates system execution order control:
-/// - Stages: first -> pre_update -> update -> post_update -> pre_render -> render -> render_submit -> post_render -> last
+/// - Stages: first -> pre_update -> update -> post_update -> pre_render -> render -> post_render -> last -> post_process
 /// - Priority: lower values run first within a stage (default: 0)
 /// - Tags: label systems for constraint references
 /// - Before/After constraints: explicit ordering via tags

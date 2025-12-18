@@ -20,6 +20,7 @@ const Resource = zenithor.Resource;
 const ResourceMut = zenithor.ResourceMut;
 const SingleQuery = zenithor.SingleQuery;
 const GraphicsPlugin = @import("graphics_plugin").Default;
+const RenderContext = @import("render_context_plugin");
 const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
@@ -47,8 +48,8 @@ const Game = struct {
     };
 };
 
-fn setup(commands: anytype, options: ResourceMut(GraphicsPlugin.RenderingOptions)) !void {
-    options.value.pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
+fn setup(commands: anytype, pass_action: ResourceMut(RenderContext.PassAction)) !void {
+    pass_action.value.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
 
     // Create player circle
     const player = commands.createEntity();

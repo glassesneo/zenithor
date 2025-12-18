@@ -168,16 +168,21 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
    TimePlugin.Groups = .{};
 
    MyGamePlugin.Components = .{ Circle, Rectangle };
-   MyGamePlugin.Resources = .{ RenderingOptions };
+   MyGamePlugin.Resources = .{};
    MyGamePlugin.Events = .{};
    MyGamePlugin.Groups = .{};
+
+   RenderContext.Components = .{};
+   RenderContext.Resources = .{ PassAction };
+   RenderContext.Events = .{};
+   RenderContext.Groups = .{};
    ```
 
 2. **Deduplicate Types**
    ```zig
    // If multiple plugins export the same type, include once
    All Components: { Transform, Color, Circle, Rectangle }
-   All Resources: { Time, RenderingOptions }
+   All Resources: { Time, PassAction }
    All Events: { GameLoopError, EventLoopError }
    All Groups: {}
    ```
@@ -196,7 +201,7 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
    // Pass tuple VALUES to Sparze
    const World = sparze.World(
        .{ Transform, Color, Circle, Rectangle },  // Components
-       .{ Time, RenderingOptions },               // Resources
+       .{ Time, PassAction },                     // Resources
        .{ GameLoopError, EventLoopError },        // Events
        .{},                                       // Groups
    );
@@ -315,48 +320,41 @@ This is necessary because Sparze expects tuple **values** (`.{ T1, T2 }`), not `
 `src/core/application.zig` (search for `appInit`)
 `src/core/system.zig` (search for `finalize`)
 
-## Phase 4: Sokol Initialization
+## Phase 4: Core Initialization & Startup Systems
 
 **Location**: `src/core/application.zig:appInit()`
 
 ### Process
 
-Sokol modules are initialized in `sokol.app.run()` callback:
+Core initializes `sokol.time`, then runs startup systems (which initialize graphics):
 
 ```zig
 fn appInit(state: ?*anyopaque) callconv(.c) void {
     // ... World and scheduler setup ...
 
     // Initialize core Sokol modules
-    sokol.gfx.setup(.{
-        .environment = sokol.glue.environment(),
-        .logger = .{ .func = sokol.log.func },
-    });
-
-    sokol.gl.setup(.{
-        .logger = .{ .func = sokol.log.func },
-    });
-
+    // Graphics (gfx + gl) initialized by render_context plugin
+    // Time module - universal, not graphics-specific
     sokol.time.setup();
 
-    // Debug info
-    if (builtin.mode == .Debug) {
-        const backend = sokol.gfx.queryBackend();
-        std.debug.print("[Zenithor] Graphics backend: {}\n", .{backend});
-    }
-
-    // Run startup systems
+    // Run startup systems (includes render_context.initGraphics)
     world.beginFrame();
     startup_scheduler.run(&world);
     world.endFrame() catch unreachable;
 }
 ```
 
-**Critical**: `sokol.gfx`, `sokol.gl`, and `sokol.time` are initialized centrally. Other subsystems may be initialized by plugins (e.g. `imgui_plugin` initializes `sokol.imgui`).
+**Startup systems** (executed in order):
+1. **render_context.initGraphics** (priority -32768) - Initializes `sokol.gfx` and `sokol.gl`, prints graphics backend in Debug mode
+2. **render_context.initPassAction** - Sets default clear color (gray-blue)
+3. Other plugin startup systems
+
+**Critical**: Core only initializes `sokol.time`. Graphics (`sokol.gfx` and `sokol.gl`) is initialized by the `render_context` plugin. Subsystem plugins may initialize their own modules (e.g. `imgui_plugin` initializes `sokol.imgui`).
 
 ### Code Reference
 
-`src/core/application.zig` (search for `sokol.gfx.setup` / `sokol.time.setup`)
+`src/core/application.zig` (search for `sokol.time.setup`)
+`plugins/render_context/src/root.zig` (search for `initGraphics`)
 
 ## Phase 5: Main Loop
 
@@ -407,7 +405,7 @@ Each frame:
    Systems run in stage order (see docs/SYSTEM_ORDERING.md):
    ```
    .first → .pre_update → .update → .post_update →
-   .pre_render → .render → .render_submit → .post_render →
+   .pre_render → .render → .post_render →
    .last → .post_process
    ```
 
@@ -577,8 +575,8 @@ T=16ms   | Frame 1: appFrame()
          |   ├─ Run main systems:
          |   │   ├─ .first: TimePlugin.updateTime()
          |   │   ├─ .update: MyPlugin.updateGame()
-         |   │   └─ .render: MyRenderPlugin.renderShapes()
-         |   └─ .render_submit: a render plugin commits the frame (e.g. via `sokol.gfx.commit()`)
+         |   │   ├─ .render: MyRenderPlugin.renderShapes()
+         |   │   └─ .post_render: RenderContext.commit()
          |
 T=32ms   | Frame 2: appFrame()
          |   ├─ ... (repeat)

@@ -11,13 +11,13 @@ const Stage = zenithor.Stage;
 const SystemConfig = zenithor.SystemConfig;
 
 // Import dependencies
-const GraphicsPlugin = @import("graphics_plugin");
+const RenderContextPlugin = @import("render_context_plugin");
 
 pub const Components = .{};
 pub const Events = .{};
 
-// Declare dependency on Graphics plugin since renderUi relies on beginPass
-pub const Requires = .{GraphicsPlugin};
+// Declare dependency on RenderContext plugin for render pass management
+pub const Requires = .{RenderContextPlugin};
 
 pub const ImVec2 = ig.ImVec2;
 pub const ImVec4 = ig.ImVec4;
@@ -171,7 +171,9 @@ pub const systems = .{
     },
     .main = &.{
         .{ .system = setupFrame, .stage = .first },
-        .{ .system = renderUi, .stage = .render_submit, .config = .{ .after = &.{"3d-render"} } },
+        .{ .system = renderUi, .stage = .render, .config = .{
+            .priority = 1000, // Render late, after 3D content
+        } },
     },
     .terminate = &.{
         .{ .system = shutdown, .stage = .first },

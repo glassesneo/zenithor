@@ -41,8 +41,9 @@ fn debugUI(time: Resource(Time)) !void {
 
 ## Implementation
 
+- Depends on RenderContext plugin for render pass lifecycle
 - Frame setup in `.first` stage
-- Rendering in `.render_submit` stage
+- Rendering in `.render` stage with high priority (1000) to render after 3D content
 - Event handler processes input automatically
 - Docking enabled via `ConfigFlags_DockingEnable` when `-Dimgui-docking` used
 

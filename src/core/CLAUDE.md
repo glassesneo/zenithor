@@ -10,7 +10,7 @@ Application lifecycle, builtin components (Transform, Color), system scheduling,
 
 ## Critical Rules
 
-**IMPORTANT**: Core owns the `sokol.app` loop and initializes `sokol.gfx`, `sokol.gl`, and `sokol.time` in `application.zig`. Plugins should not duplicate that. Subsystem plugins may initialize their own modules (e.g. `imgui_plugin` initializes `sokol.imgui`).
+**IMPORTANT**: Core owns the `sokol.app` loop and initializes `sokol.time` in `application.zig`. Graphics initialization (`sokol.gfx` and `sokol.gl`) is handled by the `render_context` plugin. Subsystem plugins may initialize their own modules (e.g. `imgui_plugin` initializes `sokol.imgui`).
 
 **IMPORTANT**: World type constructed from tuple VALUES: `sparze.World(.{Components}, .{Resources}, .{Events}, .{Groups})`
 
@@ -38,7 +38,7 @@ Systems can return `!void` - errors are caught and enqueued as events. Applicati
 
 ## System Stages (execution order)
 
-1. `first` → 2. `pre_update` → 3. `update` → 4. `post_update` → 5. `pre_render` → 6. `render` → 7. `render_submit` → 8. `post_render` → 9. `last` → 10. `post_process`
+1. `first` → 2. `pre_update` → 3. `update` → 4. `post_update` → 5. `pre_render` → 6. `render` → 7. `post_render` → 8. `last` → 9. `post_process`
 
 ## Debug vs Release Builds
 

@@ -16,6 +16,7 @@ const Resource = zenithor.Resource;
 const ResourceMut = zenithor.ResourceMut;
 const Query = zenithor.Query;
 const GraphicsPlugin = @import("graphics_plugin").Default;
+const RenderContext = @import("render_context_plugin");
 const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const ig = ImGuiPlugin.ig;
@@ -120,12 +121,12 @@ fn updateAnimation(
 
 fn applySettings(
     settings: Resource(DebugSettings),
-    options: ResourceMut(GraphicsPlugin.RenderingOptions),
+    pass_action: ResourceMut(RenderContext.PassAction),
     materials: Query(struct { GraphicsPlugin.Material }),
 ) void {
     // Apply background color
     const bg = settings.value.background_color;
-    options.value.pass_action.colors[0].clear_value = .{ .r = bg[0], .g = bg[1], .b = bg[2], .a = 1.0 };
+    pass_action.value.colors[0].clear_value = .{ .r = bg[0], .g = bg[1], .b = bg[2], .a = 1.0 };
 
     // Apply shader selection
     const shader: GraphicsPlugin.ShaderType = switch (settings.value.selected_shader) {

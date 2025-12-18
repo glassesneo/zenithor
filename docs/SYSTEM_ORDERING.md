@@ -20,11 +20,10 @@ Frame N:
   3. update         ← Main game logic (movement, AI, physics)
   4. post_update    ← Post-game logic (collision resolution)
   5. pre_render     ← Rendering prep (GL setup, projection matrix)
-  6. render         ← Drawing (2D shapes, 3D meshes)
-  7. render_submit  ← Pass submission (Graphics batch, ImGui render)
-  8. post_render    ← Pass finalization
-  9. last           ← Late cleanup (Input reset, frame increment)
- 10. post_process   ← Post-frame processing
+  6. render         ← Drawing (2D shapes, 3D meshes, pass submission)
+  7. post_render    ← Pass finalization (commit)
+  8. last           ← Late cleanup (Input reset, frame increment)
+  9. post_process   ← Post-frame processing
 ```
 
 ### Stage Purpose Guidelines
@@ -36,9 +35,8 @@ Frame N:
 | `update` | Core game logic | Movement, AI, gameplay rules |
 | `post_update` | Post-game logic, constraint resolution | Collision response, transform hierarchies |
 | `pre_render` | Rendering preparation | Camera matrix updates, culling |
-| `render` | Drawing operations | Shape rendering, mesh drawing |
-| `render_submit` | Batch submission | Graphics flush, ImGui render |
-| `post_render` | Rendering cleanup | Framebuffer reset |
+| `render` | Drawing operations | Shape rendering, mesh drawing, ImGui render |
+| `post_render` | Rendering cleanup | Pass commit, framebuffer reset |
 | `last` | Late frame cleanup | Input state reset, frame counters |
 | `post_process` | Post-frame work | Async operations, profiling |
 

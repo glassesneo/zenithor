@@ -17,6 +17,7 @@ const Resource = zenithor.Resource;
 const ResourceMut = zenithor.ResourceMut;
 const EventReader = zenithor.EventReader;
 const GraphicsPlugin = @import("graphics_plugin").Default;
+const RenderContext = @import("render_context_plugin");
 const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 
@@ -85,8 +86,8 @@ const ErrorDemo = struct {
     };
 };
 
-fn init(commands: anytype, options: ResourceMut(GraphicsPlugin.RenderingOptions)) void {
-    options.value.pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
+fn init(commands: anytype, pass_action: ResourceMut(RenderContext.PassAction)) void {
+    pass_action.value.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
     commands.setResource(ErrorConfig, .{});
     commands.setResource(ErrorLog, .{});
 }
