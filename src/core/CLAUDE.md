@@ -10,7 +10,7 @@ Application lifecycle, builtin components (Transform, Color), system scheduling,
 
 ## Critical Rules
 
-**IMPORTANT**: Core owns the `sokol.app` loop and initializes `sokol.time` in `application.zig`. Graphics initialization (`sokol.gfx` and `sokol.gl`) is handled by the `render_context` plugin. Subsystem plugins may initialize their own modules (e.g. `imgui_plugin` initializes `sokol.imgui`).
+**IMPORTANT**: Core owns the `sokol.app` loop and manages plugin orchestration. All Sokol subsystems are initialized by plugins: `render_context` plugin initializes graphics (`sokol.gfx` and `sokol.gl`), `time_plugin` initializes timing (`sokol.time`), and other subsystem plugins initialize their own modules (e.g. `imgui_plugin` initializes `sokol.imgui`).
 
 **IMPORTANT**: World type constructed from tuple VALUES: `sparze.World(.{Components}, .{Resources}, .{Events}, .{Groups})`
 

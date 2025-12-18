@@ -14,7 +14,7 @@ zig build serve-examples -Dtarget=wasm32-emscripten  # WASM examples
 
 ## Critical Constraints
 
-**IMPORTANT**: Core initializes `sokol.time` in `src/core/application.zig`. Graphics (`sokol.gfx` and `sokol.gl`) is initialized by the `render_context` plugin. Plugins should not duplicate these initializations. Subsystem plugins may initialize their own modules (e.g. `imgui_plugin` initializes `sokol.imgui`).
+**IMPORTANT**: Core manages the application loop and plugin orchestration. All Sokol subsystems are initialized by plugins: `render_context` plugin initializes graphics (`sokol.gfx` and `sokol.gl`), `time_plugin` initializes timing (`sokol.time`), and other subsystem plugins initialize their own modules (e.g. `imgui_plugin` initializes `sokol.imgui`). Plugins should not duplicate these initializations.
 
 **IMPORTANT**: World construction uses tuple VALUES: `sparze.World(.{Comp}, .{Res}, .{Events}, .{Groups})`
 

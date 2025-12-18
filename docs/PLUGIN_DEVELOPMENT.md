@@ -454,7 +454,7 @@ zig build run-my_plugin_test    # Integration test (after adding example to buil
 - ✅ Use tag components (empty structs) for entity classification
 
 ### Don'ts
-- ❌ Don't call `sokol.gfx.setup()`/`sokol.gl.setup()` (render_context plugin owns these) or `sokol.time.setup()` (core owns this)
+- ❌ Don't call `sokol.gfx.setup()`/`sokol.gl.setup()` (render_context plugin owns these) or `sokol.time.setup()` (time_plugin owns this)
 - ❌ Don't use `try` in void return systems (use `!void` signature)
 - ❌ Don't create circular plugin dependencies
 - ❌ Don't store allocators in components (use commands parameter)

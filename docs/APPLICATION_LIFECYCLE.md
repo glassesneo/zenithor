@@ -8,7 +8,7 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
 1. Expands plugin dependencies into a complete dependency graph
 2. Builds a Sparze World type from all plugin declarations
 3. Creates and registers systems from plugins
-4. Initializes core Sokol modules (gfx/gl/time)
+4. Runs startup systems (plugins initialize their subsystems)
 5. Runs the main loop (startup → frames → terminate)
 6. Handles cleanup on exit
 
@@ -52,23 +52,16 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
                   │
                   ▼
 ┌─────────────────────────────────────────────────┐
-│ Phase 4: Sokol Initialization                   │
-│ - Initialize sokol.app (windowing, events)     │
-│ - Initialize sokol.gfx (graphics backend)      │
-│ - Initialize sokol.gl (immediate GL)           │
-│ - Initialize sokol.time (high-precision timer) │
+│ Phase 4: Startup Systems                        │
+│ - Run startup_scheduler (plugins init)         │
+│   - render_context: sokol.gfx + sokol.gl      │
+│   - time_plugin: sokol.time                    │
+│   - Other plugins: resources, entities, etc.   │
 └─────────────────┬───────────────────────────────┘
                   │
                   ▼
 ┌─────────────────────────────────────────────────┐
 │ Phase 5: Main Loop                              │
-│                                                 │
-│ ┌─────────────────────────────────────────┐   │
-│ │ Startup Phase (once)                    │   │
-│ │ - Run startup systems (.first stage)    │   │
-│ │ - Initialize resources                  │   │
-│ │ - Spawn initial entities                │   │
-│ └─────────────────────────────────────────┘   │
 │                                                 │
 │ ┌─────────────────────────────────────────┐   │
 │ │ Frame Loop (until quit)                 │   │
@@ -326,35 +319,38 @@ This is necessary because Sparze expects tuple **values** (`.{ T1, T2 }`), not `
 
 ### Process
 
-Core initializes `sokol.time`, then runs startup systems (which initialize graphics):
+Core finalizes system schedulers, then runs startup systems (which initialize all subsystems):
 
 ```zig
 fn appInit(state: ?*anyopaque) callconv(.c) void {
     // ... World and scheduler setup ...
 
-    // Initialize core Sokol modules
-    // Graphics (gfx + gl) initialized by render_context plugin
-    // Time module - universal, not graphics-specific
-    sokol.time.setup();
+    // All Sokol subsystems initialized by plugins:
+    // - Graphics (gfx + gl) by render_context plugin
+    // - Time by time_plugin
+    // Core only manages app loop and plugin orchestration
 
-    // Run startup systems (includes render_context.initGraphics)
+    // Run startup systems
     world.beginFrame();
     startup_scheduler.run(&world);
     world.endFrame() catch unreachable;
 }
 ```
 
-**Startup systems** (executed in order):
-1. **render_context.initGraphics** (priority -32768) - Initializes `sokol.gfx` and `sokol.gl`, prints graphics backend in Debug mode
-2. **render_context.initPassAction** - Sets default clear color (gray-blue)
-3. Other plugin startup systems
+**Startup systems** (executed in order by priority):
+1. **render_context.initGraphics** (priority -32768, lowest) - Initializes `sokol.gfx` and `sokol.gl`, prints graphics backend in Debug mode
+2. **time_plugin.initTime** (priority -32767) - Initializes `sokol.time`
+3. **render_context.initPassAction** (default priority) - Sets default clear color (gray-blue)
+4. **time_plugin.init** (default priority) - Creates Time resource
+5. Other plugin startup systems
 
-**Critical**: Core only initializes `sokol.time`. Graphics (`sokol.gfx` and `sokol.gl`) is initialized by the `render_context` plugin. Subsystem plugins may initialize their own modules (e.g. `imgui_plugin` initializes `sokol.imgui`).
+**Critical**: Core does NOT initialize any Sokol subsystems. All initialization is handled by plugins: `render_context` for graphics, `time_plugin` for timing, `imgui_plugin` for ImGui, etc. Core only manages the app loop and plugin orchestration.
 
 ### Code Reference
 
-`src/core/application.zig` (search for `sokol.time.setup`)
+`src/core/application.zig` (search for `startup_scheduler.run`)
 `plugins/render_context/src/root.zig` (search for `initGraphics`)
+`plugins/time/src/root.zig` (search for `initTime`)
 
 ## Phase 5: Main Loop
 

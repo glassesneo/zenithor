@@ -54,7 +54,10 @@ pub const Resources = .{
 
 pub const Events = .{};
 
-// Note: sokol.time is initialized centrally in src/core/application.zig
+// Time subsystem initialization
+fn initTime() void {
+    sokol.time.setup();
+}
 
 fn update(time: sparze.ResourceMut(Time)) void {
     // Measure frame time using sokol_time's laptime
@@ -87,6 +90,9 @@ fn init(commands: anytype) void {
 // Declarative system registration
 pub const systems = .{
     .startup = &.{
+        .{ .system = initTime, .stage = .first, .config = .{
+            .priority = -32767, // After graphics (-32768)
+        } },
         .{ .system = init, .stage = .first },
     },
     .main = &.{

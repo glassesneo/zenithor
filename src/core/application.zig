@@ -339,10 +339,10 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
             app_state.startup_system_scheduler.finalize();
             app_state.terminate_system_scheduler.finalize();
 
-            // Initialize core sokol modules
-            // Graphics (gfx + gl) initialized by render_context plugin
-            // Time module - universal, not graphics-specific
-            sokol.time.setup();
+            // All Sokol subsystems initialized by plugins:
+            // - Graphics (gfx + gl) by render_context plugin
+            // - Time by time_plugin
+            // Core only manages app loop and plugin orchestration
 
             app_state.world.beginFrame();
             app_state.startup_system_scheduler.run(&app_state.world);

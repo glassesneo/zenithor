@@ -25,8 +25,8 @@ const application_module = @import("core/application.zig");
 /// and runs the main loop (startup → frames → terminate).
 ///
 /// **Critical constraints**:
-/// - Core initializes `sokol.gfx`, `sokol.gl`, and `sokol.time` centrally
-/// - Subsystem plugins may initialize their own modules (e.g., `imgui_plugin` → `sokol.imgui`)
+/// - Core manages app loop and plugin orchestration only
+/// - Plugins initialize their own subsystems (`render_context` → `sokol.gfx/gl`, `time_plugin` → `sokol.time`, `imgui_plugin` → `sokol.imgui`)
 /// - Event handlers must have signature `fn(sokol.app.Event, world: anytype) void|!void`
 /// - Errors in event handlers are caught and enqueued as `BuiltinPlugin.EventLoopError`
 /// - Errors in systems are caught and enqueued as `BuiltinPlugin.GameLoopError`

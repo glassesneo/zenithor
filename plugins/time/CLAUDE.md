@@ -34,9 +34,9 @@ fn movement(time: Resource(Time), entities: Query(struct { Position, Velocity })
 
 ## Implementation
 
-- Updates in `.first` stage (before user systems)
+- Initializes `sokol.time` in `.startup` stage (priority -32767, after graphics)
+- Updates Time resource in `.first` stage every frame (before user systems)
 - Delta clamped to prevent physics explosions on lag/deserialization
-- Uses sokol.time (initialized in core/application.zig)
 - `time_scale` must be applied manually in systems
 
 ## Documentation
