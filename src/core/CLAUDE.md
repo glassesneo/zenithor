@@ -75,7 +75,7 @@ Zenithor implements a graceful error handling system that allows systems and eve
 - Application continues execution after failures
 - Error monitoring is opt-in via event readers
 
-**System Error Flow** (application.zig:39-50, system.zig:39-50):
+**System Error Flow** (system.zig:369-381):
 ```zig
 // Systems can fail
 fn mySystem(res: Resource(MyResource)) !void {
@@ -93,7 +93,7 @@ while (iter.next()) |err_event| {
 }
 ```
 
-**Event Handler Error Flow** (application.zig:220-225):
+**Event Handler Error Flow** (application.zig:287-312):
 ```zig
 // Event handlers can fail
 fn onMouseClick(mouse: Resource(Mouse)) !void {
@@ -127,9 +127,8 @@ fn errorMonitor(
 ```
 
 **Fallback Behavior**:
-- If error event allocation fails, error is printed to debug output
-- Plugin `build()` failures are logged in debug builds only (application.zig:297-299)
-- Release builds skip plugin initialization error printing for performance
+- If error event allocation fails, error is printed to debug output (system.zig:375-377, application.zig:370)
+- Debug builds print backend info on startup (application.zig:332-333)
 
 **See Also**: `examples/error_handling.zig` for complete error handling demonstration
 
