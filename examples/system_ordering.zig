@@ -68,20 +68,32 @@ const SystemOrderingDemo = struct {
 
             // === CONSTRAINT DEMONSTRATION ===
             // Tags + before/after constraints override priority
-            .{ .system = physicsSystem, .stage = .update, .config = .{
-                .priority = 10,
-                .tags = &.{"physics"},
-                .after = &.{"early"}, // Must run after "early" tag
-            } },
-            .{ .system = renderingSystem, .stage = .update, .config = .{
-                .priority = 20,
-                .tags = &.{"rendering"},
-                .after = &.{"physics"}, // Must run after "physics" tag
-            } },
-            .{ .system = uiSystem, .stage = .update, .config = .{
-                .tags = &.{"ui"},
-                .after = &.{"rendering"}, // Runs after rendering despite priority 0
-            } },
+            .{
+                .system = physicsSystem,
+                .stage = .update,
+                .config = .{
+                    .priority = 10,
+                    .tags = &.{"physics"},
+                    .after = &.{"early"}, // Must run after "early" tag
+                },
+            },
+            .{
+                .system = renderingSystem,
+                .stage = .update,
+                .config = .{
+                    .priority = 20,
+                    .tags = &.{"rendering"},
+                    .after = &.{"physics"}, // Must run after "physics" tag
+                },
+            },
+            .{
+                .system = uiSystem,
+                .stage = .update,
+                .config = .{
+                    .tags = &.{"ui"},
+                    .after = &.{"rendering"}, // Runs after rendering despite priority 0
+                },
+            },
 
             // Print log at end of frame
             .{ .system = printLog, .stage = .last },

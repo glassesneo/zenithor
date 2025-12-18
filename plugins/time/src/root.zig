@@ -90,9 +90,13 @@ fn init(commands: anytype) void {
 // Declarative system registration
 pub const systems = .{
     .startup = &.{
-        .{ .system = initTime, .stage = .first, .config = .{
-            .priority = -32767, // After graphics (-32768)
-        } },
+        .{
+            .system = initTime,
+            .stage = .first,
+            .config = .{
+                .priority = -32767, // After graphics (-32768)
+            },
+        },
         .{ .system = init, .stage = .first },
     },
     .main = &.{

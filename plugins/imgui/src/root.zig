@@ -171,9 +171,13 @@ pub const systems = .{
     },
     .main = &.{
         .{ .system = setupFrame, .stage = .first },
-        .{ .system = renderUi, .stage = .render, .config = .{
-            .priority = 1000, // Render late, after 3D content
-        } },
+        .{
+            .system = renderUi,
+            .stage = .render,
+            .config = .{
+                .priority = 1000, // Render late, after 3D content
+            },
+        },
     },
     .terminate = &.{
         .{ .system = shutdown, .stage = .first },

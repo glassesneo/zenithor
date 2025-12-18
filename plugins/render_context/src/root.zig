@@ -72,25 +72,41 @@ fn commit() void {
 
 pub const systems = .{
     .startup = &.{
-        .{ .system = initGraphics, .stage = .first, .config = .{
-            .priority = -32768, // Initialize graphics FIRST
-        } },
+        .{
+            .system = initGraphics,
+            .stage = .first,
+            .config = .{
+                .priority = -32768, // Initialize graphics FIRST
+            },
+        },
         .{ .system = initPassAction, .stage = .first },
     },
     .main = &.{
         // CRITICAL: Use extreme priorities to guarantee execution order
-        .{ .system = beginPass, .stage = .render, .config = .{
-            .priority = -32768, // Lowest possible - always first in .render
-            .tags = &.{Tags.PASS_BEGIN},
-        } },
-        .{ .system = endPass, .stage = .render, .config = .{
-            .priority = 32760, // Very high - runs last in .render, before .post_render
-            .tags = &.{Tags.PASS_END},
-        } },
-        .{ .system = commit, .stage = .post_render, .config = .{
-            .priority = -32768, // Lowest priority - runs first in .post_render
-            .tags = &.{Tags.PASS_COMMIT},
-        } },
+        .{
+            .system = beginPass,
+            .stage = .render,
+            .config = .{
+                .priority = -32768, // Lowest possible - always first in .render
+                .tags = &.{Tags.PASS_BEGIN},
+            },
+        },
+        .{
+            .system = endPass,
+            .stage = .render,
+            .config = .{
+                .priority = 32760, // Very high - runs last in .render, before .post_render
+                .tags = &.{Tags.PASS_END},
+            },
+        },
+        .{
+            .system = commit,
+            .stage = .post_render,
+            .config = .{
+                .priority = -32768, // Lowest priority - runs first in .post_render
+                .tags = &.{Tags.PASS_COMMIT},
+            },
+        },
     },
     .terminate = &.{
         .{ .system = shutdownGraphics, .stage = .last },
