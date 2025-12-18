@@ -1,6 +1,19 @@
 const sparze = @import("sparze");
 const sokol = @import("sokol");
 
+/// Position component in world space.
+///
+/// **Ubiquitous Language**: Transform, Position, World Space
+///
+/// Represents an entity's position in 3D space. Always included in every World via BuiltinPlugin.
+///
+/// **Coordinate system**:
+/// - 2D graphics: Origin (0,0) at top-left, Y increases downward, Z = 0
+/// - 3D graphics: Standard right-handed coordinates (Y up)
+///
+/// **Units**: Abstract units (interpret as pixels, meters, etc. based on your game)
+///
+/// **See Also**: @src/core/CLAUDE.md, docs/PLUGIN_DEVELOPMENT.md
 pub const Transform = struct {
     x: f32 = 0,
     y: f32 = 0,
@@ -38,6 +51,20 @@ pub const Scale = struct {
     }
 };
 
+/// Color component with RGBA channels.
+///
+/// **Ubiquitous Language**: Color, Tint, Albedo, RGBA
+///
+/// Represents color with red, green, blue, and alpha channels. Always included in every World via BuiltinPlugin.
+///
+/// **Channel format**:
+/// - Values in range [0.0, 1.0] (linear color space)
+/// - `r`, `g`, `b`: Color channels
+/// - `a`: Alpha (opacity), default 1.0 (fully opaque)
+///
+/// **Predefined colors**: `.red`, `.green`, `.blue`, `.yellow`, `.cyan`, `.magenta`, `.white`, `.black`, `.orange`, `.purple`
+///
+/// **See Also**: @src/core/CLAUDE.md, docs/PLUGIN_DEVELOPMENT.md
 pub const Color = struct {
     r: f32,
     g: f32,
@@ -70,8 +97,7 @@ pub const Color = struct {
 /// Use `EventReader(GameLoopError)` to monitor system errors:
 /// ```zig
 /// fn errorMonitor(errors: EventReader(GameLoopError)) !void {
-///     var iter = errors.iterator();
-///     while (iter.next()) |err_event| {
+///     for (errors.read()) |err_event| {
 ///         std.debug.print("System error: {any}\n", .{err_event.err});
 ///     }
 /// }
@@ -93,8 +119,7 @@ pub const GameLoopError = struct {
 /// Use `EventReader(EventLoopError)` to monitor event handler errors:
 /// ```zig
 /// fn eventErrorMonitor(errors: EventReader(EventLoopError)) !void {
-///     var iter = errors.iterator();
-///     while (iter.next()) |err_event| {
+///     for (errors.read()) |err_event| {
 ///         std.debug.print("Event handler error: {any}\n", .{err_event.err});
 ///     }
 /// }
@@ -107,6 +132,17 @@ pub const EventLoopError = struct {
     err: anyerror,
 };
 
+/// Builtin components always included via BuiltinPlugin.
+///
+/// These components are automatically available in every World:
+/// - `Transform` - Position in world space
+/// - `Rotation` - Euler angles for 3D rotation
+/// - `Scale` - Size scaling for 3D objects
+/// - `Color` - RGBA color/tint
+///
+/// **Stability**: Always present, safe to assume in any plugin.
+///
+/// **See Also**: @src/core/CLAUDE.md
 pub const Components = .{
     Transform,
     Rotation,
@@ -114,6 +150,16 @@ pub const Components = .{
     Color,
 };
 
+/// Builtin error events always included via BuiltinPlugin.
+///
+/// These events enable error recovery and monitoring:
+/// - `GameLoopError` - System errors during frame execution
+/// - `EventLoopError` - Event handler errors (input, window events)
+///
+/// Systems and event handlers can return `!void`. Errors are caught and enqueued as these events,
+/// allowing the application to continue execution.
+///
+/// **See Also**: docs/APPLICATION_LIFECYCLE.md, docs/SYSTEM_ORDERING.md
 pub const Events = .{
     GameLoopError,
     EventLoopError,

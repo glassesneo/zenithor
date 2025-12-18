@@ -9,7 +9,14 @@ const max_systems_per_stage = 1024;
 // Much smaller than max_systems_per_stage to avoid stack overflow on WASM
 const max_deps_per_system = 32;
 
-// SystemConfig provides optional configuration for system registration
+/// Optional configuration for a system descriptor in `pub const systems`.
+///
+/// Ubiquitous language: **System Ordering**, **Stage**, **Priority**, **Tags**, **Constraints**.
+///
+/// Ordering semantics within a stage:
+/// 1. Stable sort by `priority` (lower runs earlier)
+/// 2. Apply `before`/`after` constraints (by tag) via topological sort
+/// 3. In Debug/ReleaseSafe, invalid constraints panic during `finalize()`
 pub const SystemConfig = struct {
     priority: i16 = 0,
     tags: []const []const u8 = &.{},
@@ -21,7 +28,10 @@ pub const SystemConfig = struct {
 // Example: .{ .system = myFn, .stage = .update, .config = .{ .priority = 10 } }
 // No explicit type needed - the compiler infers the structure
 
-// SystemMetadata stores information about a registered system
+/// Internal scheduling metadata for a registered system.
+///
+/// Stores plugin diagnostics (name, index) and ordering configuration (priority, tags, constraints).
+/// Used by `SystemScheduler.finalize()` for priority sort and topological constraint resolution.
 pub const SystemMetadata = struct {
     system_fn: *const fn (*anyopaque) anyerror!void,
     priority: i16 = 0,
@@ -32,6 +42,16 @@ pub const SystemMetadata = struct {
     after: []const []const u8 = &.{},
 };
 
+/// System scheduler with two-phase ordering: priority sort → constraint resolution.
+///
+/// Ubiquitous language: **System Ordering**, **Priority Sort**, **Topological Sort**, **Constraints**.
+///
+/// Registration stores systems in declaration order. `finalize()` applies:
+/// 1. Stable priority sort (lower values run first)
+/// 2. Before/after constraint resolution (topological sort preserving priority groups)
+/// 3. Validation (Debug/ReleaseSafe): missing tags, circular dependencies → panic
+///
+/// WASM constraint: `max_deps_per_system = 32` to avoid stack overflow during topo sort.
 pub fn SystemScheduler(comptime World: type) type {
     const SystemPointerType = *const fn (*World) anyerror!void;
     return struct {
@@ -382,6 +402,10 @@ pub fn SystemScheduler(comptime World: type) type {
     };
 }
 
+/// Fixed execution phases within a frame.
+///
+/// Ubiquitous language: **Frame**, **Update**, **Render**, **Post-process**.
+/// See `docs/SYSTEM_ORDERING.md` for stage guidelines and examples.
 pub const Stage = enum {
     first,
     pre_update,

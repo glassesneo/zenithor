@@ -4,40 +4,36 @@ Save/load game state to disk using Sparze serialization.
 
 ## Resources
 
-**SaveFile**
-- `path: [256:0]u8` - File path buffer
-- `len: usize` - Path length
-- `timestamp: i128` - Last modification time
-- `checksum_valid: bool` - CRC32 validation flag
+**SaveFile**:
+```zig
+path: [256:0]u8      // File path buffer
+len: usize           // Path length
+timestamp: i128      // Last modification time
+checksum_valid: bool // CRC32 validation flag
+```
 
-Methods:
-- `getPath() []const u8` - Get path slice
-- `getPathZ() [:0]const u8` - Get null-terminated path
+Methods: `getPath()`, `getPathZ()`
 
 ## Systems
 
-**saveGame(commands, save_file: Resource(SaveFile))**
-- Serializes world to file via `commands.serializeToFile()`
-- Updates SaveFile metadata (timestamp, checksum)
-
-**loadGame(commands, save_file: Resource(SaveFile))**
-- Deserializes world from file via `commands.deserializeFromFile()`
-- Updates SaveFile metadata
+```zig
+saveGame(commands, save_file: ResourceMut(SaveFile))   // Serialize world to file
+loadGame(commands, save_file: ResourceMut(SaveFile))   // Deserialize world from file
+```
 
 ## Usage
 
 ```zig
+const zenithor = @import("zenithor");
+const Resource = zenithor.Resource;
+const ResourceMut = zenithor.ResourceMut;
 const Serialization = @import("serialization_plugin");
+const InputPlugin = @import("input_plugin");
 
-fn handleInput(
-    keyboard: Resource(Keyboard),
-    save_file: Resource(Serialization.SaveFile),
-    commands: anytype
-) !void {
+fn handleInput(keyboard: Resource(InputPlugin.Keyboard), save_file: ResourceMut(Serialization.SaveFile), commands: anytype) !void {
     if (keyboard.value.isPressed(.F5)) {
         try Serialization.saveGame(commands, save_file);
     }
-
     if (keyboard.value.isPressed(.F9)) {
         try Serialization.loadGame(commands, save_file);
     }
@@ -46,15 +42,26 @@ fn handleInput(
 
 ## Serialization Behavior
 
-Inherited from Sparze (see sparze CLAUDE.md):
-- **Serialized**: Entities, components, resources, events (read buffer)
-- **Not serialized**: command buffers, event write buffer, types with `pub const serialized = false`
-- **POD types**: Auto-serialized
-- **Non-POD**: Require custom `Serializer` with `serialize()`/`deserialize()` methods
+**Serialized**: Entities, components, resources, events (read buffer)
+**Not serialized**: Command buffers, event write buffer, types with `pub const serialized = false`
 
-## Notes
+Mark transient resources non-serializable:
+```zig
+pub const Time = struct {
+    // ...
+    pub const serialized = false;
+};
+```
 
-- Default save path: `"savegame.spze"`
-- File format includes type hash, CRC32, version for safety
-- Mark transient resources with `pub const serialized = false` (Time, Input, etc.)
-- WASM requires `-Dfilesystem` build flag for IDBFS support
+## Build Requirements
+
+**WASM**: Requires `-Dfilesystem` flag for IDBFS support
+```bash
+zig build serialization -Dtarget=wasm32-emscripten -Dfilesystem
+```
+
+## Documentation
+
+- **@docs/PLUGIN_DEVELOPMENT.md** - Creating custom plugins
+- **@docs/WASM_DEVELOPMENT.md** - WASM filesystem configuration
+- [Sparze Serialization](https://github.com/glassesneo/sparze/blob/main/CLAUDE.md) - Serializer API reference

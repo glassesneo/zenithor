@@ -183,6 +183,11 @@ fn expandPluginDependencies(comptime user_plugins: anytype) type {
     };
 }
 
+/// Build the `sparze.World` type for the full plugin set.
+///
+/// Ubiquitous language: **World construction**, **plugin declarations**, **type tuple values**.
+/// The engine collects `Components`, `Resources`, `Events`, and `Groups` from plugins (when present),
+/// deduplicates them, and passes the resulting tuple *values* into `sparze.World(...)`.
 pub fn buildWorld(comptime plugins: anytype) type {
     @setEvalBranchQuota(25000);
     const Components = collectPluginTypes(plugins, "Components");
@@ -193,11 +198,27 @@ pub fn buildWorld(comptime plugins: anytype) type {
     return sparze.World(Components, Resources, Events, Groups);
 }
 
+/// Options for `zenithor.run(...)`.
+///
+/// Ubiquitous language: **base allocator**, **AppState arena**, **WASM lifecycle**.
 const ZenithorOptions = struct {
-    // Omitted when targeting webassembly
+    /// Base allocator used to create the application's arena on native targets.
+    ///
+    /// On WASM targets, Zenithor uses `std.heap.c_allocator` regardless of this option.
     allocator: std.mem.Allocator = std.heap.page_allocator,
 };
 
+/// Entry point for Zenithor applications.
+///
+/// Ubiquitous language: **plugin dependency expansion**, **system scheduling**, **stages**, **event handlers**.
+///
+/// Plugins are compile-time types (usually `struct`s). Zenithor will:
+/// - Expand `pub const Requires = .{ ... }` dependencies (topological order, compile-time cycle check).
+/// - Build the `World` from optional plugin declarations: `Components`, `Resources`, `Events`, `Groups`.
+/// - Register systems from `pub const systems = .{ ... }` (startup/main/terminate/event_handlers).
+///
+/// Event handlers are called from Sokol callbacks and must have signature:
+/// `fn(event: sokol.app.Event, world: anytype) void|!void`.
 pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
     // Expand user plugins to include all dependencies (auto-include)
     const Expanded = expandPluginDependencies(user_plugins);

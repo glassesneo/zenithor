@@ -4,73 +4,49 @@ Dear ImGui integration for debug UI and tools.
 
 ## Build Options
 
-- `-Dimgui-docking` - Enable docking features (optional)
+```bash
+-Dimgui-docking    # Enable docking features (optional)
+```
 
 ## Exported API
 
-Provides `ig` namespace (`cimgui` or `cimgui_docking` based on build option) and wrapper functions:
+Provides `ig` namespace (cimgui or cimgui_docking) and wrapper functions:
 
-**Window Management**
-```zig
-begin(name: [:0]const u8, open: ?*bool, flags: ImGuiWindowFlags) bool
-end() void
-```
+**Windows**: `begin()`, `end()`, `setNextWindowPos()`, `setNextWindowSize()`
+**Layout**: `separator()`, `spacing()`, `sameLine()`, `indent()`, `unindent()`
+**Text**: `text()`, `textFmt()`, `textColored()`, `textColoredFmt()`, `textWrapped()`, `bulletText()`, `bulletTextFmt()`
+**Widgets**: `button()`, `sliderFloat()`, `sliderInt()`
 
-**Layout**
-```zig
-separator(), spacing(), sameLine()
-indent(), unindent()
-```
-
-**Text**
-```zig
-text(content: [:0]const u8)
-textFmt(comptime fmt: []const u8, args: anytype)
-textColored(color: ImVec4, content: [:0]const u8)
-textColoredFmt(color: ImVec4, comptime fmt: []const u8, args: anytype)
-textWrapped(content: [:0]const u8)
-bulletText(content: [:0]const u8)
-bulletTextFmt(comptime fmt: []const u8, args: anytype)
-```
-
-**Widgets**
-```zig
-button(label: [:0]const u8) bool
-sliderFloat(label: [:0]const u8, value: *f32, min: f32, max: f32) bool
-sliderInt(label: [:0]const u8, value: *i32, min: i32, max: i32) bool
-```
-
-**Window Positioning**
-```zig
-setNextWindowPos(pos: ImVec2, cond: ImGuiCond)
-setNextWindowSize(size: ImVec2, cond: ImGuiCond)
-```
+Full C API available through `ImGui.ig.*` for advanced usage.
 
 ## Usage
 
 ```zig
 const ImGui = @import("imgui_plugin");
 
+const zenithor = @import("zenithor");
+const Resource = zenithor.Resource;
+const Time = @import("time_plugin").Time;
+
 fn debugUI(time: Resource(Time)) !void {
     if (ImGui.begin("Debug", null, .None)) {
         ImGui.textFmt("FPS: {d:.1}", .{time.value.fps});
-        ImGui.textFmt("Frame: {}", .{time.value.frame_count});
-
         if (ImGui.button("Reset")) {
             // Handle reset
         }
     }
     ImGui.end();
 }
-
-// Register in plugin build()
-registry.registerSystem(debugUI, .update);
 ```
 
-## Implementation Notes
+## Implementation
 
-- Frame setup runs in `.first` stage
-- Rendering runs in `.render_submit` stage
-- Event handler automatically processes input
+- Frame setup in `.first` stage
+- Rendering in `.render_submit` stage
+- Event handler processes input automatically
 - Docking enabled via `ConfigFlags_DockingEnable` when `-Dimgui-docking` used
-- Full C API available through `ImGui.ig.*` for advanced usage
+
+## Documentation
+
+- **@docs/PLUGIN_DEVELOPMENT.md** - Creating custom plugins
+- [Dear ImGui API](https://github.com/ocornut/imgui) - Full C++ API reference

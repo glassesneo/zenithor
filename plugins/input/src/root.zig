@@ -5,7 +5,22 @@ const sokol = @import("sokol");
 const zenithor = @import("zenithor");
 const Stage = zenithor.Stage;
 
-/// Mouse input resource containing mouse position, deltas, scroll, and button states
+/// Mouse input resource containing mouse position, deltas, scroll, and button states.
+///
+/// **Ubiquitous Language**: Input Snapshot, Per-Frame Deltas, Held Frames
+///
+/// Updated from Sokol events by the input plugin's event handler. State is reset/updated
+/// in `.last` stage cleanup system.
+///
+/// **Critical specifications**:
+/// - `x, y`: Mouse position in **window pixels** (coordinate space per Sokol: origin at top-left)
+/// - `dx, dy, scroll_x, scroll_y`: **Reset to 0 each frame** in `.last` stage
+/// - `held_frame_map`: Incremented in `.last` stage for held buttons
+/// - `isPressed()`: True when `held_frame_map == 1` (first frame only)
+/// - `isReleased()`: True on the frame a button is released
+/// - `isHeld()`: True while button is down
+///
+/// **See Also**: docs/APPLICATION_LIFECYCLE.md
 pub const Mouse = struct {
     x: f32 = 0.0,
     y: f32 = 0.0,
@@ -54,7 +69,25 @@ pub const Mouse = struct {
     pub const serialized = false;
 };
 
-/// Keyboard input resource containing key states and modifiers
+/// Keyboard input resource containing key states and modifiers.
+///
+/// **Ubiquitous Language**: Input Snapshot, Key State, Text Input Buffer, Held Frames
+///
+/// Updated from Sokol events by the input plugin's event handler. State is reset/updated
+/// in `.last` stage cleanup system.
+///
+/// **Critical specifications**:
+/// - `keys`: BitSet for key states, bounds [0, 511] (512 keys max)
+/// - `char_buffer`: UTF-32 text input, **cleared each frame** in `.last` stage (max 32 chars/frame)
+/// - `modifiers`: Bitmask for Shift, Ctrl, Alt, Super (platform-specific)
+/// - `held_frame_map`: Incremented in `.last` stage for held keys
+/// - `isPressed()`: True when `held_frame_map == 1` (first frame only)
+/// - `isReleased()`: True on the frame a key is released
+/// - `isHeld()`: True while key is down
+///
+/// **Text input vs key state**: Use `char_buffer` for text input, `keys`/`isPressed()` for gameplay bindings.
+///
+/// **See Also**: docs/APPLICATION_LIFECYCLE.md
 pub const Keyboard = struct {
     keys: std.bit_set.ArrayBitSet(usize, 512) = .initEmpty(), // Key states as bit set (64 bytes)
     held_frame_map: std.EnumArray(sokol.app.Keycode, u32) = .initFill(0), // Tracks frames each key has been held
@@ -118,6 +151,10 @@ pub const Resources = .{
 
 pub const Events = .{};
 
+/// Sokol event mapping to input state.
+///
+/// Updates Mouse/Keyboard resources from browser/native input events.
+/// Frame counters (held frames) incremented in `.last` stage cleanup system.
 fn handleEvent(event: sokol.app.Event, world: anytype) void {
     const mouse: *Mouse = world.getResourcePtrMut(Mouse);
     const keyboard: *Keyboard = world.getResourcePtrMut(Keyboard);

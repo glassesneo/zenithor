@@ -5,12 +5,25 @@ const sparze = @import("sparze");
 const zenithor = @import("zenithor");
 const Stage = zenithor.Stage;
 
-/// Time resource containing all time-related state
+/// Time resource containing all time-related state.
+///
+/// **Ubiquitous Language**: Time Resource, Delta Time, FPS, EMA (Exponential Moving Average)
+///
+/// Updated in `.first` stage (before most user systems). Provides frame timing for
+/// physics, animation, and gameplay logic.
+///
+/// **Critical specifications**:
+/// - `delta_time` is **clamped to 0.1s (100ms)** to prevent physics explosions on lag/deserialization
+/// - `total_time` uses **raw delta** (no clamping applied)
+/// - `time_scale` is **NOT automatically applied** - systems must multiply manually: `dt * time_scale`
+/// - `fps` uses exponential moving average (EMA) with alpha = `fps_smoothing_factor` (default 0.1)
+///
+/// **See Also**: docs/APPLICATION_LIFECYCLE.md
 pub const Time = struct {
-    /// Frame delta time in seconds (unscaled)
+    /// Frame delta time in seconds (clamped to 0.1s max)
     delta_time: f32 = 0.0,
 
-    /// Total elapsed time since application start in seconds
+    /// Total elapsed time since application start in seconds (uses raw delta, no clamp)
     total_time: f64 = 0.0,
 
     /// Total number of frames rendered
@@ -20,12 +33,14 @@ pub const Time = struct {
     fps: f32 = 0.0,
 
     /// Global time scaling factor (1.0 = normal speed, 0.0 = pause, 0.5 = half speed)
+    /// **IMPORTANT**: NOT automatically applied - multiply manually in systems
     time_scale: f32 = 1.0,
 
     /// Private: Last frame ticks for delta calculation
     last_frame_ticks: u64 = 0,
 
     /// FPS smoothing factor (lower = smoother, higher = more responsive)
+    /// EMA formula: `fps = fps * (1 - alpha) + current_fps * alpha`
     fps_smoothing_factor: f32 = 0.1,
 
     /// Mark as non-serializable - time state should not be saved/loaded
