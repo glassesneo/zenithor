@@ -11,9 +11,10 @@ const zenithor = @import("zenithor");
 const AssetPlugin = @import("asset_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const RenderContext = @import("render_context_plugin");
+const TimePlugin = @import("time_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ AssetPlugin, ImGuiPlugin, Game }, .{});
+    zenithor.run(.{ TimePlugin, AssetPlugin, ImGuiPlugin, Game }, .{});
 }
 
 const Game = struct {
@@ -29,9 +30,13 @@ const Game = struct {
         },
         .main = &.{
             .{ .system = requestAsset, .stage = .update },
-            .{ .system = showAssetUI, .stage = .render, .config = .{
-                .priority = 100, // After main rendering
-            } },
+            .{
+                .system = showAssetUI,
+                .stage = .render,
+                .config = .{
+                    .priority = 100, // After main rendering
+                },
+            },
         },
     };
 };
@@ -43,7 +48,7 @@ const TestAssetComponent = struct {
 };
 
 fn setup(commands: anytype, pass_action: zenithor.ResourceMut(RenderContext.PassAction)) !void {
-    pass_actioncolors[0].clear_value = .{ .r = 0.15, .g = 0.15, .b = 0.2, .a = 1.0 };
+    pass_action.colors[0].clear_value = .{ .r = 0.15, .g = 0.15, .b = 0.2, .a = 1.0 };
 
     // Create an entity that will request an asset
     // Note: The handle will be initialized in requestAsset system
@@ -69,7 +74,7 @@ fn requestAsset(
 
         if (!comp.requested) {
             // Request the asset (this will trigger loading)
-            comp.handle = try registrycreateHandle(
+            comp.handle = try registry.createHandle(
                 AssetPlugin.Texture,
                 "test.png",
             );
@@ -101,13 +106,13 @@ fn showAssetUI(
 
         // Show asset statistics
         ImGuiPlugin.text("Statistics:");
-        ImGuiPlugin.textFmt("  Total Assets: {d}", .{statstotal_assets});
-        ImGuiPlugin.textFmt("  Ready: {d}", .{statsready_assets});
-        ImGuiPlugin.textFmt("  Loading: {d}", .{statsloading_assets});
-        ImGuiPlugin.textFmt("  Failed: {d}", .{statsfailed_assets});
+        ImGuiPlugin.textFmt("  Total Assets: {d}", .{stats.total_assets});
+        ImGuiPlugin.textFmt("  Ready: {d}", .{stats.ready_assets});
+        ImGuiPlugin.textFmt("  Loading: {d}", .{stats.loading_assets});
+        ImGuiPlugin.textFmt("  Failed: {d}", .{stats.failed_assets});
 
-        const cpu_mb = @as(f32, @floatFromInt(registrytotal_cpu_bytes)) / (1024.0 * 1024.0);
-        const gpu_mb = @as(f32, @floatFromInt(registrytotal_gpu_bytes)) / (1024.0 * 1024.0);
+        const cpu_mb = @as(f32, @floatFromInt(registry.total_cpu_bytes)) / (1024.0 * 1024.0);
+        const gpu_mb = @as(f32, @floatFromInt(registry.total_gpu_bytes)) / (1024.0 * 1024.0);
         ImGuiPlugin.textFmt("  CPU Memory: {d:.2} MB", .{cpu_mb});
         ImGuiPlugin.textFmt("  GPU Memory: {d:.2} MB", .{gpu_mb});
 
@@ -115,9 +120,9 @@ fn showAssetUI(
 
         // Show job queue status
         ImGuiPlugin.text("Job Pipeline:");
-        ImGuiPlugin.textFmt("  IO Queue: {d}", .{pipelineio_queue.items.len});
-        ImGuiPlugin.textFmt("  Decode Queue: {d}", .{pipelinedecode_queue.items.len});
-        ImGuiPlugin.textFmt("  Upload Queue: {d}", .{pipelineupload_queue.items.len});
+        ImGuiPlugin.textFmt("  IO Queue: {d}", .{pipeline.io_queue.items.len});
+        ImGuiPlugin.textFmt("  Decode Queue: {d}", .{pipeline.decode_queue.items.len});
+        ImGuiPlugin.textFmt("  Upload Queue: {d}", .{pipeline.upload_queue.items.len});
 
         ImGuiPlugin.separator();
 
@@ -126,7 +131,7 @@ fn showAssetUI(
         for (query.entities) |_| {
             const comp = query.getComponent(query.entities[0], TestAssetComponent);
 
-            if (registryvalidateHandle(comp.handle.handle)) |entry| {
+            if (registry.validateHandle(comp.handle.handle)) |entry| {
                 ImGuiPlugin.textFmt("  State: {s}", .{@tagName(entry.state)});
                 ImGuiPlugin.textFmt("  Generation: {d}", .{entry.generation});
                 ImGuiPlugin.textFmt("  Refcount: {d}", .{entry.refcount});

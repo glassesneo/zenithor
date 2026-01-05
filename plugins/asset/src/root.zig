@@ -74,19 +74,20 @@ pub const systems = .{
         } },
     },
     .main = &.{
+        // IO jobs run first in the frame
         .{ .system = systems_module.pumpIoJobs, .stage = .first, .config = .{
             .priority = -50,
             .tags = &.{"asset-io"},
         } },
+        // Decode jobs run in pre_update (after first stage completes)
         .{ .system = systems_module.pumpDecodeJobs, .stage = .pre_update, .config = .{
             .priority = -50,
             .tags = &.{"asset-decode"},
-            .after = &.{"asset-io"},
         } },
+        // Upload jobs run in pre_render (after pre_update stage completes)
         .{ .system = systems_module.pumpUploadJobs, .stage = .pre_render, .config = .{
             .priority = -100,
             .tags = &.{"asset-upload"},
-            .after = &.{"asset-decode"},
         } },
     },
     .terminate = &.{

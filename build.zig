@@ -23,7 +23,7 @@ const examples = [_]Example{
     // Plugin authoring + Requires
     .{ .name = "plugin_authoring", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
     // Asset loading and management
-    .{ .name = "asset_loading", .plugins = &.{ "render_context_plugin", "asset_plugin", "imgui_plugin" } },
+    .{ .name = "asset_loading", .plugins = &.{ "render_context_plugin", "time_plugin", "asset_plugin", "imgui_plugin" } },
     // Comprehensive 3D showcase - demonstrates ALL features
     .{ .name = "showcase_3d", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
 };

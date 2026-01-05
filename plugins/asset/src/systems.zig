@@ -38,7 +38,7 @@ fn getAllocator() std.mem.Allocator {
 pub fn initRegistry(loader_registry: sparze.ResourceMut(LoaderRegistry)) void {
     // Register built-in loaders
     const texture_vtable = loader_mod.makeLoaderVTable(texture_loader.TextureLoader);
-    loader_registryregisterLoader(texture_loader.Texture, texture_vtable) catch {
+    loader_registry.registerLoader(texture_loader.Texture, texture_vtable) catch {
         std.debug.print("Failed to register texture loader\n", .{});
     };
 
@@ -67,14 +67,14 @@ pub fn pumpIoJobs(
         };
 
         // Check if asset already exists
-        if (registrygetEntry(id)) |entry| {
+        if (registry.getEntry(id)) |entry| {
             if (entry.state == .ready) {
                 // Already loaded, emit immediate success
                 try loaded_writer.enqueue(.{
                     .handle = .{ .id = id, .generation = entry.generation },
                     .type_id = request.type_id,
                 });
-                statscache_hits += 1;
+                stats.cache_hits += 1;
                 continue;
             } else if (entry.state.isLoading()) {
                 // Already loading, skip duplicate request
@@ -83,9 +83,9 @@ pub fn pumpIoJobs(
         }
 
         // New request - create entry and enqueue IO job
-        const entry = try registrygetOrCreateEntry(id);
+        const entry = try registry.getOrCreateEntry(id);
         entry.state = .queued;
-        statscache_misses += 1;
+        stats.cache_misses += 1;
 
         const handle = registry_mod.AssetHandle{
             .id = id,
@@ -93,35 +93,35 @@ pub fn pumpIoJobs(
         };
 
         // Create IO job
-        const path_copy = try pipelineallocator.dupe(u8, request.path);
+        const path_copy = try pipeline.allocator.dupe(u8, request.path);
         const job = LoadJob.init(handle, request.priority, .{
             .io = .{ .path = path_copy },
         });
 
-        try pipelineenqueueIo(job);
+        try pipeline.enqueueIo(job);
     }
 
     // Process IO queue within budget
     var jobs_processed: usize = 0;
-    while (pipelineio_queue.items.len > 0) {
+    while (pipeline.io_queue.items.len > 0) {
         const elapsed_ticks = sokol.time.laptime(&start_tick);
         const elapsed_us = sokol.time.us(elapsed_ticks);
-        if (elapsed_us >= @as(f64, @floatFromInt(io_configio_budget_us))) break;
+        if (elapsed_us >= @as(f64, @floatFromInt(io_config.io_budget_us))) break;
 
-        const job = pipelineio_queue.orderedRemove(0);
+        const job = pipeline.io_queue.orderedRemove(0);
 
         // Update entry state
-        if (registrygetEntry(job.handle.id)) |entry| {
+        if (registry.getEntry(job.handle.id)) |entry| {
             entry.state = .io;
         }
 
         // Read file from disk
         const path = job.data.io.path;
-        const file_result = readFile(pipelineallocator, io_configasset_root, path);
+        const file_result = readFile(pipeline.allocator, io_config.asset_root, path);
 
         if (file_result) |bytes| {
             // Get loader for this type
-            if (loadersgetLoaderById(job.handle.id.type_id)) |loader_vtable| {
+            if (loaders.getLoaderById(job.handle.id.type_id)) |loader_vtable| {
                 // Move to decode queue
                 const decode_job = LoadJob.init(job.handle, job.priority, .{
                     .decode = .{
@@ -129,7 +129,7 @@ pub fn pumpIoJobs(
                         .loader = loader_vtable,
                     },
                 });
-                try pipelineenqueueDecode(decode_job);
+                try pipeline.enqueueDecode(decode_job);
                 jobs_processed += 1;
             } else {
                 // No loader found
@@ -140,7 +140,7 @@ pub fn pumpIoJobs(
                     .unsupported_format,
                     0,
                 );
-                pipelineallocator.free(bytes);
+                pipeline.allocator.free(bytes);
             }
         } else |err| {
             // IO error
@@ -153,11 +153,11 @@ pub fn pumpIoJobs(
         }
 
         // Free path
-        pipelineallocator.free(path);
+        pipeline.allocator.free(path);
     }
 
     if (jobs_processed > 0) {
-        statsloading_assets += jobs_processed;
+        stats.loading_assets += jobs_processed;
     }
 }
 
@@ -172,15 +172,15 @@ pub fn pumpDecodeJobs(
     _ = sokol.time.laptime(&start_tick);
 
     var jobs_processed: usize = 0;
-    while (pipelinedecode_queue.items.len > 0) {
+    while (pipeline.decode_queue.items.len > 0) {
         const elapsed_ticks = sokol.time.laptime(&start_tick);
         const elapsed_us = sokol.time.us(elapsed_ticks);
-        if (elapsed_us >= @as(f64, @floatFromInt(io_configdecode_budget_us))) break;
+        if (elapsed_us >= @as(f64, @floatFromInt(io_config.decode_budget_us))) break;
 
-        const job = pipelinedecode_queue.orderedRemove(0);
+        const job = pipeline.decode_queue.orderedRemove(0);
 
         // Update entry state
-        if (registrygetEntry(job.handle.id)) |entry| {
+        if (registry.getEntry(job.handle.id)) |entry| {
             entry.state = .decode;
         }
 
@@ -189,7 +189,7 @@ pub fn pumpDecodeJobs(
         const loader = job.data.decode.loader;
 
         const ctx = LoadContext{
-            .allocator = pipelineallocator,
+            .allocator = pipeline.allocator,
             .asset_id = job.handle.id,
         };
 
@@ -201,7 +201,7 @@ pub fn pumpDecodeJobs(
                     .loader = loader,
                 },
             });
-            try pipelineenqueueUpload(upload_job);
+            try pipeline.enqueueUpload(upload_job);
             jobs_processed += 1;
         } else |_| {
             // Decode failed
@@ -209,7 +209,7 @@ pub fn pumpDecodeJobs(
         }
 
         // Free bytes after decode
-        pipelineallocator.free(bytes);
+        pipeline.allocator.free(bytes);
     }
 }
 
@@ -226,15 +226,15 @@ pub fn pumpUploadJobs(
     _ = sokol.time.laptime(&start_tick);
 
     var jobs_processed: usize = 0;
-    while (pipelineupload_queue.items.len > 0) {
+    while (pipeline.upload_queue.items.len > 0) {
         const elapsed_ticks = sokol.time.laptime(&start_tick);
         const elapsed_us = sokol.time.us(elapsed_ticks);
-        if (elapsed_us >= @as(f64, @floatFromInt(io_configupload_budget_us))) break;
+        if (elapsed_us >= @as(f64, @floatFromInt(io_config.upload_budget_us))) break;
 
-        const job = pipelineupload_queue.orderedRemove(0);
+        const job = pipeline.upload_queue.orderedRemove(0);
 
         // Update entry state
-        if (registrygetEntry(job.handle.id)) |entry| {
+        if (registry.getEntry(job.handle.id)) |entry| {
             entry.state = .upload;
         }
 
@@ -245,17 +245,17 @@ pub fn pumpUploadJobs(
         const memory = loader.getMemoryUsage(payload);
 
         // Store payload in registry
-        registrysetPayload(job.handle.id, payload, memory) catch {
+        registry.setPayload(job.handle.id, payload, memory) catch {
             // Upload failed (shouldn't happen for non-GPU assets)
-            loader.destroy(payload, pipelineallocator);
+            loader.destroy(payload, pipeline.allocator);
             try emitLoadFailure(registry, failed_writer, job.handle, .gpu_upload_failed, job.retry_count);
             continue;
         };
 
         // Update stats
-        statsready_assets += 1;
-        statsloading_assets -= 1;
-        statstotal_assets += 1;
+        stats.ready_assets += 1;
+        stats.loading_assets -= 1;
+        stats.total_assets += 1;
 
         // Emit success event
         try loaded_writer.enqueue(.{
@@ -278,29 +278,29 @@ pub fn flushAndRelease(
     std.debug.print("[Asset] Flushing and releasing all assets\n", .{});
 
     // Clear all queues and free job-specific allocations
-    for (pipelineio_queue.items) |job| {
-        pipelineallocator.free(job.data.io.path);
+    for (pipeline.io_queue.items) |job| {
+        pipeline.allocator.free(job.data.io.path);
     }
-    pipelineio_queue.clearRetainingCapacity();
+    pipeline.io_queue.clearRetainingCapacity();
 
-    for (pipelinedecode_queue.items) |job| {
-        pipelineallocator.free(job.data.decode.bytes);
+    for (pipeline.decode_queue.items) |job| {
+        pipeline.allocator.free(job.data.decode.bytes);
     }
-    pipelinedecode_queue.clearRetainingCapacity();
+    pipeline.decode_queue.clearRetainingCapacity();
 
-    for (pipelineupload_queue.items) |job| {
+    for (pipeline.upload_queue.items) |job| {
         const loader = job.data.upload.loader;
-        loader.destroy(job.data.upload.parsed, pipelineallocator);
+        loader.destroy(job.data.upload.parsed, pipeline.allocator);
     }
-    pipelineupload_queue.clearRetainingCapacity();
+    pipeline.upload_queue.clearRetainingCapacity();
 
     // Destroy all loaded asset payloads
-    var it = registryentries.iterator();
+    var it = registry.entries.iterator();
     while (it.next()) |kv| {
         const entry = kv.value_ptr;
         if (entry.payload) |payload| {
-            if (loadersgetLoaderById(kv.key_ptr.type_id)) |loader| {
-                loader.destroy(payload, registryallocator);
+            if (loaders.getLoaderById(kv.key_ptr.type_id)) |loader| {
+                loader.destroy(payload, registry.allocator);
             }
             entry.payload = null;
         }
@@ -341,7 +341,7 @@ fn emitLoadFailure(
     retry_count: u8,
 ) !void {
     // Update entry state
-    if (registrygetEntry(handle.id)) |entry| {
+    if (registry.getEntry(handle.id)) |entry| {
         entry.state = .failed;
         entry.last_error = .{
             .kind = error_kind,
