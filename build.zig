@@ -22,6 +22,8 @@ const examples = [_]Example{
     .{ .name = "imgui_overlay", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "imgui_plugin" } },
     // Plugin authoring + Requires
     .{ .name = "plugin_authoring", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
+    // Asset loading and management
+    .{ .name = "asset_loading", .plugins = &.{ "render_context_plugin", "asset_plugin", "imgui_plugin" } },
     // Comprehensive 3D showcase - demonstrates ALL features
     .{ .name = "showcase_3d", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
 };
@@ -72,6 +74,7 @@ const DependencySet = struct {
     imgui_plugin_mod: *Build.Module,
     input_plugin_mod: *Build.Module,
     serialization_plugin_mod: *Build.Module,
+    asset_plugin_mod: *Build.Module,
 };
 
 const ExampleResult = struct {
@@ -86,6 +89,7 @@ const PluginModules = struct {
     imgui: *Build.Module,
     input: *Build.Module,
     serialization: *Build.Module,
+    asset: *Build.Module,
 };
 
 const PluginLookup = union(enum) {
@@ -288,6 +292,12 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .optimize = optimize,
         .imports = exported_serialization_imports[0..],
     });
+    const asset_mod = b.addModule("asset_plugin", .{
+        .root_source_file = b.path("plugins/asset/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = exported_imports[0..],
+    });
 
     addDarwinIncludePaths(target, dep_sokol);
 
@@ -306,6 +316,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
             .imgui_plugin_mod = imgui_mod,
             .input_plugin_mod = input_mod,
             .serialization_plugin_mod = serialization_mod,
+            .asset_plugin_mod = asset_mod,
         },
     };
 }
@@ -335,6 +346,7 @@ fn resolvePluginModule(lookup: PluginLookup, name: []const u8) *Build.Module {
             if (std.mem.eql(u8, name, "imgui_plugin")) break :blk mods.imgui;
             if (std.mem.eql(u8, name, "input_plugin")) break :blk mods.input;
             if (std.mem.eql(u8, name, "serialization_plugin")) break :blk mods.serialization;
+            if (std.mem.eql(u8, name, "asset_plugin")) break :blk mods.asset;
             std.debug.panic("Unknown plugin name: {s}", .{name});
         },
     };
@@ -623,6 +635,7 @@ fn exampleContext(options: ExampleOptions, deps: DependencySet) AppBuildContext 
             .imgui = deps.imgui_plugin_mod,
             .input = deps.input_plugin_mod,
             .serialization = deps.serialization_plugin_mod,
+            .asset = deps.asset_plugin_mod,
         } },
     };
 }

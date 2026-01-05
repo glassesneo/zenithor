@@ -1,0 +1,154 @@
+/// Example: Asset Loading
+///
+/// Demonstrates the asset management system:
+/// - Loading textures from disk
+/// - Monitoring asset loading states (unloaded/loading/ready/failed)
+/// - Asset caching and refcounting
+/// - Debug UI showing asset statistics
+///
+/// See: plugins/asset/src/root.zig
+const zenithor = @import("zenithor");
+const AssetPlugin = @import("asset_plugin");
+const ImGuiPlugin = @import("imgui_plugin");
+const RenderContext = @import("render_context_plugin");
+
+pub fn main() !void {
+    zenithor.run(.{ AssetPlugin, ImGuiPlugin, Game }, .{});
+}
+
+const Game = struct {
+    pub const Components = .{TestAssetComponent};
+    pub const Resources = .{};
+    pub const Events = .{};
+
+    pub const Requires = .{ AssetPlugin, ImGuiPlugin };
+
+    pub const systems = .{
+        .startup = &.{
+            .{ .system = setup, .stage = .first },
+        },
+        .main = &.{
+            .{ .system = requestAsset, .stage = .update },
+            .{ .system = showAssetUI, .stage = .render, .config = .{
+                .priority = 100, // After main rendering
+            } },
+        },
+    };
+};
+
+/// Component to track which asset an entity is waiting for
+const TestAssetComponent = struct {
+    handle: AssetPlugin.TypedHandle(AssetPlugin.Texture),
+    requested: bool = false,
+};
+
+fn setup(commands: anytype, pass_action: zenithor.ResourceMut(RenderContext.PassAction)) !void {
+    pass_actioncolors[0].clear_value = .{ .r = 0.15, .g = 0.15, .b = 0.2, .a = 1.0 };
+
+    // Create an entity that will request an asset
+    // Note: The handle will be initialized in requestAsset system
+    _ = try commands.createEntityWith(.{
+        TestAssetComponent{
+            .handle = .{ .handle = .{
+                .id = .{ .type_id = 0, .path_hash = 0 },
+                .generation = 0,
+            } },
+            .requested = false,
+        },
+    });
+}
+
+fn requestAsset(
+    commands: anytype,
+    registry: zenithor.ResourceMut(AssetPlugin.AssetRegistry),
+    query: zenithor.Query(struct { TestAssetComponent }),
+    writer: zenithor.EventWriter(AssetPlugin.AssetRequest),
+) !void {
+    for (query.entities) |entity| {
+        const comp = query.getComponentMut(entity, TestAssetComponent);
+
+        if (!comp.requested) {
+            // Request the asset (this will trigger loading)
+            comp.handle = try registrycreateHandle(
+                AssetPlugin.Texture,
+                "test.png",
+            );
+
+            try writer.enqueue(.{
+                .type_id = comp.handle.handle.id.type_id,
+                .path = "test.png",
+                .priority = 255,
+                .requester = @bitCast(entity),
+            });
+
+            comp.requested = true;
+            std.debug.print("[Game] Requested asset: test.png\n", .{});
+        }
+    }
+
+    _ = commands;
+}
+
+fn showAssetUI(
+    registry: zenithor.Resource(AssetPlugin.AssetRegistry),
+    stats: zenithor.Resource(AssetPlugin.AssetStats),
+    pipeline: zenithor.Resource(AssetPlugin.JobPipeline),
+    query: zenithor.Query(struct { TestAssetComponent }),
+) !void {
+    if (ImGuiPlugin.begin("Asset Loading Demo", null, .None)) {
+        ImGuiPlugin.text("Asset Management System");
+        ImGuiPlugin.separator();
+
+        // Show asset statistics
+        ImGuiPlugin.text("Statistics:");
+        ImGuiPlugin.textFmt("  Total Assets: {d}", .{statstotal_assets});
+        ImGuiPlugin.textFmt("  Ready: {d}", .{statsready_assets});
+        ImGuiPlugin.textFmt("  Loading: {d}", .{statsloading_assets});
+        ImGuiPlugin.textFmt("  Failed: {d}", .{statsfailed_assets});
+
+        const cpu_mb = @as(f32, @floatFromInt(registrytotal_cpu_bytes)) / (1024.0 * 1024.0);
+        const gpu_mb = @as(f32, @floatFromInt(registrytotal_gpu_bytes)) / (1024.0 * 1024.0);
+        ImGuiPlugin.textFmt("  CPU Memory: {d:.2} MB", .{cpu_mb});
+        ImGuiPlugin.textFmt("  GPU Memory: {d:.2} MB", .{gpu_mb});
+
+        ImGuiPlugin.separator();
+
+        // Show job queue status
+        ImGuiPlugin.text("Job Pipeline:");
+        ImGuiPlugin.textFmt("  IO Queue: {d}", .{pipelineio_queue.items.len});
+        ImGuiPlugin.textFmt("  Decode Queue: {d}", .{pipelinedecode_queue.items.len});
+        ImGuiPlugin.textFmt("  Upload Queue: {d}", .{pipelineupload_queue.items.len});
+
+        ImGuiPlugin.separator();
+
+        // Show test asset status
+        ImGuiPlugin.text("Test Asset (test.png):");
+        for (query.entities) |_| {
+            const comp = query.getComponent(query.entities[0], TestAssetComponent);
+
+            if (registryvalidateHandle(comp.handle.handle)) |entry| {
+                ImGuiPlugin.textFmt("  State: {s}", .{@tagName(entry.state)});
+                ImGuiPlugin.textFmt("  Generation: {d}", .{entry.generation});
+                ImGuiPlugin.textFmt("  Refcount: {d}", .{entry.refcount});
+
+                if (entry.last_error) |err| {
+                    ImGuiPlugin.textFmt("  Error: {s}", .{err.message});
+                }
+
+                if (entry.state == .ready) {
+                    ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.2, .w = 1.0 }, "  Asset loaded successfully!");
+                }
+            } else {
+                ImGuiPlugin.text("  Status: Invalid handle");
+            }
+            break; // Only show first entity
+        }
+
+        ImGuiPlugin.separator();
+        ImGuiPlugin.text("Note: Place a test.png file in the assets/ directory");
+        ImGuiPlugin.text("to see the asset loading in action.");
+    }
+    ImGuiPlugin.end();
+}
+
+const std = @import("std");
