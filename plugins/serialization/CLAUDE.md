@@ -9,7 +9,7 @@ Save/load game state to disk using Sparze serialization.
 path: [256:0]u8      // File path buffer
 len: usize           // Path length
 timestamp: i128      // Last modification time
-checksum_valid: bool // CRC32 validation flag
+checksum_valid: bool // Set to true on successful save/load
 ```
 
 Methods: `getPath()`, `getPathZ()`

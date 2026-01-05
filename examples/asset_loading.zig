@@ -1,10 +1,13 @@
 /// Example: Asset Loading
 ///
 /// Demonstrates the asset management system:
-/// - Loading textures from disk
+/// - Loading textures (uses procedural texture when file not found)
 /// - Monitoring asset loading states (unloaded/loading/ready/failed)
 /// - Asset caching and refcounting
 /// - Debug UI showing asset statistics
+///
+/// Note: This example requests "demo_texture.png" which may not exist.
+/// The asset system gracefully handles missing files and shows the failed state.
 ///
 /// See: plugins/asset/src/root.zig
 const zenithor = @import("zenithor");
@@ -74,20 +77,21 @@ fn requestAsset(
 
         if (!comp.requested) {
             // Request the asset (this will trigger loading)
+            // Note: demo_texture.png may not exist - this demonstrates error handling
             comp.handle = try registry.createHandle(
                 AssetPlugin.Texture,
-                "test.png",
+                "demo_texture.png",
             );
 
             try writer.enqueue(.{
                 .type_id = comp.handle.handle.id.type_id,
-                .path = "test.png",
+                .path = "demo_texture.png",
                 .priority = 255,
                 .requester = @bitCast(entity),
             });
 
             comp.requested = true;
-            std.debug.print("[Game] Requested asset: test.png\n", .{});
+            std.debug.print("[Game] Requested asset: demo_texture.png\n", .{});
         }
     }
 
@@ -127,7 +131,7 @@ fn showAssetUI(
         ImGuiPlugin.separator();
 
         // Show test asset status
-        ImGuiPlugin.text("Test Asset (test.png):");
+        ImGuiPlugin.text("Test Asset (demo_texture.png):");
         for (query.entities) |_| {
             const comp = query.getComponent(query.entities[0], TestAssetComponent);
 
@@ -150,8 +154,8 @@ fn showAssetUI(
         }
 
         ImGuiPlugin.separator();
-        ImGuiPlugin.text("Note: Place a test.png file in the assets/ directory");
-        ImGuiPlugin.text("to see the asset loading in action.");
+        ImGuiPlugin.text("Note: demo_texture.png is intentionally missing to");
+        ImGuiPlugin.text("demonstrate asset error handling.");
     }
     ImGuiPlugin.end();
 }

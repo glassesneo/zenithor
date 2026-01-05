@@ -4,10 +4,10 @@ A 2D/3D Application Framework for Zig, backed by Sokol and Sparze ECS. Native an
 
 ## Highlights
 
-- **Compile-time plugins**: Tuple-based plugin registration with automatic dependency expansion and builtin Transform/Color.
+- **Compile-time plugins**: Tuple-based plugin registration with automatic dependency expansion and builtin Transform/Rotation/Scale/Color.
 - **Zero-cost ECS**: [Sparze](https://github.com/glassesneo/sparze) provides queries, groups, and events with deterministic system scheduling.
 - **Cross-platform**: Sokol backends for OpenGL, OpenGL ES3, and WebGPU.
-- **Minimal batteries included**: Graphics, Time, Input, ImGui, and Serialization plugins ready to drop in.
+- **Minimal batteries included**: Graphics, Time, Input, ImGui, Asset, and Serialization plugins ready to drop in.
 - **Error-tolerant loop**: System and event handler failures become events instead of crashes (see `src/core/CLAUDE.md`).
 
 ## Quick Start
@@ -64,8 +64,9 @@ All examples are in `examples/` and can be built with `zig build <name>` or run 
 - **Time**: DeltaTime resource, FPS tracking.
 - **Input**: Mouse and Keyboard resources, event handlers.
 - **ImGui**: Dear ImGui frame setup/render submit, docking optional.
+- **Asset**: Asset loading, caching, and lifecycle management for textures.
 - **Serialization**: Save/load game state, WASM filesystem support via `-Dfilesystem`.
-- **Builtin**: Transform and Color components always included.
+- **Builtin**: Transform, Rotation, Scale, and Color components always included.
 
 ## Documentation
 
@@ -77,7 +78,7 @@ Comprehensive documentation with AI-first design for discoverability:
 - **[docs/WASM_DEVELOPMENT.md](docs/WASM_DEVELOPMENT.md)** - WebAssembly builds and deployment
 - **[CLAUDE.md](CLAUDE.md)** - Quick reference (commands, constraints, links)
 - **[src/core/CLAUDE.md](src/core/CLAUDE.md)** - Core engine internals
-- **Plugin docs**: Each plugin has a `CLAUDE.md` for quick reference
+- **Plugin docs**: Most plugins have a `CLAUDE.md` for quick reference
 
 The codebase also includes extensive DocComments on public APIs with ubiquitous language tags for AI agent discoverability.
 
@@ -86,7 +87,7 @@ The codebase also includes extensive DocComments on public APIs with ubiquitous 
 ```
 src/root.zig            # Public API exports (with comprehensive DocComments)
 src/core/               # Engine core (application, builtin, scheduler)
-plugins/                # Standard plugins (render_context, graphics, time, input, imgui, serialization)
+plugins/                # Standard plugins (render_context, graphics, time, input, imgui, asset, serialization)
 examples/               # Example programs
 docs/                   # Detailed documentation
 build.zig               # Build graph and plugin module wiring

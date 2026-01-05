@@ -123,7 +123,7 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
 
 3. **Add BuiltinPlugin**
    ```zig
-   // Always included (Transform, Color, error events)
+   // Always included (Transform, Rotation, Scale, Color, error events)
    Final: { BuiltinPlugin, TimePlugin, MyGamePlugin }
    ```
 
@@ -174,7 +174,7 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
 2. **Deduplicate Types**
    ```zig
    // If multiple plugins export the same type, include once
-   All Components: { Transform, Color, Circle, Rectangle }
+   All Components: { Transform, Rotation, Scale, Color, Circle, Rectangle }
    All Resources: { Time, PassAction }
    All Events: { GameLoopError, EventLoopError }
    All Groups: {}
@@ -183,20 +183,20 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
 3. **Build TypeTupleType**
    ```zig
    // Create a tuple type whose fields are named "0", "1", "2", ...
-   const ComponentsTuple = TypeTupleType(4, .{ Transform, Color, Circle, Rectangle });
+   const ComponentsTuple = TypeTupleType(6, .{ Transform, Rotation, Scale, Color, Circle, Rectangle });
 
    // Instantiate to get the tuple VALUE expected by Sparze:
-   const components_tuple: ComponentsTuple = .{}; // evaluates to `.{ Transform, Color, Circle, Rectangle }`
+   const components_tuple: ComponentsTuple = .{}; // evaluates to `.{ Transform, Rotation, Scale, Color, Circle, Rectangle }`
    ```
 
 4. **Construct World Type**
    ```zig
    // Pass tuple VALUES to Sparze
    const World = sparze.World(
-       .{ Transform, Color, Circle, Rectangle },  // Components
-       .{ Time, PassAction },                     // Resources
-       .{ GameLoopError, EventLoopError },        // Events
-       .{},                                       // Groups
+       .{ Transform, Rotation, Scale, Color, Circle, Rectangle },  // Components
+       .{ Time, PassAction },                                       // Resources
+       .{ GameLoopError, EventLoopError },                          // Events
+       .{},                                                         // Groups
    );
    ```
 

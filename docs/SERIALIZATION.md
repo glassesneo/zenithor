@@ -19,20 +19,16 @@ The SerializationPlugin provides:
 - Save/load to file operations
 - Group recreation after deserialization
 - Error handling and validation
-- Auto-save capabilities
 
 ### Key Resources
 
 ```zig
 // Save file metadata
 const SaveFile = struct {
-    path: [256]u8,        // Save file path
+    path: [256:0]u8,      // Save file path buffer (null-terminated)
     len: usize,           // Path length
-    timestamp: i64,       // File modification time
-    entity_count: u32,    // Number of saved entities
-    component_count: u32, // Number of components
-    resource_count: u32,  // Number of resources
-    checksum_valid: bool, // Data integrity check
+    timestamp: i128,      // File modification time
+    checksum_valid: bool, // Set to true on successful save/load
 };
 ```
 
@@ -143,7 +139,6 @@ Sparze's binary format includes:
 [Components] - All component data by type
 [Resources] - Resource values
 [Events] - Read buffer (previous frame)
-[Checksum] - CRC32 validation
 ```
 
 ## Best Practices

@@ -1,11 +1,11 @@
 # Core Engine
 
-Application lifecycle, builtin components (Transform, Color), system scheduling, and error handling.
+Application lifecycle, builtin components (Transform, Rotation, Scale, Color), system scheduling, and error handling.
 
 ## Key Files
 
 - **application.zig** - zenithor.run(), plugin expansion, World construction, Sokol init, main loop
-- **builtin.zig** - Transform, Color components (always included)
+- **builtin.zig** - Transform, Rotation, Scale, Color components (always included)
 - **system.zig** - SystemScheduler (registration, sorting, constraint validation)
 
 ## Critical Rules
@@ -21,8 +21,10 @@ Application lifecycle, builtin components (Transform, Color), system scheduling,
 ## Builtin Components
 
 ```zig
-Transform { x: f32, y: f32, z: f32 }              // Always available
-Color { r: f32, g: f32, b: f32, a: f32 = 1.0 }   // Always available
+Transform { x: f32, y: f32, z: f32 }                 // Always available - position
+Rotation { x: f32, y: f32, z: f32 }                  // Always available - Euler angles (radians)
+Scale { x: f32, y: f32, z: f32 }                     // Always available - scale factors (default 1.0)
+Color { r: f32, g: f32, b: f32, a: f32 = 1.0 }       // Always available - RGBA
 ```
 
 Color constants: `.red`, `.green`, `.blue`, `.yellow`, `.cyan`, `.magenta`, `.white`, `.black`, `.orange`, `.purple`
