@@ -105,9 +105,9 @@ const HealthPlugin = struct {
         config: Resource(HealthConfig),
         health_query: SingleQuery(Health),
     ) void {
-        if (!config.value.regen_enabled) return;
+        if (!config.regen_enabled) return;
 
-        const regen_amount = config.value.regen_rate * time.value.delta_time;
+        const regen_amount = config.regen_rate * time.delta_time;
         for (health_query.entities, health_query.components) |_, *health| {
             if (health.current < health.max) {
                 const new_health = @as(f32, @floatFromInt(health.current)) + regen_amount;
@@ -143,7 +143,7 @@ const GamePlugin = struct {
     };
 
     fn setupGame(commands: anytype, pass_action: ResourceMut(RenderContext.PassAction)) !void {
-        pass_action.value.colors[0].clear_value = .{ .r = 0.1, .g = 0.15, .b = 0.2, .a = 1.0 };
+        pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.15, .b = 0.2, .a = 1.0 };
 
         // Create player entity with Health component from HealthPlugin
         const player = commands.createEntity();
@@ -163,21 +163,19 @@ const GamePlugin = struct {
         heal_writer: EventWriter(HealthPlugin.HealEvent),
         config: ResourceMut(HealthPlugin.HealthConfig),
     ) !void {
-        const kb = keyboard.value;
-
         // D key = take damage
-        if (kb.isPressed(.D)) {
+        if (keyboard.isPressed(.D)) {
             try damage_writer.enqueue(.{ .amount = 20 });
         }
 
         // H key = heal
-        if (kb.isPressed(.H)) {
+        if (keyboard.isPressed(.H)) {
             try heal_writer.enqueue(.{ .amount = 30 });
         }
 
         // R key = toggle regen
-        if (kb.isPressed(.R)) {
-            config.value.regen_enabled = !config.value.regen_enabled;
+        if (keyboard.isPressed(.R)) {
+            config.regen_enabled = !config.regen_enabled;
         }
     }
 
@@ -217,11 +215,11 @@ const GamePlugin = struct {
             }
 
             ImGuiPlugin.textFmt("Regen: {} ({d:.1} HP/s)", .{
-                config.value.regen_enabled,
-                config.value.regen_rate,
+                config.regen_enabled,
+                config.regen_rate,
             });
 
-            _ = ImGuiPlugin.sliderFloat("Regen Rate", &config.value.regen_rate, 0.0, 20.0);
+            _ = ImGuiPlugin.sliderFloat("Regen Rate", &config.regen_rate, 0.0, 20.0);
 
             ImGuiPlugin.spacing();
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.5, .z = 0.5, .w = 1.0 }, "Controls");
@@ -231,7 +229,7 @@ const GamePlugin = struct {
             ImGuiPlugin.bulletText("R - Toggle regeneration");
 
             ImGuiPlugin.spacing();
-            ImGuiPlugin.textFmt("Time (from TimePlugin): {d:.1}s", .{time.value.total_time});
+            ImGuiPlugin.textFmt("Time (from TimePlugin): {d:.1}s", .{time.total_time});
         }
         ImGuiPlugin.end();
     }

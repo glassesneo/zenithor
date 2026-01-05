@@ -59,7 +59,7 @@ const Game = struct {
 };
 
 fn setup(commands: anytype, pass_action: ResourceMut(RenderContext.PassAction)) !void {
-    pass_action.value.colors[0].clear_value = .{ .r = 0.1, .g = 0.15, .b = 0.2, .a = 1.0 };
+    pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.15, .b = 0.2, .a = 1.0 };
 
     commands.setResource(GameState, .{
         .score = 0,
@@ -85,38 +85,37 @@ fn handleInput(
     player: SingleQuery(Transform),
     commands: anytype,
 ) !void {
-    const kb = keyboard.value;
-    const dt = time.value.delta_time;
+    const dt = time.delta_time;
 
     // Save/Load with isPressed (fires once per key press)
-    if (kb.isPressed(.F5)) {
+    if (keyboard.isPressed(.F5)) {
         try SerializationPlugin.saveGame(commands, save_file);
-        std.debug.print("Game saved! Score: {}, Level: {}\n", .{ game.value.score, game.value.level });
+        std.debug.print("Game saved! Score: {}, Level: {}\n", .{ game.score, game.level });
     }
 
-    if (kb.isPressed(.F9)) {
+    if (keyboard.isPressed(.F9)) {
         try SerializationPlugin.loadGame(commands, save_file);
-        std.debug.print("Game loaded! Score: {}, Level: {}\n", .{ game.value.score, game.value.level });
+        std.debug.print("Game loaded!\n", .{});
     }
 
     // Simulate gameplay
-    if (kb.isPressed(.C)) {
-        game.value.coins_collected += 1;
-        game.value.score += 10;
+    if (keyboard.isPressed(.C)) {
+        game.coins_collected += 1;
+        game.score += 10;
     }
 
-    if (kb.isPressed(.L)) {
-        game.value.level += 1;
-        game.value.score += 100;
+    if (keyboard.isPressed(.L)) {
+        game.level += 1;
+        game.score += 100;
     }
 
     // Movement
     const speed: f32 = 250.0;
     for (player.components) |*transform| {
-        if (kb.isHeld(.W) or kb.isHeld(.UP)) transform.y -= speed * dt;
-        if (kb.isHeld(.S) or kb.isHeld(.DOWN)) transform.y += speed * dt;
-        if (kb.isHeld(.A) or kb.isHeld(.LEFT)) transform.x -= speed * dt;
-        if (kb.isHeld(.D) or kb.isHeld(.RIGHT)) transform.x += speed * dt;
+        if (keyboard.isHeld(.W) or keyboard.isHeld(.UP)) transform.y -= speed * dt;
+        if (keyboard.isHeld(.S) or keyboard.isHeld(.DOWN)) transform.y += speed * dt;
+        if (keyboard.isHeld(.A) or keyboard.isHeld(.LEFT)) transform.x -= speed * dt;
+        if (keyboard.isHeld(.D) or keyboard.isHeld(.RIGHT)) transform.x += speed * dt;
 
         transform.x = std.math.clamp(transform.x, 30, 1250);
         transform.y = std.math.clamp(transform.y, 30, 770);
@@ -134,9 +133,9 @@ fn drawUI(
     if (ImGuiPlugin.begin("Serialization Demo", null, .None)) {
         ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Game State (Serialized)");
         ImGuiPlugin.separator();
-        ImGuiPlugin.textFmt("Score: {}", .{game.value.score});
-        ImGuiPlugin.textFmt("Level: {}", .{game.value.level});
-        ImGuiPlugin.textFmt("Coins: {}", .{game.value.coins_collected});
+        ImGuiPlugin.textFmt("Score: {}", .{game.score});
+        ImGuiPlugin.textFmt("Level: {}", .{game.level});
+        ImGuiPlugin.textFmt("Coins: {}", .{game.coins_collected});
 
         ImGuiPlugin.spacing();
         ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Controls");
@@ -155,9 +154,9 @@ fn drawUI(
         }
 
         if (ImGuiPlugin.button("Reset State")) {
-            game.value.score = 0;
-            game.value.level = 1;
-            game.value.coins_collected = 0;
+            game.score = 0;
+            game.level = 1;
+            game.coins_collected = 0;
         }
     }
     ImGuiPlugin.end();

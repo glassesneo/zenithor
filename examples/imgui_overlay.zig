@@ -108,9 +108,9 @@ fn updateAnimation(
     settings: Resource(DebugSettings),
     animated: Query(struct { Animated, Rotation }),
 ) void {
-    if (!settings.value.animate_objects) return;
+    if (!settings.animate_objects) return;
 
-    const dt = time.value.delta_time * settings.value.animation_speed;
+    const dt = time.delta_time * settings.animation_speed;
     for (animated.entities) |entity| {
         if (!animated.filter(entity)) continue;
         const rot = animated.getComponentMut(entity, Rotation);
@@ -125,11 +125,11 @@ fn applySettings(
     materials: Query(struct { GraphicsPlugin.Material }),
 ) void {
     // Apply background color
-    const bg = settings.value.background_color;
-    pass_action.value.colors[0].clear_value = .{ .r = bg[0], .g = bg[1], .b = bg[2], .a = 1.0 };
+    const bg = settings.background_color;
+    pass_action.colors[0].clear_value = .{ .r = bg[0], .g = bg[1], .b = bg[2], .a = 1.0 };
 
     // Apply shader selection
-    const shader: GraphicsPlugin.ShaderType = switch (settings.value.selected_shader) {
+    const shader: GraphicsPlugin.ShaderType = switch (settings.selected_shader) {
         0 => .unlit,
         1 => .blinn_phong,
         2 => .pbr,
@@ -150,74 +150,74 @@ fn drawUI(
     camera: ResourceMut(GraphicsPlugin.Camera3D),
 ) void {
     // Stats window
-    if (settings.value.show_stats) {
+    if (settings.show_stats) {
         ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = 10 }, .FirstUseEver);
         ImGuiPlugin.setNextWindowSize(.{ .x = 250, .y = 180 }, .FirstUseEver);
 
-        var stats_open = settings.value.show_stats;
+        var stats_open = settings.show_stats;
         if (ImGuiPlugin.begin("Stats", &stats_open, .None)) {
             ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Performance");
             ImGuiPlugin.separator();
 
             // FPS from Time plugin
-            ImGuiPlugin.textFmt("FPS: {d:.1}", .{time.value.fps});
-            ImGuiPlugin.textFmt("Frame Time: {d:.2}ms", .{time.value.delta_time * 1000.0});
-            ImGuiPlugin.textFmt("Total Time: {d:.1}s", .{time.value.total_time});
-            ImGuiPlugin.textFmt("Frame: {}", .{time.value.frame_count});
+            ImGuiPlugin.textFmt("FPS: {d:.1}", .{time.fps});
+            ImGuiPlugin.textFmt("Frame Time: {d:.2}ms", .{time.delta_time * 1000.0});
+            ImGuiPlugin.textFmt("Total Time: {d:.1}s", .{time.total_time});
+            ImGuiPlugin.textFmt("Frame: {}", .{time.frame_count});
 
             ImGuiPlugin.spacing();
-            ImGuiPlugin.textFmt("Time Scale: {d:.2}x", .{time.value.time_scale});
+            ImGuiPlugin.textFmt("Time Scale: {d:.2}x", .{time.time_scale});
         }
         ImGuiPlugin.end();
-        settings.value.show_stats = stats_open;
+        settings.show_stats = stats_open;
     }
 
     // Controls window
-    if (settings.value.show_controls) {
+    if (settings.show_controls) {
         ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = 200 }, .FirstUseEver);
         ImGuiPlugin.setNextWindowSize(.{ .x = 300, .y = 380 }, .FirstUseEver);
 
-        var controls_open = settings.value.show_controls;
+        var controls_open = settings.show_controls;
         if (ImGuiPlugin.begin("Debug Controls", &controls_open, .None)) {
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Animation");
             ImGuiPlugin.separator();
 
             // Checkbox using raw cimgui API
-            _ = ig.igCheckbox("Animate Objects", &settings.value.animate_objects);
-            _ = ImGuiPlugin.sliderFloat("Speed", &settings.value.animation_speed, 0.0, 3.0);
+            _ = ig.igCheckbox("Animate Objects", &settings.animate_objects);
+            _ = ImGuiPlugin.sliderFloat("Speed", &settings.animation_speed, 0.0, 3.0);
 
             ImGuiPlugin.spacing();
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Shader Selection");
             ImGuiPlugin.separator();
 
             // Radio buttons using raw cimgui API
-            _ = ig.igRadioButtonIntPtr("Unlit", &settings.value.selected_shader, 0);
-            _ = ig.igRadioButtonIntPtr("Blinn-Phong", &settings.value.selected_shader, 1);
-            _ = ig.igRadioButtonIntPtr("PBR", &settings.value.selected_shader, 2);
+            _ = ig.igRadioButtonIntPtr("Unlit", &settings.selected_shader, 0);
+            _ = ig.igRadioButtonIntPtr("Blinn-Phong", &settings.selected_shader, 1);
+            _ = ig.igRadioButtonIntPtr("PBR", &settings.selected_shader, 2);
 
             ImGuiPlugin.spacing();
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Background");
             ImGuiPlugin.separator();
 
             // Color picker using raw cimgui API
-            _ = ig.igColorEdit3("Color", &settings.value.background_color, 0);
+            _ = ig.igColorEdit3("Color", &settings.background_color, 0);
 
             ImGuiPlugin.spacing();
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Lighting");
             ImGuiPlugin.separator();
 
-            _ = ImGuiPlugin.sliderFloat("Light Y", &light.value.position[1], 1.0, 10.0);
-            _ = ImGuiPlugin.sliderFloat("Ambient", &light.value.ambient_strength, 0.0, 0.5);
+            _ = ImGuiPlugin.sliderFloat("Light Y", &light.position[1], 1.0, 10.0);
+            _ = ImGuiPlugin.sliderFloat("Ambient", &light.ambient_strength, 0.0, 0.5);
 
             ImGuiPlugin.spacing();
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Camera");
             ImGuiPlugin.separator();
 
-            _ = ImGuiPlugin.sliderFloat("FOV", &camera.value.fov, 30.0, 90.0);
-            _ = ImGuiPlugin.sliderFloat("Distance", &camera.value.eye[2], 5.0, 20.0);
+            _ = ImGuiPlugin.sliderFloat("FOV", &camera.fov, 30.0, 90.0);
+            _ = ImGuiPlugin.sliderFloat("Distance", &camera.eye[2], 5.0, 20.0);
         }
         ImGuiPlugin.end();
-        settings.value.show_controls = controls_open;
+        settings.show_controls = controls_open;
     }
 
     // Menu bar for toggling windows
@@ -225,8 +225,8 @@ fn drawUI(
     ImGuiPlugin.setNextWindowSize(.{ .x = 200, .y = 80 }, .FirstUseEver);
 
     if (ImGuiPlugin.begin("Window Toggles", null, .None)) {
-        _ = ig.igCheckbox("Show Stats", &settings.value.show_stats);
-        _ = ig.igCheckbox("Show Controls", &settings.value.show_controls);
+        _ = ig.igCheckbox("Show Stats", &settings.show_stats);
+        _ = ig.igCheckbox("Show Controls", &settings.show_controls);
     }
     ImGuiPlugin.end();
 }

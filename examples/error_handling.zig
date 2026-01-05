@@ -87,16 +87,16 @@ const ErrorDemo = struct {
 };
 
 fn init(commands: anytype, pass_action: ResourceMut(RenderContext.PassAction)) void {
-    pass_action.value.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
+    pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
     commands.setResource(ErrorConfig, .{});
     commands.setResource(ErrorLog, .{});
 }
 
 // System that can fail - note the !void return type
 fn errorProneSystem(config: ResourceMut(ErrorConfig)) !void {
-    if (config.value.trigger_error) {
+    if (config.trigger_error) {
         // Reset flag before returning error
-        config.value.trigger_error = false;
+        config.trigger_error = false;
         // Return an error - this will be caught and converted to GameLoopError event
         return error.IntentionalDemoError;
     }
@@ -111,18 +111,18 @@ fn errorMonitor(
     config: ResourceMut(ErrorConfig),
     time: Resource(TimePlugin.Time),
 ) void {
-    const timestamp = time.value.total_time;
+    const timestamp = time.total_time;
 
     // Check for game loop errors (from systems)
     for (game_errors.read()) |err_event| {
-        log.value.add(err_event.err, timestamp);
-        config.value.error_count += 1;
+        log.add(err_event.err, timestamp);
+        config.error_count += 1;
     }
 
     // Check for event loop errors (from event handlers)
     for (event_errors.read()) |err_event| {
-        log.value.add(err_event.err, timestamp);
-        config.value.error_count += 1;
+        log.add(err_event.err, timestamp);
+        config.error_count += 1;
     }
 }
 
@@ -138,31 +138,31 @@ fn drawUI(
         ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Error Handling System");
         ImGuiPlugin.separator();
 
-        ImGuiPlugin.textFmt("Errors Caught: {}", .{config.value.error_count});
-        ImGuiPlugin.textFmt("Time: {d:.2}s", .{time.value.total_time});
+        ImGuiPlugin.textFmt("Errors Caught: {}", .{config.error_count});
+        ImGuiPlugin.textFmt("Time: {d:.2}s", .{time.total_time});
 
         ImGuiPlugin.spacing();
         if (ImGuiPlugin.button("Trigger System Error")) {
-            config.value.trigger_error = true;
+            config.trigger_error = true;
         }
         ImGuiPlugin.sameLine();
         if (ImGuiPlugin.button("Clear Log")) {
-            log.value.clear();
-            config.value.error_count = 0;
+            log.clear();
+            config.error_count = 0;
         }
 
         ImGuiPlugin.spacing();
         ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Error Log");
         ImGuiPlugin.separator();
 
-        if (log.value.count == 0) {
+        if (log.count == 0) {
             ImGuiPlugin.textColored(.{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 }, "(No errors - click button to trigger one)");
         } else {
             // Show errors in reverse chronological order
-            var i: usize = log.value.count;
+            var i: usize = log.count;
             while (i > 0) {
                 i -= 1;
-                const entry = log.value.entries[i];
+                const entry = log.entries[i];
                 ImGuiPlugin.textColoredFmt(.{ .x = 1.0, .y = 0.4, .z = 0.4, .w = 1.0 }, "[{d:.2}s] {s}", .{
                     entry.timestamp,
                     entry.error_name,

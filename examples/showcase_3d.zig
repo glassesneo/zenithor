@@ -172,8 +172,8 @@ const PhysicsPlugin = struct {
         config: Resource(PhysicsConfig),
         moving: Query(struct { Transform, Velocity }),
     ) void {
-        if (!config.value.enabled) return;
-        const dt = time.value.delta_time * time.value.time_scale;
+        if (!config.enabled) return;
+        const dt = time.delta_time * time.time_scale;
 
         for (moving.entities) |entity| {
             if (!moving.filter(entity)) continue;
@@ -191,8 +191,8 @@ const PhysicsPlugin = struct {
         config: Resource(PhysicsConfig),
         rotating: Query(struct { Rotation, AngularVelocity }),
     ) void {
-        if (!config.value.enabled) return;
-        const dt = time.value.delta_time * time.value.time_scale;
+        if (!config.enabled) return;
+        const dt = time.delta_time * time.time_scale;
 
         for (rotating.entities) |entity| {
             if (!rotating.filter(entity)) continue;
@@ -210,8 +210,8 @@ const PhysicsPlugin = struct {
         velocities: SingleQuery(Velocity),
         angular_velocities: SingleQuery(AngularVelocity),
     ) void {
-        if (!config.value.enabled) return;
-        const damping = config.value.damping;
+        if (!config.enabled) return;
+        const damping = config.damping;
 
         for (velocities.components) |*vel| {
             vel.x *= damping;
@@ -319,7 +319,7 @@ const GamePlugin = struct {
         sokol.app.lockMouse(true);
 
         // Set background color
-        pass_action.value.colors[0].clear_value = .{ .r = 0.05, .g = 0.05, .b = 0.1, .a = 1.0 };
+        pass_action.colors[0].clear_value = .{ .r = 0.05, .g = 0.05, .b = 0.1, .a = 1.0 };
 
         // Configure camera
         commands.setResource(GraphicsPlugin.Camera3D, .{
@@ -526,99 +526,95 @@ const GamePlugin = struct {
         materials: Query(struct { GraphicsPlugin.Material }),
         commands: anytype,
     ) !void {
-        const kb = keyboard.value;
-        const m = mouse.value;
-        const g = game.value;
-
         // Tab - Toggle mouse capture
-        if (kb.isPressed(.TAB)) {
-            game.value.mouse_captured = !game.value.mouse_captured;
-            sokol.app.showMouse(!game.value.mouse_captured);
-            sokol.app.lockMouse(game.value.mouse_captured);
+        if (keyboard.isPressed(.TAB)) {
+            game.mouse_captured = !game.mouse_captured;
+            sokol.app.showMouse(!game.mouse_captured);
+            sokol.app.lockMouse(game.mouse_captured);
         }
 
         // F1 - Toggle help
-        if (kb.isPressed(.F1)) {
-            game.value.show_help = !game.value.show_help;
+        if (keyboard.isPressed(.F1)) {
+            game.show_help = !game.show_help;
         }
 
         // Escape - Could be used for menu
-        if (kb.isPressed(.ESCAPE)) {
+        if (keyboard.isPressed(.ESCAPE)) {
             // In a real game, might show pause menu
-            game.value.paused = !game.value.paused;
+            game.paused = !game.paused;
         }
 
         // Space - Toggle camera mode
-        if (kb.isPressed(.SPACE)) {
-            game.value.camera_mode = switch (game.value.camera_mode) {
+        if (keyboard.isPressed(.SPACE)) {
+            game.camera_mode = switch (game.camera_mode) {
                 .orbit => .fly,
                 .fly => .orbit,
             };
         }
 
         // P - Toggle pause
-        if (kb.isPressed(.P)) {
-            game.value.paused = !game.value.paused;
-            time.value.time_scale = if (game.value.paused) 0.0 else 1.0;
+        if (keyboard.isPressed(.P)) {
+            game.paused = !game.paused;
+            time.time_scale = if (game.paused) 0.0 else 1.0;
         }
 
         // +/- Adjust time scale
-        if (kb.isPressed(.EQUAL) or kb.isPressed(.KP_ADD)) {
-            time.value.time_scale = @min(3.0, time.value.time_scale + 0.25);
-            game.value.paused = false;
+        if (keyboard.isPressed(.EQUAL) or keyboard.isPressed(.KP_ADD)) {
+            time.time_scale = @min(3.0, time.time_scale + 0.25);
+            game.paused = false;
         }
-        if (kb.isPressed(.MINUS) or kb.isPressed(.KP_SUBTRACT)) {
-            time.value.time_scale = @max(0.0, time.value.time_scale - 0.25);
-            if (time.value.time_scale == 0.0) game.value.paused = true;
+        if (keyboard.isPressed(.MINUS) or keyboard.isPressed(.KP_SUBTRACT)) {
+            time.time_scale = @max(0.0, time.time_scale - 0.25);
+            if (time.time_scale == 0.0) game.paused = true;
         }
 
         // 1/2/3 - Shader selection
-        if (kb.isPressed(._1)) {
-            game.value.selected_shader = .unlit;
+        if (keyboard.isPressed(._1)) {
+            game.selected_shader = .unlit;
             updateAllMaterials(materials, .unlit);
         }
-        if (kb.isPressed(._2)) {
-            game.value.selected_shader = .blinn_phong;
+        if (keyboard.isPressed(._2)) {
+            game.selected_shader = .blinn_phong;
             updateAllMaterials(materials, .blinn_phong);
         }
-        if (kb.isPressed(._3)) {
-            game.value.selected_shader = .pbr;
+        if (keyboard.isPressed(._3)) {
+            game.selected_shader = .pbr;
             updateAllMaterials(materials, .pbr);
         }
 
         // 4/5/6/7 - Shape selection for spawning
-        if (kb.isPressed(._4)) game.value.selected_shape = .box;
-        if (kb.isPressed(._5)) game.value.selected_shape = .sphere;
-        if (kb.isPressed(._6)) game.value.selected_shape = .cylinder;
-        if (kb.isPressed(._7)) game.value.selected_shape = .torus;
+        if (keyboard.isPressed(._4)) game.selected_shape = .box;
+        if (keyboard.isPressed(._5)) game.selected_shape = .sphere;
+        if (keyboard.isPressed(._6)) game.selected_shape = .cylinder;
+        if (keyboard.isPressed(._7)) game.selected_shape = .torus;
 
         // Left click - Spawn shape in front of camera
-        if (m.isPressed(.LEFT)) {
+        if (mouse.isPressed(.LEFT)) {
             // Calculate spawn position: 5 units in front of camera
-            const cos_pitch = @cos(g.yaw);
-            const sin_pitch = @sin(g.yaw);
+            const cos_pitch = @cos(game.yaw);
+            const sin_pitch = @sin(game.yaw);
             const spawn_dist: f32 = 5.0;
-            const spawn_x = camera.value.eye[0] + sin_pitch * spawn_dist;
-            const spawn_y = camera.value.eye[1];
-            const spawn_z = camera.value.eye[2] + cos_pitch * spawn_dist;
+            const spawn_x = camera.eye[0] + sin_pitch * spawn_dist;
+            const spawn_y = camera.eye[1];
+            const spawn_z = camera.eye[2] + cos_pitch * spawn_dist;
 
             // Random-ish color based on spawn count
-            const hue = @as(f32, @floatFromInt(g.spawn_count * 37 % 360)) / 360.0;
+            const hue = @as(f32, @floatFromInt(game.spawn_count * 37 % 360)) / 360.0;
             const color = hueToRgb(hue);
 
             // Random-ish angular velocity
-            const ang_x = @sin(@as(f32, @floatFromInt(g.spawn_count)) * 1.1) * 2.0;
-            const ang_y = @cos(@as(f32, @floatFromInt(g.spawn_count)) * 1.3) * 2.0;
-            const ang_z = @sin(@as(f32, @floatFromInt(g.spawn_count)) * 1.7) * 1.0;
+            const ang_x = @sin(@as(f32, @floatFromInt(game.spawn_count)) * 1.1) * 2.0;
+            const ang_y = @cos(@as(f32, @floatFromInt(game.spawn_count)) * 1.3) * 2.0;
+            const ang_z = @sin(@as(f32, @floatFromInt(game.spawn_count)) * 1.7) * 1.0;
 
             // Create entity and add components with runtime values
             const entity = commands.createEntity();
             try commands.addComponent(entity, Transform, .{ .x = spawn_x, .y = spawn_y, .z = spawn_z });
             try commands.addComponent(entity, Color, color);
-            try commands.addComponent(entity, GraphicsPlugin.Material, .{ .shader = g.selected_shader });
+            try commands.addComponent(entity, GraphicsPlugin.Material, .{ .shader = game.selected_shader });
             try commands.addTag(entity, Interactable);
 
-            switch (g.selected_shape) {
+            switch (game.selected_shape) {
                 .box => {
                     try commands.addComponent(entity, GraphicsPlugin.Box3D, .{ .width = 0.8, .height = 0.8, .depth = 0.8 });
                     try commands.addComponent(entity, Rotation, .{});
@@ -638,33 +634,34 @@ const GamePlugin = struct {
                     try commands.addComponent(entity, PhysicsPlugin.AngularVelocity, .{ .x = ang_x, .y = ang_y, .z = ang_z });
                 },
             }
-            game.value.spawn_count += 1;
+            game.spawn_count += 1;
         }
 
         // F5 - Save
-        if (kb.isPressed(.F5)) {
+        if (keyboard.isPressed(.F5)) {
             try SerializationPlugin.saveGame(commands, save_file);
             std.debug.print("Game saved!\n", .{});
         }
 
         // F9 - Load
-        if (kb.isPressed(.F9)) {
+        if (keyboard.isPressed(.F9)) {
             try SerializationPlugin.loadGame(commands, save_file);
             std.debug.print("Game loaded!\n", .{});
+            return; // Skip remaining input handling to avoid stale resource pointers
         }
 
         // R - Reset camera
-        if (kb.isPressed(.R)) {
+        if (keyboard.isPressed(.R)) {
             // Reset fly mode
-            game.value.yaw = std.math.pi;
-            game.value.pitch = -0.3;
+            game.yaw = std.math.pi;
+            game.pitch = -0.3;
             // Reset orbit mode
-            game.value.orbit_angle = 0;
-            game.value.orbit_pitch = 0.3;
-            game.value.orbit_distance = 15;
+            game.orbit_angle = 0;
+            game.orbit_pitch = 0.3;
+            game.orbit_distance = 15;
             // Reset time
-            time.value.time_scale = 1.0;
-            game.value.paused = false;
+            time.time_scale = 1.0;
+            game.paused = false;
         }
     }
 
@@ -699,14 +696,14 @@ const GamePlugin = struct {
         game: ResourceMut(GameState),
     ) void {
         // Accumulate scaled time for animations (respects time_scale/pause)
-        game.value.animation_time += time.value.delta_time * time.value.time_scale;
+        game.animation_time += time.delta_time * time.time_scale;
     }
 
     fn updateOrbiting(
         game: Resource(GameState),
         orbiting: Query(struct { Orbiting, Transform }),
     ) void {
-        const t = game.value.animation_time;
+        const t = game.animation_time;
 
         for (orbiting.entities) |entity| {
             if (!orbiting.filter(entity)) continue;
@@ -723,7 +720,7 @@ const GamePlugin = struct {
         game: Resource(GameState),
         bouncing: Query(struct { Bouncing, Transform }),
     ) void {
-        const t = game.value.animation_time;
+        const t = game.animation_time;
 
         for (bouncing.entities) |entity| {
             if (!bouncing.filter(entity)) continue;
@@ -740,7 +737,7 @@ const GamePlugin = struct {
         game: Resource(GameState),
         pulsing: Query(struct { Pulsing, Scale }),
     ) void {
-        const t = game.value.animation_time;
+        const t = game.animation_time;
 
         for (pulsing.entities) |entity| {
             if (!pulsing.filter(entity)) continue;
@@ -763,19 +760,16 @@ const GamePlugin = struct {
         game: ResourceMut(GameState),
         camera: ResourceMut(GraphicsPlugin.Camera3D),
     ) void {
-        const kb = keyboard.value;
-        const m = mouse.value;
-        const dt = time.value.delta_time;
-        const g = game.value;
+        const dt = time.delta_time;
 
-        switch (g.camera_mode) {
+        switch (game.camera_mode) {
             .orbit => {
                 // Mouse for orbit control (when captured)
-                if (g.mouse_captured) {
+                if (game.mouse_captured) {
                     const mouse_sensitivity: f32 = 0.005;
-                    g.orbit_angle += m.dx * mouse_sensitivity;
-                    g.orbit_pitch = std.math.clamp(
-                        g.orbit_pitch - m.dy * mouse_sensitivity,
+                    game.orbit_angle += mouse.dx * mouse_sensitivity;
+                    game.orbit_pitch = std.math.clamp(
+                        game.orbit_pitch - mouse.dy * mouse_sensitivity,
                         -1.4,
                         1.4,
                     );
@@ -783,63 +777,63 @@ const GamePlugin = struct {
 
                 // Arrow keys control orbit (alternative to mouse)
                 const orbit_speed: f32 = 1.5;
-                if (kb.isHeld(.LEFT)) g.orbit_angle -= orbit_speed * dt;
-                if (kb.isHeld(.RIGHT)) g.orbit_angle += orbit_speed * dt;
-                if (kb.isHeld(.UP)) g.orbit_pitch = @min(1.4, g.orbit_pitch + orbit_speed * dt);
-                if (kb.isHeld(.DOWN)) g.orbit_pitch = @max(-1.4, g.orbit_pitch - orbit_speed * dt);
+                if (keyboard.isHeld(.LEFT)) game.orbit_angle -= orbit_speed * dt;
+                if (keyboard.isHeld(.RIGHT)) game.orbit_angle += orbit_speed * dt;
+                if (keyboard.isHeld(.UP)) game.orbit_pitch = @min(1.4, game.orbit_pitch + orbit_speed * dt);
+                if (keyboard.isHeld(.DOWN)) game.orbit_pitch = @max(-1.4, game.orbit_pitch - orbit_speed * dt);
 
                 // Mouse wheel for zoom
-                if (m.scroll_y != 0) {
-                    g.orbit_distance = std.math.clamp(
-                        g.orbit_distance - m.scroll_y * 0.5,
+                if (mouse.scroll_y != 0) {
+                    game.orbit_distance = std.math.clamp(
+                        game.orbit_distance - mouse.scroll_y * 0.5,
                         5,
                         50,
                     );
                 }
 
                 // Q/E control distance (alternative to mouse wheel)
-                if (kb.isHeld(.Q)) g.orbit_distance = @max(5, g.orbit_distance - 10 * dt);
-                if (kb.isHeld(.E)) g.orbit_distance = @min(50, g.orbit_distance + 10 * dt);
+                if (keyboard.isHeld(.Q)) game.orbit_distance = @max(5, game.orbit_distance - 10 * dt);
+                if (keyboard.isHeld(.E)) game.orbit_distance = @min(50, game.orbit_distance + 10 * dt);
 
                 // WASD movement for orbit center (camera-relative on XZ plane)
                 const move_speed: f32 = 5.0;
-                const forward_x = -@sin(g.orbit_angle);
-                const forward_z = -@cos(g.orbit_angle);
-                const right_x = @cos(g.orbit_angle);
-                const right_z = -@sin(g.orbit_angle);
+                const forward_x = -@sin(game.orbit_angle);
+                const forward_z = -@cos(game.orbit_angle);
+                const right_x = @cos(game.orbit_angle);
+                const right_z = -@sin(game.orbit_angle);
 
-                if (kb.isHeld(.W)) {
-                    camera.value.target[0] += forward_x * move_speed * dt;
-                    camera.value.target[2] += forward_z * move_speed * dt;
+                if (keyboard.isHeld(.W)) {
+                    camera.target[0] += forward_x * move_speed * dt;
+                    camera.target[2] += forward_z * move_speed * dt;
                 }
-                if (kb.isHeld(.S)) {
-                    camera.value.target[0] -= forward_x * move_speed * dt;
-                    camera.value.target[2] -= forward_z * move_speed * dt;
+                if (keyboard.isHeld(.S)) {
+                    camera.target[0] -= forward_x * move_speed * dt;
+                    camera.target[2] -= forward_z * move_speed * dt;
                 }
-                if (kb.isHeld(.A)) {
-                    camera.value.target[0] -= right_x * move_speed * dt;
-                    camera.value.target[2] -= right_z * move_speed * dt;
+                if (keyboard.isHeld(.A)) {
+                    camera.target[0] -= right_x * move_speed * dt;
+                    camera.target[2] -= right_z * move_speed * dt;
                 }
-                if (kb.isHeld(.D)) {
-                    camera.value.target[0] += right_x * move_speed * dt;
-                    camera.value.target[2] += right_z * move_speed * dt;
+                if (keyboard.isHeld(.D)) {
+                    camera.target[0] += right_x * move_speed * dt;
+                    camera.target[2] += right_z * move_speed * dt;
                 }
 
                 // Calculate orbit position around target
-                const x = camera.value.target[0] + g.orbit_distance * @cos(g.orbit_pitch) * @sin(g.orbit_angle);
-                const y = camera.value.target[1] + g.orbit_distance * @sin(g.orbit_pitch);
-                const z = camera.value.target[2] + g.orbit_distance * @cos(g.orbit_pitch) * @cos(g.orbit_angle);
+                const x = camera.target[0] + game.orbit_distance * @cos(game.orbit_pitch) * @sin(game.orbit_angle);
+                const y = camera.target[1] + game.orbit_distance * @sin(game.orbit_pitch);
+                const z = camera.target[2] + game.orbit_distance * @cos(game.orbit_pitch) * @cos(game.orbit_angle);
 
-                camera.value.eye = .{ x, y, z };
+                camera.eye = .{ x, y, z };
             },
             .fly => {
                 // ===== MOUSE LOOK =====
                 // Directly update yaw/pitch from mouse delta (simple and consistent)
-                if (g.mouse_captured) {
+                if (game.mouse_captured) {
                     const mouse_sensitivity: f32 = 0.003;
-                    g.yaw -= m.dx * mouse_sensitivity;
-                    g.pitch = std.math.clamp(
-                        g.pitch - m.dy * mouse_sensitivity,
+                    game.yaw -= mouse.dx * mouse_sensitivity;
+                    game.pitch = std.math.clamp(
+                        game.pitch - mouse.dy * mouse_sensitivity,
                         -1.5, // ~86 degrees down
                         1.5, // ~86 degrees up
                     );
@@ -847,21 +841,21 @@ const GamePlugin = struct {
 
                 // Arrow keys for look (alternative to mouse)
                 const look_speed: f32 = 2.0;
-                if (kb.isHeld(.LEFT)) g.yaw += look_speed * dt;
-                if (kb.isHeld(.RIGHT)) g.yaw -= look_speed * dt;
-                if (kb.isHeld(.UP)) g.pitch = @min(1.5, g.pitch + look_speed * dt);
-                if (kb.isHeld(.DOWN)) g.pitch = @max(-1.5, g.pitch - look_speed * dt);
+                if (keyboard.isHeld(.LEFT)) game.yaw += look_speed * dt;
+                if (keyboard.isHeld(.RIGHT)) game.yaw -= look_speed * dt;
+                if (keyboard.isHeld(.UP)) game.pitch = @min(1.5, game.pitch + look_speed * dt);
+                if (keyboard.isHeld(.DOWN)) game.pitch = @max(-1.5, game.pitch - look_speed * dt);
 
                 // ===== CALCULATE CAMERA VECTORS FROM YAW/PITCH =====
                 // Forward direction from yaw/pitch
-                const cos_pitch = @cos(g.pitch);
-                const forward_x = @sin(g.yaw) * cos_pitch;
-                const forward_y = @sin(g.pitch);
-                const forward_z = @cos(g.yaw) * cos_pitch;
+                const cos_pitch = @cos(game.pitch);
+                const forward_x = @sin(game.yaw) * cos_pitch;
+                const forward_y = @sin(game.pitch);
+                const forward_z = @cos(game.yaw) * cos_pitch;
 
                 // Right vector (perpendicular to forward on XZ plane)
-                const right_x = @cos(g.yaw);
-                const right_z = -@sin(g.yaw);
+                const right_x = @cos(game.yaw);
+                const right_z = -@sin(game.yaw);
 
                 // ===== WASD MOVEMENT =====
                 // Move relative to camera direction (XZ plane for ground movement)
@@ -871,39 +865,39 @@ const GamePlugin = struct {
                 var move_z: f32 = 0;
 
                 // Forward/back (W/S) - move in camera's look direction on XZ plane
-                const ground_forward_x = @sin(g.yaw);
-                const ground_forward_z = @cos(g.yaw);
+                const ground_forward_x = @sin(game.yaw);
+                const ground_forward_z = @cos(game.yaw);
 
-                if (kb.isHeld(.W)) {
+                if (keyboard.isHeld(.W)) {
                     move_x += ground_forward_x * move_speed * dt;
                     move_z += ground_forward_z * move_speed * dt;
                 }
-                if (kb.isHeld(.S)) {
+                if (keyboard.isHeld(.S)) {
                     move_x -= ground_forward_x * move_speed * dt;
                     move_z -= ground_forward_z * move_speed * dt;
                 }
-                if (kb.isHeld(.A)) {
+                if (keyboard.isHeld(.A)) {
                     move_x += right_x * move_speed * dt;
                     move_z += right_z * move_speed * dt;
                 }
-                if (kb.isHeld(.D)) {
+                if (keyboard.isHeld(.D)) {
                     move_x -= right_x * move_speed * dt;
                     move_z -= right_z * move_speed * dt;
                 }
-                if (kb.isHeld(.Q)) move_y -= move_speed * dt;
-                if (kb.isHeld(.E)) move_y += move_speed * dt;
+                if (keyboard.isHeld(.Q)) move_y -= move_speed * dt;
+                if (keyboard.isHeld(.E)) move_y += move_speed * dt;
 
                 // Apply movement to camera position
-                camera.value.eye[0] += move_x;
-                camera.value.eye[1] += move_y;
-                camera.value.eye[2] += move_z;
+                camera.eye[0] += move_x;
+                camera.eye[1] += move_y;
+                camera.eye[2] += move_z;
 
                 // ===== UPDATE TARGET FROM EYE + FORWARD =====
                 // Target is always 10 units in front of eye
-                camera.value.target = .{
-                    camera.value.eye[0] + forward_x * 10,
-                    camera.value.eye[1] + forward_y * 10,
-                    camera.value.eye[2] + forward_z * 10,
+                camera.target = .{
+                    camera.eye[0] + forward_x * 10,
+                    camera.eye[1] + forward_y * 10,
+                    camera.eye[2] + forward_z * 10,
                 };
             },
         }
@@ -923,7 +917,7 @@ const GamePlugin = struct {
     }
 
     fn drawHelpWindow(game: Resource(GameState)) void {
-        if (!game.value.show_help) return;
+        if (!game.show_help) return;
 
         ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = 10 }, .FirstUseEver);
         ImGuiPlugin.setNextWindowSize(.{ .x = 350, .y = 580 }, .FirstUseEver);
@@ -984,7 +978,7 @@ const GamePlugin = struct {
         time: Resource(TimePlugin.Time),
         camera: Resource(GraphicsPlugin.Camera3D),
     ) void {
-        if (!game.value.show_stats) return;
+        if (!game.show_stats) return;
 
         ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = 500 }, .FirstUseEver);
         ImGuiPlugin.setNextWindowSize(.{ .x = 280, .y = 250 }, .FirstUseEver);
@@ -992,36 +986,36 @@ const GamePlugin = struct {
         if (ImGuiPlugin.begin("Statistics", null, .None)) {
             ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Performance");
             ImGuiPlugin.separator();
-            ImGuiPlugin.textFmt("FPS: {d:.1}", .{time.value.fps});
-            ImGuiPlugin.textFmt("Frame Time: {d:.2}ms", .{time.value.delta_time * 1000.0});
-            ImGuiPlugin.textFmt("Total Time: {d:.1}s", .{time.value.total_time});
-            ImGuiPlugin.textFmt("Frame: {}", .{time.value.frame_count});
+            ImGuiPlugin.textFmt("FPS: {d:.1}", .{time.fps});
+            ImGuiPlugin.textFmt("Frame Time: {d:.2}ms", .{time.delta_time * 1000.0});
+            ImGuiPlugin.textFmt("Total Time: {d:.1}s", .{time.total_time});
+            ImGuiPlugin.textFmt("Frame: {}", .{time.frame_count});
 
             ImGuiPlugin.spacing();
             ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Camera");
             ImGuiPlugin.separator();
-            const mode_str: [:0]const u8 = switch (game.value.camera_mode) {
+            const mode_str: [:0]const u8 = switch (game.camera_mode) {
                 .orbit => "Orbit",
                 .fly => "Fly",
             };
             ImGuiPlugin.textFmt("Mode: {s}", .{mode_str});
             ImGuiPlugin.textFmt("Eye: ({d:.1}, {d:.1}, {d:.1})", .{
-                camera.value.eye[0],
-                camera.value.eye[1],
-                camera.value.eye[2],
+                camera.eye[0],
+                camera.eye[1],
+                camera.eye[2],
             });
 
             ImGuiPlugin.spacing();
             ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Shape Spawner");
             ImGuiPlugin.separator();
-            const shape_str: [:0]const u8 = switch (game.value.selected_shape) {
+            const shape_str: [:0]const u8 = switch (game.selected_shape) {
                 .box => "Box",
                 .sphere => "Sphere",
                 .cylinder => "Cylinder",
                 .torus => "Torus",
             };
             ImGuiPlugin.textFmt("Selected: {s} (4-7)", .{shape_str});
-            ImGuiPlugin.textFmt("Spawned: {}", .{game.value.spawn_count});
+            ImGuiPlugin.textFmt("Spawned: {}", .{game.spawn_count});
         }
         ImGuiPlugin.end();
     }
@@ -1034,7 +1028,7 @@ const GamePlugin = struct {
         physics: ResourceMut(PhysicsPlugin.PhysicsConfig),
         materials: Query(struct { GraphicsPlugin.Material }),
     ) void {
-        if (!game.value.show_controls) return;
+        if (!game.show_controls) return;
 
         ImGuiPlugin.setNextWindowPos(.{ .x = 1000, .y = 10 }, .FirstUseEver);
         ImGuiPlugin.setNextWindowSize(.{ .x = 270, .y = 550 }, .FirstUseEver);
@@ -1043,13 +1037,13 @@ const GamePlugin = struct {
             // Time controls
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Time");
             ImGuiPlugin.separator();
-            _ = ig.igCheckbox("Paused", &game.value.paused);
-            if (game.value.paused) {
-                time.value.time_scale = 0.0;
-            } else if (time.value.time_scale == 0.0) {
-                time.value.time_scale = 1.0;
+            _ = ig.igCheckbox("Paused", &game.paused);
+            if (game.paused) {
+                time.time_scale = 0.0;
+            } else if (time.time_scale == 0.0) {
+                time.time_scale = 1.0;
             }
-            _ = ImGuiPlugin.sliderFloat("Time Scale", &time.value.time_scale, 0.0, 3.0);
+            _ = ImGuiPlugin.sliderFloat("Time Scale", &time.time_scale, 0.0, 3.0);
 
             ImGuiPlugin.spacing();
 
@@ -1057,7 +1051,7 @@ const GamePlugin = struct {
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Shaders");
             ImGuiPlugin.separator();
 
-            var shader_idx: i32 = switch (game.value.selected_shader) {
+            var shader_idx: i32 = switch (game.selected_shader) {
                 .unlit => 0,
                 .blinn_phong => 1,
                 .pbr => 2,
@@ -1074,7 +1068,7 @@ const GamePlugin = struct {
                     2 => .pbr,
                     else => .blinn_phong,
                 };
-                game.value.selected_shader = new_shader;
+                game.selected_shader = new_shader;
                 updateAllMaterials(materials, new_shader);
             }
 
@@ -1083,19 +1077,19 @@ const GamePlugin = struct {
             // Light controls
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Lighting");
             ImGuiPlugin.separator();
-            _ = ImGuiPlugin.sliderFloat("Light X", &light.value.position[0], -20.0, 20.0);
-            _ = ImGuiPlugin.sliderFloat("Light Y", &light.value.position[1], 0.0, 30.0);
-            _ = ImGuiPlugin.sliderFloat("Light Z", &light.value.position[2], -20.0, 20.0);
-            _ = ImGuiPlugin.sliderFloat("Ambient", &light.value.ambient_strength, 0.0, 0.5);
+            _ = ImGuiPlugin.sliderFloat("Light X", &light.position[0], -20.0, 20.0);
+            _ = ImGuiPlugin.sliderFloat("Light Y", &light.position[1], 0.0, 30.0);
+            _ = ImGuiPlugin.sliderFloat("Light Z", &light.position[2], -20.0, 20.0);
+            _ = ImGuiPlugin.sliderFloat("Ambient", &light.ambient_strength, 0.0, 0.5);
 
             ImGuiPlugin.spacing();
 
             // Camera controls
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Camera");
             ImGuiPlugin.separator();
-            _ = ImGuiPlugin.sliderFloat("FOV", &camera.value.fov, 30.0, 120.0);
-            if (game.value.camera_mode == .orbit) {
-                _ = ImGuiPlugin.sliderFloat("Distance", &game.value.orbit_distance, 5.0, 50.0);
+            _ = ImGuiPlugin.sliderFloat("FOV", &camera.fov, 30.0, 120.0);
+            if (game.camera_mode == .orbit) {
+                _ = ImGuiPlugin.sliderFloat("Distance", &game.orbit_distance, 5.0, 50.0);
             }
 
             ImGuiPlugin.spacing();
@@ -1103,17 +1097,17 @@ const GamePlugin = struct {
             // Physics controls
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Physics");
             ImGuiPlugin.separator();
-            _ = ig.igCheckbox("Enabled", &physics.value.enabled);
-            _ = ImGuiPlugin.sliderFloat("Damping", &physics.value.damping, 0.9, 1.0);
+            _ = ig.igCheckbox("Enabled", &physics.enabled);
+            _ = ImGuiPlugin.sliderFloat("Damping", &physics.damping, 0.9, 1.0);
 
             ImGuiPlugin.spacing();
 
             // Window toggles
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Windows");
             ImGuiPlugin.separator();
-            _ = ig.igCheckbox("Show Help", &game.value.show_help);
-            _ = ig.igCheckbox("Show Stats", &game.value.show_stats);
-            _ = ig.igCheckbox("Show Scene", &game.value.show_scene);
+            _ = ig.igCheckbox("Show Help", &game.show_help);
+            _ = ig.igCheckbox("Show Stats", &game.show_stats);
+            _ = ig.igCheckbox("Show Scene", &game.show_scene);
         }
         ImGuiPlugin.end();
     }
@@ -1122,7 +1116,7 @@ const GamePlugin = struct {
         game: Resource(GameState),
         pass_action: ResourceMut(RenderContext.PassAction),
     ) void {
-        if (!game.value.show_scene) return;
+        if (!game.show_scene) return;
 
         ImGuiPlugin.setNextWindowPos(.{ .x = 1000, .y = 570 }, .FirstUseEver);
         ImGuiPlugin.setNextWindowSize(.{ .x = 270, .y = 200 }, .FirstUseEver);
@@ -1132,14 +1126,14 @@ const GamePlugin = struct {
             ImGuiPlugin.separator();
 
             var bg_color: [3]f32 = .{
-                pass_action.value.colors[0].clear_value.r,
-                pass_action.value.colors[0].clear_value.g,
-                pass_action.value.colors[0].clear_value.b,
+                pass_action.colors[0].clear_value.r,
+                pass_action.colors[0].clear_value.g,
+                pass_action.colors[0].clear_value.b,
             };
             if (ig.igColorEdit3("Color", &bg_color, 0)) {
-                pass_action.value.colors[0].clear_value.r = bg_color[0];
-                pass_action.value.colors[0].clear_value.g = bg_color[1];
-                pass_action.value.colors[0].clear_value.b = bg_color[2];
+                pass_action.colors[0].clear_value.r = bg_color[0];
+                pass_action.colors[0].clear_value.g = bg_color[1];
+                pass_action.colors[0].clear_value.b = bg_color[2];
             }
 
             ImGuiPlugin.spacing();

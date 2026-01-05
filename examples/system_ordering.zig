@@ -106,41 +106,41 @@ fn init(commands: anytype) void {
 }
 
 fn clearLog(log: ResourceMut(ExecutionLog)) void {
-    log.value.clear();
-    log.value.frame += 1;
+    log.clear();
+    log.frame += 1;
 }
 
 // Priority demonstration systems
 fn systemPriorityNeg50(log: ResourceMut(ExecutionLog)) void {
-    log.value.log("1. priority=-50, tags=['early']");
+    log.log("1. priority=-50, tags=['early']");
 }
 
 fn systemPriority0A(log: ResourceMut(ExecutionLog)) void {
-    log.value.log("2. priority=0 (default) A");
+    log.log("2. priority=0 (default) A");
 }
 
 fn systemPriority0B(log: ResourceMut(ExecutionLog)) void {
-    log.value.log("3. priority=0 (default) B");
+    log.log("3. priority=0 (default) B");
 }
 
 fn physicsSystem(log: ResourceMut(ExecutionLog)) void {
-    log.value.log("4. priority=10, tags=['physics'], after=['early']");
+    log.log("4. priority=10, tags=['physics'], after=['early']");
 }
 
 fn renderingSystem(log: ResourceMut(ExecutionLog)) void {
-    log.value.log("5. priority=20, tags=['rendering'], after=['physics']");
+    log.log("5. priority=20, tags=['rendering'], after=['physics']");
 }
 
 fn uiSystem(log: ResourceMut(ExecutionLog)) void {
-    log.value.log("6. priority=0, tags=['ui'], after=['rendering'] <-- constraint overrides priority");
+    log.log("6. priority=0, tags=['ui'], after=['rendering'] <-- constraint overrides priority");
 }
 
 fn systemPriority100(log: ResourceMut(ExecutionLog)) void {
-    log.value.log("7. priority=100 (highest)");
+    log.log("7. priority=100 (highest)");
 }
 
 fn printLog(log: Resource(ExecutionLog)) void {
-    log.value.print();
+    log.print();
 
     std.debug.print("EXPECTED ORDER EXPLANATION:\n", .{});
     std.debug.print("1. priority=-50 runs first (lowest priority value)\n", .{});

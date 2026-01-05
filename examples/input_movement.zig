@@ -49,7 +49,7 @@ const Game = struct {
 };
 
 fn setup(commands: anytype, pass_action: ResourceMut(RenderContext.PassAction)) !void {
-    pass_action.value.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
+    pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
 
     // Create player circle
     const player = commands.createEntity();
@@ -64,35 +64,32 @@ fn handleInput(
     time: ResourceMut(TimePlugin.Time),
     player_query: SingleQuery(Transform),
 ) void {
-    const kb = keyboard.value;
-    const t = time.value;
-
     // isPressed: fires only on the first frame the key is pressed
     // Use for toggle actions
-    if (kb.isPressed(.SPACE)) {
-        t.time_scale = if (t.time_scale == 0.0) 1.0 else 0.0;
+    if (keyboard.isPressed(.SPACE)) {
+        time.time_scale = if (time.time_scale == 0.0) 1.0 else 0.0;
     }
 
     // isPressed for discrete time_scale adjustments
-    if (kb.isPressed(._1)) {
-        t.time_scale = @max(0.1, t.time_scale - 0.25);
+    if (keyboard.isPressed(._1)) {
+        time.time_scale = @max(0.1, time.time_scale - 0.25);
     }
-    if (kb.isPressed(._2)) {
-        t.time_scale = @min(3.0, t.time_scale + 0.25);
+    if (keyboard.isPressed(._2)) {
+        time.time_scale = @min(3.0, time.time_scale + 0.25);
     }
 
     // Calculate scaled delta for movement
     // delta_time is clamped to 100ms max to prevent physics explosions
-    const dt = t.delta_time * t.time_scale;
+    const dt = time.delta_time * time.time_scale;
     const speed: f32 = 300.0;
 
     // isHeld: true every frame while key is held
     // Use for continuous movement
     for (player_query.components) |*transform| {
-        if (kb.isHeld(.W) or kb.isHeld(.UP)) transform.y -= speed * dt;
-        if (kb.isHeld(.S) or kb.isHeld(.DOWN)) transform.y += speed * dt;
-        if (kb.isHeld(.A) or kb.isHeld(.LEFT)) transform.x -= speed * dt;
-        if (kb.isHeld(.D) or kb.isHeld(.RIGHT)) transform.x += speed * dt;
+        if (keyboard.isHeld(.W) or keyboard.isHeld(.UP)) transform.y -= speed * dt;
+        if (keyboard.isHeld(.S) or keyboard.isHeld(.DOWN)) transform.y += speed * dt;
+        if (keyboard.isHeld(.A) or keyboard.isHeld(.LEFT)) transform.x -= speed * dt;
+        if (keyboard.isHeld(.D) or keyboard.isHeld(.RIGHT)) transform.x += speed * dt;
 
         // Clamp to screen bounds
         transform.x = std.math.clamp(transform.x, 30, 1250);
@@ -101,20 +98,17 @@ fn handleInput(
 }
 
 fn drawUI(time: Resource(TimePlugin.Time), keyboard: Resource(InputPlugin.Keyboard)) void {
-    const t = time.value;
-    const kb = keyboard.value;
-
     ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = 10 }, .Once);
     ImGuiPlugin.setNextWindowSize(.{ .x = 320, .y = 280 }, .Once);
 
     if (ImGuiPlugin.begin("Input + Time Demo", null, .None)) {
         ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Time Resource");
         ImGuiPlugin.separator();
-        ImGuiPlugin.textFmt("delta_time: {d:.4}s", .{t.delta_time});
-        ImGuiPlugin.textFmt("time_scale: {d:.2}x", .{t.time_scale});
-        ImGuiPlugin.textFmt("total_time: {d:.2}s", .{t.total_time});
-        ImGuiPlugin.textFmt("fps: {d:.1}", .{t.fps});
-        ImGuiPlugin.textFmt("frame_count: {}", .{t.frame_count});
+        ImGuiPlugin.textFmt("delta_time: {d:.4}s", .{time.delta_time});
+        ImGuiPlugin.textFmt("time_scale: {d:.2}x", .{time.time_scale});
+        ImGuiPlugin.textFmt("total_time: {d:.2}s", .{time.total_time});
+        ImGuiPlugin.textFmt("fps: {d:.1}", .{time.fps});
+        ImGuiPlugin.textFmt("frame_count: {}", .{time.frame_count});
 
         ImGuiPlugin.spacing();
         ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Controls");
@@ -128,12 +122,12 @@ fn drawUI(time: Resource(TimePlugin.Time), keyboard: Resource(InputPlugin.Keyboa
         ImGuiPlugin.separator();
 
         // Show isHeld vs isPressed difference
-        const w_held = kb.isHeld(.W);
-        const w_frames = kb.heldFrames(.W);
+        const w_held = keyboard.isHeld(.W);
+        const w_frames = keyboard.heldFrames(.W);
         ImGuiPlugin.textFmt("W key: held={}, frames={}", .{ w_held, w_frames });
 
-        const space_held = kb.isHeld(.SPACE);
-        const space_frames = kb.heldFrames(.SPACE);
+        const space_held = keyboard.isHeld(.SPACE);
+        const space_frames = keyboard.heldFrames(.SPACE);
         ImGuiPlugin.textFmt("Space: held={}, frames={}", .{ space_held, space_frames });
     }
     ImGuiPlugin.end();

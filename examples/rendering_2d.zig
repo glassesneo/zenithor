@@ -34,7 +34,7 @@ const Game = struct {
 };
 
 fn setup(commands: anytype, pass_action: zenithor.ResourceMut(RenderContext.PassAction)) !void {
-    pass_action.value.colors[0].clear_value = .{ .r = 0.15, .g = 0.15, .b = 0.2, .a = 1.0 };
+    pass_action.colors[0].clear_value = .{ .r = 0.15, .g = 0.15, .b = 0.2, .a = 1.0 };
 
     // === Z-Index Demonstration ===
     // Lower Z values render in front (closer to camera)

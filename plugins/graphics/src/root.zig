@@ -470,7 +470,8 @@ pub fn Plugin(comptime shaders: anytype) type {
             planes: Query(struct { Plane3D }),
         ) !void {
             // Early return if already initialized or no 3D entities
-            if (buffers.value.initialized) {
+            // Note: sparze.ResourceMut(T) returns *T directly (pointer)
+            if (buffers.initialized) {
                 return;
             }
 
@@ -486,26 +487,26 @@ pub fn Plugin(comptime shaders: anytype) type {
             }
 
             // Allocate heap buffers for per-frame geometry building
-            const allocator = buffers.value.allocator orelse return error.AllocatorNotSet;
-            buffers.value.vertices = try allocator.alloc(sokol.shape.Vertex, MAX_3D_VERTICES);
-            errdefer allocator.free(buffers.value.vertices);
-            buffers.value.indices = try allocator.alloc(u16, MAX_3D_INDICES);
-            errdefer allocator.free(buffers.value.indices);
+            const allocator = buffers.allocator orelse return error.AllocatorNotSet;
+            buffers.vertices = try allocator.alloc(sokol.shape.Vertex, MAX_3D_VERTICES);
+            errdefer allocator.free(buffers.vertices);
+            buffers.indices = try allocator.alloc(u16, MAX_3D_INDICES);
+            errdefer allocator.free(buffers.indices);
 
             // Create GPU vertex/index buffers
-            buffers.value.vertex_buffer = sokol.gfx.makeBuffer(.{
+            buffers.vertex_buffer = sokol.gfx.makeBuffer(.{
                 .size = MAX_3D_VERTICES * @sizeOf(sokol.shape.Vertex),
                 .usage = .{ .vertex_buffer = true, .stream_update = true },
             });
-            errdefer sokol.gfx.destroyBuffer(buffers.value.vertex_buffer);
+            errdefer sokol.gfx.destroyBuffer(buffers.vertex_buffer);
 
-            buffers.value.index_buffer = sokol.gfx.makeBuffer(.{
+            buffers.index_buffer = sokol.gfx.makeBuffer(.{
                 .size = MAX_3D_INDICES * @sizeOf(u16),
                 .usage = .{ .index_buffer = true, .stream_update = true },
             });
-            errdefer sokol.gfx.destroyBuffer(buffers.value.index_buffer);
+            errdefer sokol.gfx.destroyBuffer(buffers.index_buffer);
 
-            buffers.value.initialized = true;
+            buffers.initialized = true;
         }
 
         fn setDefaults() void {
@@ -797,7 +798,8 @@ pub fn Plugin(comptime shaders: anytype) type {
             commands: anytype,
         ) !void {
             // Early return if 3D buffers not initialized (no 3D entities)
-            if (!buffers.value.initialized) {
+            // Note: sparze.Resource(T) / ResourceMut(T) return *const T / *T directly (pointer)
+            if (!buffers.initialized) {
                 return;
             }
             // Access sparse sets for Rotation/Scale lookups
@@ -806,13 +808,13 @@ pub fn Plugin(comptime shaders: anytype) type {
 
             // Use heap-allocated staging buffers from buffers resource (no stack allocation)
             var buf = sokol.shape.Buffer{
-                .vertices = .{ .buffer = sokol.shape.asRange(buffers.value.vertices) },
-                .indices = .{ .buffer = sokol.shape.asRange(buffers.value.indices) },
+                .vertices = .{ .buffer = sokol.shape.asRange(buffers.vertices) },
+                .indices = .{ .buffer = sokol.shape.asRange(buffers.indices) },
             };
 
             // Derive capacity from actual slice lengths to ensure consistency
-            const max_vertices: usize = buffers.value.vertices.len;
-            const max_indices: usize = buffers.value.indices.len;
+            const max_vertices: usize = buffers.vertices.len;
+            const max_indices: usize = buffers.indices.len;
 
             // Command buckets for batching draw calls by shader type
             // Use std.mem.zeroes for proper zero-initialization on WASM
@@ -822,8 +824,8 @@ pub fn Plugin(comptime shaders: anytype) type {
             // Note: Mat4/multiply use row-major convention. When sent to column-major GLSL shaders,
             // the implicit transpose means row-major (model * view * proj) becomes column-major (proj * view * model).
             const aspect = sokol.app.widthf() / sokol.app.heightf();
-            const view = lookAt(camera.value.eye, camera.value.target, camera.value.up);
-            const proj = perspective(camera.value.fov, aspect, camera.value.near, camera.value.far);
+            const view = lookAt(camera.eye, camera.target, camera.up);
+            const proj = perspective(camera.fov, aspect, camera.near, camera.far);
             const vp = multiply(view, proj);
 
             // Process Box3D entities
@@ -1019,33 +1021,33 @@ pub fn Plugin(comptime shaders: anytype) type {
                 // No lazy initialization needed - safe for WASM/WebGPU
 
                 // Upload vertex/index data to GPU
-                sokol.gfx.updateBuffer(buffers.value.vertex_buffer, .{
-                    .ptr = buffers.value.vertices.ptr,
+                sokol.gfx.updateBuffer(buffers.vertex_buffer, .{
+                    .ptr = buffers.vertices.ptr,
                     .size = buf.vertices.data_size,
                 });
-                sokol.gfx.updateBuffer(buffers.value.index_buffer, .{
-                    .ptr = buffers.value.indices.ptr,
+                sokol.gfx.updateBuffer(buffers.index_buffer, .{
+                    .ptr = buffers.indices.ptr,
                     .size = buf.indices.data_size,
                 });
 
                 // Setup bindings
                 var bindings = sokol.gfx.Bindings{};
-                bindings.vertex_buffers[0] = buffers.value.vertex_buffer;
-                bindings.index_buffer = buffers.value.index_buffer;
+                bindings.vertex_buffers[0] = buffers.vertex_buffer;
+                bindings.index_buffer = buffers.index_buffer;
 
                 // Draw each shader bucket (pipelines created at startup)
                 if (buckets.unlit_count > 0) {
-                    drawUnlitBucket(buckets.unlit[0..buckets.unlit_count], shader_res.value.pipeline_unlit, bindings);
+                    drawUnlitBucket(buckets.unlit[0..buckets.unlit_count], shader_res.pipeline_unlit, bindings);
                 }
                 if (buckets.blinn_count > 0) {
-                    drawBlinnPhongBucket(buckets.blinn[0..buckets.blinn_count], shader_res.value.pipeline_blinn_phong, bindings, light.value.*, camera.value.*);
+                    drawBlinnPhongBucket(buckets.blinn[0..buckets.blinn_count], shader_res.pipeline_blinn_phong, bindings, light.*, camera.*);
                 }
                 if (buckets.pbr_count > 0) {
-                    drawPbrBucket(buckets.pbr[0..buckets.pbr_count], shader_res.value.pipeline_pbr, bindings, light.value.*, camera.value.*);
+                    drawPbrBucket(buckets.pbr[0..buckets.pbr_count], shader_res.pipeline_pbr, bindings, light.*, camera.*);
                 }
             }
 
-            buffers.value.draw_count = @intCast(total_count);
+            buffers.draw_count = @intCast(total_count);
         }
 
         fn draw2D() void {
@@ -1056,33 +1058,33 @@ pub fn Plugin(comptime shaders: anytype) type {
 
         fn cleanup(buffers: ResourceMut(Render3DBuffers), shader_res: Resource(Render3DShaders)) void {
             // Free heap-allocated staging buffers
-            if (buffers.value.allocator) |allocator| {
-                if (buffers.value.vertices.len > 0) allocator.free(buffers.value.vertices);
-                if (buffers.value.indices.len > 0) allocator.free(buffers.value.indices);
+            if (buffers.allocator) |allocator| {
+                if (buffers.vertices.len > 0) allocator.free(buffers.vertices);
+                if (buffers.indices.len > 0) allocator.free(buffers.indices);
             }
 
             // Destroy GPU buffers if initialized
-            if (buffers.value.initialized) {
-                if (buffers.value.vertex_buffer.id != 0) sokol.gfx.destroyBuffer(buffers.value.vertex_buffer);
-                if (buffers.value.index_buffer.id != 0) sokol.gfx.destroyBuffer(buffers.value.index_buffer);
+            if (buffers.initialized) {
+                if (buffers.vertex_buffer.id != 0) sokol.gfx.destroyBuffer(buffers.vertex_buffer);
+                if (buffers.index_buffer.id != 0) sokol.gfx.destroyBuffer(buffers.index_buffer);
             }
 
             // Destroy shaders and pipelines
-            if (shader_res.value.pipeline_unlit.id != 0) sokol.gfx.destroyPipeline(shader_res.value.pipeline_unlit);
-            if (shader_res.value.shader_unlit.id != 0) sokol.gfx.destroyShader(shader_res.value.shader_unlit);
-            if (shader_res.value.pipeline_blinn_phong.id != 0) sokol.gfx.destroyPipeline(shader_res.value.pipeline_blinn_phong);
-            if (shader_res.value.shader_blinn_phong.id != 0) sokol.gfx.destroyShader(shader_res.value.shader_blinn_phong);
-            if (shader_res.value.pipeline_pbr.id != 0) sokol.gfx.destroyPipeline(shader_res.value.pipeline_pbr);
-            if (shader_res.value.shader_pbr.id != 0) sokol.gfx.destroyShader(shader_res.value.shader_pbr);
+            if (shader_res.pipeline_unlit.id != 0) sokol.gfx.destroyPipeline(shader_res.pipeline_unlit);
+            if (shader_res.shader_unlit.id != 0) sokol.gfx.destroyShader(shader_res.shader_unlit);
+            if (shader_res.pipeline_blinn_phong.id != 0) sokol.gfx.destroyPipeline(shader_res.pipeline_blinn_phong);
+            if (shader_res.shader_blinn_phong.id != 0) sokol.gfx.destroyShader(shader_res.shader_blinn_phong);
+            if (shader_res.pipeline_pbr.id != 0) sokol.gfx.destroyPipeline(shader_res.pipeline_pbr);
+            if (shader_res.shader_pbr.id != 0) sokol.gfx.destroyShader(shader_res.shader_pbr);
 
             // Zero out all fields to prevent accidental reuse or double-free
-            buffers.value.vertices = &.{};
-            buffers.value.indices = &.{};
-            buffers.value.allocator = null;
-            buffers.value.vertex_buffer = .{};
-            buffers.value.index_buffer = .{};
-            buffers.value.initialized = false;
-            buffers.value.draw_count = 0;
+            buffers.vertices = &.{};
+            buffers.indices = &.{};
+            buffers.allocator = null;
+            buffers.vertex_buffer = .{};
+            buffers.index_buffer = .{};
+            buffers.initialized = false;
+            buffers.draw_count = 0;
         }
 
         // Declarative system registration (moved to const for Plugin wrapper)

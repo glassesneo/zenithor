@@ -56,8 +56,9 @@ fn initPassAction(commands: anytype) !void {
 }
 
 fn beginPass(pass_action: sparze.Resource(PassAction)) void {
+    // Note: sparze.Resource(T) returns *const T directly (pointer)
     sokol.gfx.beginPass(.{
-        .action = pass_action.value.*,
+        .action = pass_action.*,
         .swapchain = sokol.glue.swapchain(),
     });
 }

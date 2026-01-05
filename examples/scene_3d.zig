@@ -120,21 +120,19 @@ fn handleInput(
     demo: ResourceMut(DemoState),
     materials: Query(struct { GraphicsPlugin.Material }),
 ) void {
-    const kb = keyboard.value;
-
     // Toggle camera orbit
-    if (kb.isPressed(.SPACE)) {
-        demo.value.orbit_enabled = !demo.value.orbit_enabled;
+    if (keyboard.isPressed(.SPACE)) {
+        demo.orbit_enabled = !demo.orbit_enabled;
     }
 
     // Shader selection (isPressed for discrete toggle)
     var new_shader: ?GraphicsPlugin.ShaderType = null;
-    if (kb.isPressed(._1)) new_shader = .unlit;
-    if (kb.isPressed(._2)) new_shader = .blinn_phong;
-    if (kb.isPressed(._3)) new_shader = .pbr;
+    if (keyboard.isPressed(._1)) new_shader = .unlit;
+    if (keyboard.isPressed(._2)) new_shader = .blinn_phong;
+    if (keyboard.isPressed(._3)) new_shader = .pbr;
 
     if (new_shader) |shader| {
-        demo.value.current_shader = shader;
+        demo.current_shader = shader;
         // Update all materials
         for (materials.entities) |entity| {
             if (!materials.filter(entity)) continue;
@@ -150,13 +148,13 @@ fn animateCamera(
     camera: ResourceMut(GraphicsPlugin.Camera3D),
     rotating: Query(struct { Rotation }),
 ) void {
-    const t = time.value.total_time;
+    const t = time.total_time;
 
     // Orbit camera around scene
-    if (demo.value.orbit_enabled) {
+    if (demo.orbit_enabled) {
         const radius: f32 = 8.0;
         const angle: f32 = @floatCast(t * 0.3);
-        camera.value.eye = .{
+        camera.eye = .{
             radius * @cos(angle),
             3.0,
             radius * @sin(angle),
@@ -164,7 +162,7 @@ fn animateCamera(
     }
 
     // Rotate objects with Rotation component
-    const dt = time.value.delta_time;
+    const dt = time.delta_time;
     for (rotating.entities) |entity| {
         if (!rotating.filter(entity)) continue;
         const rot = rotating.getComponentMut(entity, Rotation);
@@ -173,7 +171,7 @@ fn animateCamera(
 }
 
 fn drawUI(
-    demo: ResourceMut(DemoState),
+    demo: Resource(DemoState),
     camera: ResourceMut(GraphicsPlugin.Camera3D),
     light: ResourceMut(GraphicsPlugin.Light3D),
 ) void {
@@ -183,7 +181,7 @@ fn drawUI(
     if (ImGuiPlugin.begin("3D Scene Demo", null, .None)) {
         ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Shader Types");
         ImGuiPlugin.separator();
-        const shader_name: [:0]const u8 = switch (demo.value.current_shader) {
+        const shader_name: [:0]const u8 = switch (demo.current_shader) {
             .unlit => "Unlit",
             .blinn_phong => "Blinn-Phong",
             .pbr => "PBR",
@@ -196,18 +194,18 @@ fn drawUI(
         ImGuiPlugin.spacing();
         ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Camera3D");
         ImGuiPlugin.separator();
-        ImGuiPlugin.textFmt("Orbit: {}", .{demo.value.orbit_enabled});
+        ImGuiPlugin.textFmt("Orbit: {}", .{demo.orbit_enabled});
         ImGuiPlugin.text("Space - Toggle orbit");
-        _ = ImGuiPlugin.sliderFloat("Eye Y", &camera.value.eye[1], 0.5, 10.0);
-        _ = ImGuiPlugin.sliderFloat("FOV", &camera.value.fov, 30.0, 90.0);
+        _ = ImGuiPlugin.sliderFloat("Eye Y", &camera.eye[1], 0.5, 10.0);
+        _ = ImGuiPlugin.sliderFloat("FOV", &camera.fov, 30.0, 90.0);
 
         ImGuiPlugin.spacing();
         ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.5, .z = 0.5, .w = 1.0 }, "Light3D");
         ImGuiPlugin.separator();
-        _ = ImGuiPlugin.sliderFloat("Light X", &light.value.position[0], -10.0, 10.0);
-        _ = ImGuiPlugin.sliderFloat("Light Y", &light.value.position[1], 0.0, 10.0);
-        _ = ImGuiPlugin.sliderFloat("Light Z", &light.value.position[2], -10.0, 10.0);
-        _ = ImGuiPlugin.sliderFloat("Ambient", &light.value.ambient_strength, 0.0, 0.5);
+        _ = ImGuiPlugin.sliderFloat("Light X", &light.position[0], -10.0, 10.0);
+        _ = ImGuiPlugin.sliderFloat("Light Y", &light.position[1], 0.0, 10.0);
+        _ = ImGuiPlugin.sliderFloat("Light Z", &light.position[2], -10.0, 10.0);
+        _ = ImGuiPlugin.sliderFloat("Ambient", &light.ambient_strength, 0.0, 0.5);
 
         ImGuiPlugin.spacing();
         ImGuiPlugin.textColored(.{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 }, "3D Shapes");

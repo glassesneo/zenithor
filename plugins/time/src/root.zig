@@ -61,7 +61,8 @@ fn initTime() void {
 
 fn update(time: sparze.ResourceMut(Time)) void {
     // Measure frame time using sokol_time's laptime
-    const frame_ticks = sokol.time.laptime(&time.value.last_frame_ticks);
+    // Note: sparze.ResourceMut(T) returns *T directly (pointer)
+    const frame_ticks = sokol.time.laptime(&time.last_frame_ticks);
     const raw_delta_time = sokol.time.sec(frame_ticks);
 
     // Clamp delta time to prevent physics explosions on lag spikes or time jumps
@@ -70,16 +71,16 @@ fn update(time: sparze.ResourceMut(Time)) void {
     const clamped_delta_time = @min(raw_delta_time, MAX_DELTA);
 
     // Update time state
-    time.value.delta_time = @floatCast(clamped_delta_time);
-    time.value.total_time += raw_delta_time;
-    time.value.frame_count += 1;
+    time.delta_time = @floatCast(clamped_delta_time);
+    time.total_time += raw_delta_time;
+    time.frame_count += 1;
 
     // Calculate smoothed FPS using exponential moving average
     // Avoid division by zero on first frame or extremely fast frames
-    if (time.value.delta_time > 0.0001) {
-        const instant_fps = 1.0 / time.value.delta_time;
+    if (time.delta_time > 0.0001) {
+        const instant_fps = 1.0 / time.delta_time;
         // EMA: new_value = alpha * current + (1 - alpha) * previous
-        time.value.fps = time.value.fps_smoothing_factor * instant_fps + (1.0 - time.value.fps_smoothing_factor) * time.value.fps;
+        time.fps = time.fps_smoothing_factor * instant_fps + (1.0 - time.fps_smoothing_factor) * time.fps;
     }
 }
 

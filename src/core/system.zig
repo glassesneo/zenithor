@@ -929,24 +929,25 @@ test "SystemScheduler: registerDecl with anonymous struct descriptors" {
     var scheduler = Scheduler.init();
 
     // System functions using Sparze parameter injection (not direct world access)
+    // Note: sparze.ResourceMut(T) returns *T directly (pointer), not a wrapper
     const system1 = struct {
         fn run(seq: sparze.ResourceMut(SequenceResource)) !void {
-            seq.value.values[seq.value.index] = 1;
-            seq.value.index += 1;
+            seq.values[seq.index] = 1;
+            seq.index += 1;
         }
     }.run;
 
     const system2 = struct {
         fn run(seq: sparze.ResourceMut(SequenceResource)) !void {
-            seq.value.values[seq.value.index] = 2;
-            seq.value.index += 1;
+            seq.values[seq.index] = 2;
+            seq.index += 1;
         }
     }.run;
 
     const system3 = struct {
         fn run(seq: sparze.ResourceMut(SequenceResource)) !void {
-            seq.value.values[seq.value.index] = 3;
-            seq.value.index += 1;
+            seq.values[seq.index] = 3;
+            seq.index += 1;
         }
     }.run;
 
@@ -974,15 +975,16 @@ test "SystemScheduler: registerDecl with partial config builds complete SystemCo
     const Scheduler = SystemScheduler(TestWorld);
     var scheduler = Scheduler.init();
 
+    // Note: sparze.ResourceMut(T) returns *T directly (pointer), not a wrapper
     const taggedSystem = struct {
         fn run(counter: sparze.ResourceMut(CounterResource)) !void {
-            counter.value.value += 1;
+            counter.value += 1;
         }
     }.run;
 
     const constrainedSystem = struct {
         fn run(counter: sparze.ResourceMut(CounterResource)) !void {
-            counter.value.value += 10;
+            counter.value += 10;
         }
     }.run;
 
@@ -1009,9 +1011,10 @@ test "SystemScheduler: registerDecl wraps system for runSystem parameter injecti
     var scheduler = Scheduler.init();
 
     // System that uses Sparze parameter injection pattern
+    // Note: sparze.ResourceMut(T) returns *T directly (pointer), not a wrapper
     const resourceSystem = struct {
         fn run(counter: sparze.ResourceMut(CounterResource)) !void {
-            counter.value.value += 42;
+            counter.value += 42;
         }
     }.run;
 

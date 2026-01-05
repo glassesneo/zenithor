@@ -223,35 +223,36 @@ fn handleEvent(event: sokol.app.Event, world: anytype) void {
 
 fn resetPerFrameState(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.ResourceMut(Keyboard)) void {
     // Reset per-frame deltas and buffers
-    mouse.value.dx = 0.0;
-    mouse.value.dy = 0.0;
-    mouse.value.scroll_x = 0.0;
-    mouse.value.scroll_y = 0.0;
-    keyboard.value.char_count = 0;
+    // Note: sparze.ResourceMut(T) returns *T directly (pointer)
+    mouse.dx = 0.0;
+    mouse.dy = 0.0;
+    mouse.scroll_x = 0.0;
+    mouse.scroll_y = 0.0;
+    keyboard.char_count = 0;
 }
 
 fn updateFrameCounts(mouse: sparze.ResourceMut(Mouse), keyboard: sparze.ResourceMut(Keyboard)) void {
-    keyboard.value.incrementHeldKeyFrames();
-    keyboard.value.cleanupReleasedKeys();
+    keyboard.incrementHeldKeyFrames();
+    keyboard.cleanupReleasedKeys();
 
     // Increment frame count for all held mouse buttons
-    if (mouse.value.left_button) {
-        mouse.value.held_frame_map.getPtr(.LEFT).* += 1;
-    } else if (mouse.value.held_frame_map.get(.LEFT) > 0) {
+    if (mouse.left_button) {
+        mouse.held_frame_map.getPtr(.LEFT).* += 1;
+    } else if (mouse.held_frame_map.get(.LEFT) > 0) {
         // Clean up released button
-        mouse.value.held_frame_map.set(.LEFT, 0);
+        mouse.held_frame_map.set(.LEFT, 0);
     }
 
-    if (mouse.value.right_button) {
-        mouse.value.held_frame_map.getPtr(.RIGHT).* += 1;
-    } else if (mouse.value.held_frame_map.get(.RIGHT) > 0) {
-        mouse.value.held_frame_map.set(.RIGHT, 0);
+    if (mouse.right_button) {
+        mouse.held_frame_map.getPtr(.RIGHT).* += 1;
+    } else if (mouse.held_frame_map.get(.RIGHT) > 0) {
+        mouse.held_frame_map.set(.RIGHT, 0);
     }
 
-    if (mouse.value.middle_button) {
-        mouse.value.held_frame_map.getPtr(.MIDDLE).* += 1;
-    } else if (mouse.value.held_frame_map.get(.MIDDLE) > 0) {
-        mouse.value.held_frame_map.set(.MIDDLE, 0);
+    if (mouse.middle_button) {
+        mouse.held_frame_map.getPtr(.MIDDLE).* += 1;
+    } else if (mouse.held_frame_map.get(.MIDDLE) > 0) {
+        mouse.held_frame_map.set(.MIDDLE, 0);
     }
 }
 

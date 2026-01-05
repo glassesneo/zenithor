@@ -42,7 +42,8 @@ pub fn saveGame(
     commands: anytype,
     save_file: ResourceMut(SaveFile),
 ) !void {
-    const path = save_file.value.getPath();
+    // Note: sparze.ResourceMut(T) returns *T directly (pointer)
+    const path = save_file.getPath();
     if (path.len == 0) return;
 
     std.debug.print("💾 Saving game to: {s}\n", .{path});
@@ -53,8 +54,8 @@ pub fn saveGame(
     const file = std.fs.cwd().openFile(path, .{}) catch return;
     defer file.close();
     const stat = file.stat() catch return;
-    save_file.value.timestamp = stat.mtime;
-    save_file.value.checksum_valid = true;
+    save_file.timestamp = stat.mtime;
+    save_file.checksum_valid = true;
 
     std.debug.print("✅ Save complete!\n", .{});
 }
@@ -64,7 +65,7 @@ pub fn loadGame(
     commands: anytype,
     save_file: ResourceMut(SaveFile),
 ) !void {
-    const path = save_file.value.getPath();
+    const path = save_file.getPath();
     if (path.len == 0) return;
 
     const file = std.fs.cwd().openFile(path, .{}) catch |err| {
@@ -79,8 +80,8 @@ pub fn loadGame(
 
     // Update metadata
     const stat = file.stat() catch return;
-    save_file.value.timestamp = stat.mtime;
-    save_file.value.checksum_valid = true;
+    save_file.timestamp = stat.mtime;
+    save_file.checksum_valid = true;
 
     std.debug.print("✅ Load complete!\n", .{});
 }
