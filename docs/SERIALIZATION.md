@@ -40,7 +40,7 @@ const SaveFile = struct {
 pub fn main() !void {
     // Add SerializationPlugin to your game
     zenithor.run(.{ 
-        GraphicsPlugin, 
+        Shapes2DPlugin,
         ImGuiPlugin, 
         InputPlugin, 
         TimePlugin,

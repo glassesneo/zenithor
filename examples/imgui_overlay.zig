@@ -15,14 +15,14 @@ const Color = zenithor.Color;
 const Resource = zenithor.Resource;
 const ResourceMut = zenithor.ResourceMut;
 const Query = zenithor.Query;
-const GraphicsPlugin = @import("graphics_plugin").Default;
+const Shapes3DPlugin = @import("shapes3d_plugin");
 const RenderContext = @import("render_context_plugin");
 const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, TimePlugin, ImGuiPlugin, Game }, .{});
+    zenithor.run(.{ Shapes3DPlugin, TimePlugin, ImGuiPlugin, Game }, .{});
 }
 
 // Tag component for animated objects
@@ -59,7 +59,7 @@ fn setup(commands: anytype) !void {
     commands.setResource(DebugSettings, .{});
 
     // Configure 3D camera
-    commands.setResource(GraphicsPlugin.Camera3D, .{
+    commands.setResource(Shapes3DPlugin.Camera3D, .{
         .eye = .{ 0, 4, 10 },
         .target = .{ 0, 0, 0 },
         .up = .{ 0, 1, 0 },
@@ -70,35 +70,35 @@ fn setup(commands: anytype) !void {
 
     // Ground plane
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Plane3D{ .width = 10.0, .depth = 10.0, .tiles = 5 },
+        Shapes3DPlugin.Plane3D{ .width = 10.0, .depth = 10.0, .tiles = 5 },
         Transform{ .x = 0, .y = -1.5, .z = 0 },
         Color{ .r = 0.3, .g = 0.3, .b = 0.35, .a = 1.0 },
-        GraphicsPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = .blinn_phong },
     });
 
     // Animated objects
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Box3D{ .width = 1.2, .height = 1.2, .depth = 1.2 },
+        Shapes3DPlugin.Box3D{ .width = 1.2, .height = 1.2, .depth = 1.2 },
         Transform{ .x = -2.0, .y = 0, .z = 0 },
         Rotation{},
         Color.red,
-        GraphicsPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = .blinn_phong },
         Animated{},
     });
 
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Sphere3D{ .radius = 0.8, .slices = 24, .stacks = 18 },
+        Shapes3DPlugin.Sphere3D{ .radius = 0.8, .slices = 24, .stacks = 18 },
         Transform{ .x = 0, .y = 0, .z = 0 },
         Color.green,
-        GraphicsPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = .blinn_phong },
     });
 
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Torus3D{ .radius = 0.6, .ring_radius = 0.2, .sides = 24, .rings = 24 },
+        Shapes3DPlugin.Torus3D{ .radius = 0.6, .ring_radius = 0.2, .sides = 24, .rings = 24 },
         Transform{ .x = 2.0, .y = 0, .z = 0 },
         Rotation{},
         Color.blue,
-        GraphicsPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = .blinn_phong },
         Animated{},
     });
 }
@@ -122,14 +122,14 @@ fn updateAnimation(
 fn applySettings(
     settings: Resource(DebugSettings),
     pass_action: ResourceMut(RenderContext.PassAction),
-    materials: Query(struct { GraphicsPlugin.Material }),
+    materials: Query(struct { Shapes3DPlugin.Material }),
 ) void {
     // Apply background color
     const bg = settings.background_color;
     pass_action.colors[0].clear_value = .{ .r = bg[0], .g = bg[1], .b = bg[2], .a = 1.0 };
 
     // Apply shader selection
-    const shader: GraphicsPlugin.ShaderType = switch (settings.selected_shader) {
+    const shader: Shapes3DPlugin.ShaderType = switch (settings.selected_shader) {
         0 => .unlit,
         1 => .blinn_phong,
         2 => .pbr,
@@ -138,7 +138,7 @@ fn applySettings(
 
     for (materials.entities) |entity| {
         if (!materials.filter(entity)) continue;
-        const mat = materials.getComponentMut(entity, GraphicsPlugin.Material);
+        const mat = materials.getComponentMut(entity, Shapes3DPlugin.Material);
         mat.shader = shader;
     }
 }
@@ -146,8 +146,8 @@ fn applySettings(
 fn drawUI(
     time: Resource(TimePlugin.Time),
     settings: ResourceMut(DebugSettings),
-    light: ResourceMut(GraphicsPlugin.Light3D),
-    camera: ResourceMut(GraphicsPlugin.Camera3D),
+    light: ResourceMut(Shapes3DPlugin.Light3D),
+    camera: ResourceMut(Shapes3DPlugin.Camera3D),
 ) void {
     // Stats window
     if (settings.show_stats) {

@@ -21,7 +21,7 @@ const Color = zenithor.Color;
 const Resource = zenithor.Resource;
 const ResourceMut = zenithor.ResourceMut;
 const SingleQuery = zenithor.SingleQuery;
-const GraphicsPlugin = @import("graphics_plugin").Default;
+const Shapes2DPlugin = @import("shapes2d_plugin");
 const RenderContext = @import("render_context_plugin");
 const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
@@ -29,7 +29,7 @@ const ImGuiPlugin = @import("imgui_plugin");
 const SerializationPlugin = @import("serialization_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, TimePlugin, InputPlugin, ImGuiPlugin, SerializationPlugin, Game }, .{});
+    zenithor.run(.{ Shapes2DPlugin, TimePlugin, InputPlugin, ImGuiPlugin, SerializationPlugin, Game }, .{});
 }
 
 // Tag component for player
@@ -70,7 +70,7 @@ fn setup(commands: anytype, pass_action: ResourceMut(RenderContext.PassAction)) 
     // Create player
     const player = commands.createEntity();
     try commands.addTag(player, Player);
-    try commands.addComponent(player, GraphicsPlugin.Circle, .{ .radius = 30, .segments = 32 });
+    try commands.addComponent(player, Shapes2DPlugin.Circle, .{ .radius = 30, .segments = 32 });
     try commands.addComponent(player, Transform, .{ .x = 640, .y = 400, .z = 0 });
     try commands.addComponent(player, Color, Color.cyan);
 

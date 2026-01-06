@@ -428,10 +428,10 @@ Test plugin interaction with examples:
 // examples/my_plugin_test.zig
 const zenithor = @import("zenithor");
 const MyPlugin = @import("my_plugin");
-const Graphics = @import("graphics_plugin").Default;
+const Shapes2DPlugin = @import("shapes2d_plugin");
 
 pub fn main() void {
-    zenithor.run(.{ MyPlugin, Graphics }, .{});
+    zenithor.run(.{ MyPlugin, Shapes2DPlugin }, .{});
 }
 ```
 

@@ -6,16 +6,16 @@
 /// - Color component overrides (defaults to red if absent)
 /// - 2D coordinate system: origin (0,0) at top-left, Y increases downward
 ///
-/// See: plugins/graphics/CLAUDE.md (2D Components section)
+/// See: plugins/shapes2d/CLAUDE.md
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
-const GraphicsPlugin = @import("graphics_plugin").Default;
+const Shapes2DPlugin = @import("shapes2d_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const RenderContext = @import("render_context_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, ImGuiPlugin, Game }, .{});
+    zenithor.run(.{ Shapes2DPlugin, ImGuiPlugin, Game }, .{});
 }
 
 const Game = struct {
@@ -42,26 +42,26 @@ fn setup(commands: anytype, pass_action: zenithor.ResourceMut(RenderContext.Pass
 
     // Back layer (z = 0.5): Large rectangle
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Rectangle{ .x = 300, .y = 300 },
+        Shapes2DPlugin.Rectangle{ .x = 300, .y = 300 },
         Transform{ .x = 350, .y = 200, .z = 0.5 },
         Color{ .r = 0.3, .g = 0.3, .b = 0.5, .a = 1.0 }, // Dark blue
     });
 
     // Middle layer (z = 0.0): Overlapping rectangles
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Rectangle{ .x = 200, .y = 200 },
+        Shapes2DPlugin.Rectangle{ .x = 200, .y = 200 },
         Transform{ .x = 400, .y = 250, .z = 0.0 },
         Color.red,
     });
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Rectangle{ .x = 200, .y = 200 },
+        Shapes2DPlugin.Rectangle{ .x = 200, .y = 200 },
         Transform{ .x = 500, .y = 300, .z = 0.0 },
         Color.green,
     });
 
     // Front layer (z = -0.5): Circle on top
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 80, .segments = 48 },
+        Shapes2DPlugin.Circle{ .radius = 80, .segments = 48 },
         Transform{ .x = 500, .y = 350, .z = -0.5 },
         Color.cyan,
     });
@@ -70,21 +70,21 @@ fn setup(commands: anytype, pass_action: zenithor.ResourceMut(RenderContext.Pass
 
     // Point (small dot)
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Point{},
+        Shapes2DPlugin.Point{},
         Transform{ .x = 900, .y = 150, .z = 0 },
         Color.white,
     });
 
     // Line
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Line{ .x = 150, .y = 50 },
+        Shapes2DPlugin.Line{ .x = 150, .y = 50 },
         Transform{ .x = 850, .y = 200, .z = 0 },
         Color.yellow,
     });
 
     // Triangle
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Triangle{
+        Shapes2DPlugin.Triangle{
             .x1 = 0,
             .y1 = -60, // top
             .x2 = 60,
@@ -98,14 +98,14 @@ fn setup(commands: anytype, pass_action: zenithor.ResourceMut(RenderContext.Pass
 
     // Rectangle
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Rectangle{ .x = 120, .y = 80 },
+        Shapes2DPlugin.Rectangle{ .x = 120, .y = 80 },
         Transform{ .x = 860, .y = 450, .z = 0 },
         Color.orange,
     });
 
     // Circle
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 50, .segments = 32 },
+        Shapes2DPlugin.Circle{ .radius = 50, .segments = 32 },
         Transform{ .x = 920, .y = 600, .z = 0 },
         Color.blue,
     });
@@ -115,13 +115,13 @@ fn setup(commands: anytype, pass_action: zenithor.ResourceMut(RenderContext.Pass
 
     // No Color component - defaults to red
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 40, .segments = 24 },
+        Shapes2DPlugin.Circle{ .radius = 40, .segments = 24 },
         Transform{ .x = 200, .y = 650, .z = 0 },
     });
 
     // With Color component override
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 40, .segments = 24 },
+        Shapes2DPlugin.Circle{ .radius = 40, .segments = 24 },
         Transform{ .x = 320, .y = 650, .z = 0 },
         Color.purple,
     });

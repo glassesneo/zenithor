@@ -331,8 +331,8 @@ pub const systems = .{
                 .tags = &.{"sprite-resolve"},
             },
         },
-        // Draw sprites after GraphicsPlugin shapes but before sokol.gl.draw()
-        // GraphicsPlugin draw2D is at priority 120
+        // Draw sprites after Shapes2DPlugin shapes but before sokol.gl.draw()
+        // RenderContextPlugin.flushGL is at priority 200
         // Note: .after constraints only work within the same stage, so we rely
         // on stage ordering (pre_render runs before render) for resolveTextureRefs
         .{

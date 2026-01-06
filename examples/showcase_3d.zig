@@ -70,7 +70,7 @@ const EventWriter = zenithor.EventWriter;
 const EventReader = zenithor.EventReader;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const Stage = zenithor.Stage;
-const GraphicsPlugin = @import("graphics_plugin").Default;
+const Shapes3DPlugin = @import("shapes3d_plugin");
 const RenderContext = @import("render_context_plugin");
 const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
@@ -81,7 +81,7 @@ const ig = ImGuiPlugin.ig;
 pub fn main() !void {
     // All plugins included - dependencies auto-expanded
     zenithor.run(.{
-        GraphicsPlugin,
+        Shapes3DPlugin,
         TimePlugin,
         InputPlugin,
         ImGuiPlugin,
@@ -246,7 +246,7 @@ const GamePlugin = struct {
         show_controls: bool = true,
         show_scene: bool = true,
         wireframe_mode: bool = false,
-        selected_shader: GraphicsPlugin.ShaderType = .blinn_phong,
+        selected_shader: Shapes3DPlugin.ShaderType = .blinn_phong,
         // Fly mode: yaw/pitch for direct camera control
         yaw: f32 = std.math.pi, // Face -Z direction (toward scene center)
         pitch: f32 = -0.3, // Slightly looking down
@@ -320,7 +320,7 @@ const GamePlugin = struct {
         pass_action.colors[0].clear_value = .{ .r = 0.05, .g = 0.05, .b = 0.1, .a = 1.0 };
 
         // Configure camera
-        commands.setResource(GraphicsPlugin.Camera3D, .{
+        commands.setResource(Shapes3DPlugin.Camera3D, .{
             .eye = .{ 0, 5, 15 },
             .target = .{ 0, 0, 0 },
             .up = .{ 0, 1, 0 },
@@ -330,7 +330,7 @@ const GamePlugin = struct {
         });
 
         // Configure lighting
-        commands.setResource(GraphicsPlugin.Light3D, .{
+        commands.setResource(Shapes3DPlugin.Light3D, .{
             .position = .{ 10, 15, 10 },
             .color = .{ 1, 0.95, 0.9 },
             .ambient_strength = 0.15,
@@ -338,20 +338,20 @@ const GamePlugin = struct {
 
         // === GROUND PLANE ===
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Plane3D{ .width = 50.0, .depth = 50.0, .tiles = 25 },
+            Shapes3DPlugin.Plane3D{ .width = 50.0, .depth = 50.0, .tiles = 25 },
             Transform{ .x = 0, .y = -2, .z = 0 },
             Color{ .r = 0.2, .g = 0.25, .b = 0.3, .a = 1.0 },
-            GraphicsPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong },
         });
 
         // === CENTRAL STRUCTURE ===
         // Large central sphere
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Sphere3D{ .radius = 1.5, .slices = 48, .stacks = 36 },
+            Shapes3DPlugin.Sphere3D{ .radius = 1.5, .slices = 48, .stacks = 36 },
             Transform{ .x = 0, .y = 0, .z = 0 },
             Rotation{},
             Color{ .r = 0.9, .g = 0.7, .b = 0.2, .a = 1.0 }, // Gold
-            GraphicsPlugin.Material{ .shader = .pbr, .metallic = 0.9, .roughness = 0.1 },
+            Shapes3DPlugin.Material{ .shader = .pbr, .metallic = 0.9, .roughness = 0.1 },
             PhysicsPlugin.AngularVelocity{ .y = 0.2 },
             Interactable{},
         });
@@ -359,11 +359,11 @@ const GamePlugin = struct {
         // === ORBITING OBJECTS ===
         // Red orbiting box
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Box3D{ .width = 0.8, .height = 0.8, .depth = 0.8 },
+            Shapes3DPlugin.Box3D{ .width = 0.8, .height = 0.8, .depth = 0.8 },
             Transform{ .x = 4, .y = 0, .z = 0 },
             Rotation{},
             Color.red,
-            GraphicsPlugin.Material{ .shader = .blinn_phong, .shininess = 64.0 },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 64.0 },
             PhysicsPlugin.AngularVelocity{ .x = 1.0, .y = 0.5 },
             Orbiting{ .center_x = 0, .center_y = 0, .center_z = 0, .radius = 4, .speed = 0.5 },
             Interactable{},
@@ -371,21 +371,21 @@ const GamePlugin = struct {
 
         // Green orbiting sphere
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Sphere3D{ .radius = 0.5, .slices = 24, .stacks = 18 },
+            Shapes3DPlugin.Sphere3D{ .radius = 0.5, .slices = 24, .stacks = 18 },
             Transform{ .x = 0, .y = 0, .z = 5 },
             Color.green,
-            GraphicsPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong },
             Orbiting{ .center_x = 0, .center_y = 0, .center_z = 0, .radius = 5, .speed = -0.3 },
             Interactable{},
         });
 
         // Blue orbiting torus
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Torus3D{ .radius = 0.6, .ring_radius = 0.2, .sides = 24, .rings = 24 },
+            Shapes3DPlugin.Torus3D{ .radius = 0.6, .ring_radius = 0.2, .sides = 24, .rings = 24 },
             Transform{ .x = 6, .y = 1, .z = 0 },
             Rotation{},
             Color.blue,
-            GraphicsPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong },
             PhysicsPlugin.AngularVelocity{ .x = 0.3, .z = 0.5 },
             Orbiting{ .center_x = 0, .center_y = 1, .center_z = 0, .radius = 6, .speed = 0.2 },
             Interactable{},
@@ -394,20 +394,20 @@ const GamePlugin = struct {
         // === BOUNCING OBJECTS ===
         // Cyan bouncing cylinder
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Cylinder3D{ .radius = 0.4, .height = 1.0, .slices = 20 },
+            Shapes3DPlugin.Cylinder3D{ .radius = 0.4, .height = 1.0, .slices = 20 },
             Transform{ .x = -5, .y = 0, .z = 3 },
             Color.cyan,
-            GraphicsPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong },
             Bouncing{ .min_y = -1.5, .max_y = 2.0 },
             Interactable{},
         });
 
         // Magenta bouncing sphere
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Sphere3D{ .radius = 0.6, .slices = 24, .stacks = 18 },
+            Shapes3DPlugin.Sphere3D{ .radius = 0.6, .slices = 24, .stacks = 18 },
             Transform{ .x = 5, .y = 0, .z = -3 },
             Color.magenta,
-            GraphicsPlugin.Material{ .shader = .pbr, .metallic = 0.3, .roughness = 0.4 },
+            Shapes3DPlugin.Material{ .shader = .pbr, .metallic = 0.3, .roughness = 0.4 },
             Bouncing{ .min_y = -1.5, .max_y = 3.0 },
             Interactable{},
         });
@@ -415,12 +415,12 @@ const GamePlugin = struct {
         // === PULSING OBJECTS ===
         // White pulsing box
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Box3D{ .width = 1.0, .height = 1.0, .depth = 1.0 },
+            Shapes3DPlugin.Box3D{ .width = 1.0, .height = 1.0, .depth = 1.0 },
             Transform{ .x = -6, .y = 0, .z = -5 },
             Rotation{},
             Scale{ .x = 1, .y = 1, .z = 1 },
             Color.white,
-            GraphicsPlugin.Material{ .shader = .unlit },
+            Shapes3DPlugin.Material{ .shader = .unlit },
             PhysicsPlugin.AngularVelocity{ .y = 0.8 },
             Pulsing{ .min_scale = 0.5, .max_scale = 1.5, .speed = 2.0 },
             Interactable{},
@@ -428,12 +428,12 @@ const GamePlugin = struct {
 
         // Orange pulsing torus
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Torus3D{ .radius = 0.8, .ring_radius = 0.25, .sides = 32, .rings = 32 },
+            Shapes3DPlugin.Torus3D{ .radius = 0.8, .ring_radius = 0.25, .sides = 32, .rings = 32 },
             Transform{ .x = 6, .y = 0, .z = -5 },
             Rotation{},
             Scale{ .x = 1, .y = 1, .z = 1 },
             Color.orange,
-            GraphicsPlugin.Material{ .shader = .pbr, .metallic = 0.7, .roughness = 0.2 },
+            Shapes3DPlugin.Material{ .shader = .pbr, .metallic = 0.7, .roughness = 0.2 },
             PhysicsPlugin.AngularVelocity{ .x = 0.5, .y = 0.3 },
             Pulsing{ .min_scale = 0.7, .max_scale = 1.3, .speed = 1.5 },
             Interactable{},
@@ -444,67 +444,67 @@ const GamePlugin = struct {
 
         // Pillar 1: Red (-8, -8)
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
+            Shapes3DPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
             Transform{ .x = -8, .y = 0, .z = -8 },
             Color{ .r = 0.8, .g = 0.2, .b = 0.2, .a = 1.0 },
-            GraphicsPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
         });
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
+            Shapes3DPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
             Transform{ .x = -8, .y = 2.3, .z = -8 },
             Color{ .r = 0.8, .g = 0.2, .b = 0.2, .a = 1.0 },
-            GraphicsPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong },
         });
 
         // Pillar 2: Green (-8, 8)
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
+            Shapes3DPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
             Transform{ .x = -8, .y = 0, .z = 8 },
             Color{ .r = 0.2, .g = 0.8, .b = 0.2, .a = 1.0 },
-            GraphicsPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
         });
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
+            Shapes3DPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
             Transform{ .x = -8, .y = 2.3, .z = 8 },
             Color{ .r = 0.2, .g = 0.8, .b = 0.2, .a = 1.0 },
-            GraphicsPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong },
         });
 
         // Pillar 3: Blue (8, -8)
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
+            Shapes3DPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
             Transform{ .x = 8, .y = 0, .z = -8 },
             Color{ .r = 0.2, .g = 0.2, .b = 0.8, .a = 1.0 },
-            GraphicsPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
         });
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
+            Shapes3DPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
             Transform{ .x = 8, .y = 2.3, .z = -8 },
             Color{ .r = 0.2, .g = 0.2, .b = 0.8, .a = 1.0 },
-            GraphicsPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong },
         });
 
         // Pillar 4: Yellow (8, 8)
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
+            Shapes3DPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
             Transform{ .x = 8, .y = 0, .z = 8 },
             Color{ .r = 0.8, .g = 0.8, .b = 0.2, .a = 1.0 },
-            GraphicsPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
         });
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
+            Shapes3DPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
             Transform{ .x = 8, .y = 2.3, .z = 8 },
             Color{ .r = 0.8, .g = 0.8, .b = 0.2, .a = 1.0 },
-            GraphicsPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = .blinn_phong },
         });
 
         // Arch between pillars
         _ = try commands.createEntityWith(.{
-            GraphicsPlugin.Torus3D{ .radius = 2.0, .ring_radius = 0.3, .sides = 32, .rings = 48 },
+            Shapes3DPlugin.Torus3D{ .radius = 2.0, .ring_radius = 0.3, .sides = 32, .rings = 48 },
             Transform{ .x = 0, .y = 4, .z = -8 },
             Rotation{ .x = std.math.pi / 2.0 },
             Color{ .r = 0.6, .g = 0.4, .b = 0.8, .a = 1.0 }, // Purple
-            GraphicsPlugin.Material{ .shader = .pbr, .metallic = 0.5, .roughness = 0.3 },
+            Shapes3DPlugin.Material{ .shader = .pbr, .metallic = 0.5, .roughness = 0.3 },
         });
 
         std.debug.print("\n=== ZENITHOR 3D SHOWCASE ===\n", .{});
@@ -519,9 +519,9 @@ const GamePlugin = struct {
         mouse: Resource(InputPlugin.Mouse),
         time: ResourceMut(TimePlugin.Time),
         game: ResourceMut(GameState),
-        camera: Resource(GraphicsPlugin.Camera3D),
+        camera: Resource(Shapes3DPlugin.Camera3D),
         save_file: ResourceMut(SerializationPlugin.SaveFile),
-        materials: Query(struct { GraphicsPlugin.Material }),
+        materials: Query(struct { Shapes3DPlugin.Material }),
         commands: anytype,
     ) !void {
         // Tab - Toggle mouse capture
@@ -608,25 +608,25 @@ const GamePlugin = struct {
             const entity = commands.createEntity();
             try commands.addComponent(entity, Transform, .{ .x = spawn_x, .y = spawn_y, .z = spawn_z });
             try commands.addComponent(entity, Color, color);
-            try commands.addComponent(entity, GraphicsPlugin.Material, .{ .shader = game.selected_shader });
+            try commands.addComponent(entity, Shapes3DPlugin.Material, .{ .shader = game.selected_shader });
             try commands.addTag(entity, Interactable);
 
             switch (game.selected_shape) {
                 .box => {
-                    try commands.addComponent(entity, GraphicsPlugin.Box3D, .{ .width = 0.8, .height = 0.8, .depth = 0.8 });
+                    try commands.addComponent(entity, Shapes3DPlugin.Box3D, .{ .width = 0.8, .height = 0.8, .depth = 0.8 });
                     try commands.addComponent(entity, Rotation, .{});
                     try commands.addComponent(entity, PhysicsPlugin.AngularVelocity, .{ .x = ang_x, .y = ang_y, .z = ang_z });
                 },
                 .sphere => {
-                    try commands.addComponent(entity, GraphicsPlugin.Sphere3D, .{ .radius = 0.5, .slices = 24, .stacks = 18 });
+                    try commands.addComponent(entity, Shapes3DPlugin.Sphere3D, .{ .radius = 0.5, .slices = 24, .stacks = 18 });
                 },
                 .cylinder => {
-                    try commands.addComponent(entity, GraphicsPlugin.Cylinder3D, .{ .radius = 0.4, .height = 1.0, .slices = 20 });
+                    try commands.addComponent(entity, Shapes3DPlugin.Cylinder3D, .{ .radius = 0.4, .height = 1.0, .slices = 20 });
                     try commands.addComponent(entity, Rotation, .{});
                     try commands.addComponent(entity, PhysicsPlugin.AngularVelocity, .{ .x = ang_x, .y = ang_y, .z = ang_z });
                 },
                 .torus => {
-                    try commands.addComponent(entity, GraphicsPlugin.Torus3D, .{ .radius = 0.5, .ring_radius = 0.15, .sides = 24, .rings = 24 });
+                    try commands.addComponent(entity, Shapes3DPlugin.Torus3D, .{ .radius = 0.5, .ring_radius = 0.15, .sides = 24, .rings = 24 });
                     try commands.addComponent(entity, Rotation, .{});
                     try commands.addComponent(entity, PhysicsPlugin.AngularVelocity, .{ .x = ang_x, .y = ang_y, .z = ang_z });
                 },
@@ -680,10 +680,10 @@ const GamePlugin = struct {
         };
     }
 
-    fn updateAllMaterials(materials: Query(struct { GraphicsPlugin.Material }), shader: GraphicsPlugin.ShaderType) void {
+    fn updateAllMaterials(materials: Query(struct { Shapes3DPlugin.Material }), shader: Shapes3DPlugin.ShaderType) void {
         for (materials.entities) |entity| {
             if (!materials.filter(entity)) continue;
-            const mat = materials.getComponentMut(entity, GraphicsPlugin.Material);
+            const mat = materials.getComponentMut(entity, Shapes3DPlugin.Material);
             mat.shader = shader;
         }
     }
@@ -755,7 +755,7 @@ const GamePlugin = struct {
         mouse: Resource(InputPlugin.Mouse),
         time: Resource(TimePlugin.Time),
         game: ResourceMut(GameState),
-        camera: ResourceMut(GraphicsPlugin.Camera3D),
+        camera: ResourceMut(Shapes3DPlugin.Camera3D),
     ) void {
         const dt = time.delta_time;
 
@@ -973,7 +973,7 @@ const GamePlugin = struct {
     fn drawStatsWindow(
         game: Resource(GameState),
         time: Resource(TimePlugin.Time),
-        camera: Resource(GraphicsPlugin.Camera3D),
+        camera: Resource(Shapes3DPlugin.Camera3D),
     ) void {
         if (!game.show_stats) return;
 
@@ -1020,10 +1020,10 @@ const GamePlugin = struct {
     fn drawControlsWindow(
         game: ResourceMut(GameState),
         time: ResourceMut(TimePlugin.Time),
-        light: ResourceMut(GraphicsPlugin.Light3D),
-        camera: ResourceMut(GraphicsPlugin.Camera3D),
+        light: ResourceMut(Shapes3DPlugin.Light3D),
+        camera: ResourceMut(Shapes3DPlugin.Camera3D),
         physics: ResourceMut(PhysicsPlugin.PhysicsConfig),
-        materials: Query(struct { GraphicsPlugin.Material }),
+        materials: Query(struct { Shapes3DPlugin.Material }),
     ) void {
         if (!game.show_controls) return;
 
@@ -1059,7 +1059,7 @@ const GamePlugin = struct {
             _ = ig.igRadioButtonIntPtr("PBR", &shader_idx, 2);
 
             if (shader_idx != old_shader) {
-                const new_shader: GraphicsPlugin.ShaderType = switch (shader_idx) {
+                const new_shader: Shapes3DPlugin.ShaderType = switch (shader_idx) {
                     0 => .unlit,
                     1 => .blinn_phong,
                     2 => .pbr,

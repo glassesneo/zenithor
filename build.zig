@@ -5,27 +5,27 @@ const cimgui = @import("cimgui");
 
 const examples = [_]Example{
     // Minimal app + plugin wiring
-    .{ .name = "minimal_app", .plugins = &.{ "graphics_plugin", "time_plugin", "input_plugin" } },
+    .{ .name = "minimal_app", .plugins = &.{ "shapes2d_plugin", "time_plugin", "input_plugin" } },
     // Input + time driven movement
-    .{ .name = "input_movement", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
+    .{ .name = "input_movement", .plugins = &.{ "render_context_plugin", "shapes2d_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
     // 2D rendering + layering
-    .{ .name = "rendering_2d", .plugins = &.{ "render_context_plugin", "graphics_plugin", "imgui_plugin" } },
+    .{ .name = "rendering_2d", .plugins = &.{ "render_context_plugin", "shapes2d_plugin", "imgui_plugin" } },
     // 3D scene basics
-    .{ .name = "scene_3d", .plugins = &.{ "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
+    .{ .name = "scene_3d", .plugins = &.{ "shapes3d_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
     // System staging and ordering
     .{ .name = "system_ordering", .plugins = &.{} },
     // Event flow and error handling
-    .{ .name = "error_handling", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "imgui_plugin" } },
+    .{ .name = "error_handling", .plugins = &.{ "render_context_plugin", "shapes2d_plugin", "time_plugin", "imgui_plugin" } },
     // Serialization round-trip
-    .{ .name = "serialization", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
+    .{ .name = "serialization", .plugins = &.{ "render_context_plugin", "shapes2d_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
     // ImGui debug overlay
-    .{ .name = "imgui_overlay", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "imgui_plugin" } },
+    .{ .name = "imgui_overlay", .plugins = &.{ "render_context_plugin", "shapes3d_plugin", "time_plugin", "imgui_plugin" } },
     // Plugin authoring + Requires
-    .{ .name = "plugin_authoring", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
+    .{ .name = "plugin_authoring", .plugins = &.{ "render_context_plugin", "shapes2d_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
     // Sprite rendering (replaces asset_loading)
     .{ .name = "sprite_rendering", .plugins = &.{ "render_context_plugin", "time_plugin", "asset_plugin", "sprite_plugin", "imgui_plugin" } },
     // Comprehensive 3D showcase - demonstrates ALL features
-    .{ .name = "showcase_3d", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
+    .{ .name = "showcase_3d", .plugins = &.{ "render_context_plugin", "shapes3d_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
 };
 
 const Example = struct {
@@ -69,7 +69,8 @@ const DependencySet = struct {
     cimgui: *Build.Dependency,
     sparze: *Build.Dependency,
     render_context_plugin_mod: *Build.Module,
-    graphics_plugin_mod: *Build.Module,
+    shapes2d_plugin_mod: *Build.Module,
+    shapes3d_plugin_mod: *Build.Module,
     time_plugin_mod: *Build.Module,
     imgui_plugin_mod: *Build.Module,
     input_plugin_mod: *Build.Module,
@@ -85,7 +86,8 @@ const ExampleResult = struct {
 
 const PluginModules = struct {
     render_context: *Build.Module,
-    graphics: *Build.Module,
+    shapes2d: *Build.Module,
+    shapes3d: *Build.Module,
     time: *Build.Module,
     imgui: *Build.Module,
     input: *Build.Module,
@@ -156,7 +158,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
     // PBR shader
     const pbr_shader_mod = try sokol.shdc.createModule(b, "pbr_shader", sokol_mod, .{
         .shdc_dep = dep_shdc,
-        .input = "plugins/graphics/src/shader.glsl",
+        .input = "plugins/shapes3d/src/shader.glsl",
         .output = "pbr_shader.zig",
         .slang = .{
             .glsl410 = true,
@@ -172,7 +174,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
     // Blinn-Phong shader
     const blinn_phong_shader_mod = try sokol.shdc.createModule(b, "blinn_phong_shader", sokol_mod, .{
         .shdc_dep = dep_shdc,
-        .input = "plugins/graphics/src/blinn_phong.glsl",
+        .input = "plugins/shapes3d/src/blinn_phong.glsl",
         .output = "blinn_phong_shader.zig",
         .slang = .{
             .glsl410 = true,
@@ -188,7 +190,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
     // Unlit shader
     const unlit_shader_mod = try sokol.shdc.createModule(b, "unlit_shader", sokol_mod, .{
         .shdc_dep = dep_shdc,
-        .input = "plugins/graphics/src/unlit.glsl",
+        .input = "plugins/shapes3d/src/unlit.glsl",
         .output = "unlit_shader.zig",
         .slang = .{
             .glsl410 = true,
@@ -251,8 +253,19 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .imports = exported_imports[0..],
     });
 
-    const graphics_mod = b.addModule("graphics_plugin", .{
-        .root_source_file = b.path("plugins/graphics/src/root.zig"),
+    // Shapes2D plugin - 2D shape rendering
+    const shapes2d_mod = b.addModule("shapes2d_plugin", .{
+        .root_source_file = b.path("plugins/shapes2d/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = exported_imports[0..] ++ &[_]Build.Module.Import{
+            .{ .name = "render_context_plugin", .module = render_context_mod },
+        },
+    });
+
+    // Shapes3D plugin - 3D shape rendering
+    const shapes3d_mod = b.addModule("shapes3d_plugin", .{
+        .root_source_file = b.path("plugins/shapes3d/src/root.zig"),
         .target = target,
         .optimize = optimize,
         .imports = exported_imports[0..] ++ &[_]Build.Module.Import{
@@ -322,7 +335,8 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
             .cimgui = dep_cimgui,
             .sparze = dep_sparze,
             .render_context_plugin_mod = render_context_mod,
-            .graphics_plugin_mod = graphics_mod,
+            .shapes2d_plugin_mod = shapes2d_mod,
+            .shapes3d_plugin_mod = shapes3d_mod,
             .time_plugin_mod = time_mod,
             .imgui_plugin_mod = imgui_mod,
             .input_plugin_mod = input_mod,
@@ -353,7 +367,8 @@ fn resolvePluginModule(lookup: PluginLookup, name: []const u8) *Build.Module {
         .dependency => |dep| dep.module(name),
         .modules => |mods| blk: {
             if (std.mem.eql(u8, name, "render_context_plugin")) break :blk mods.render_context;
-            if (std.mem.eql(u8, name, "graphics_plugin")) break :blk mods.graphics;
+            if (std.mem.eql(u8, name, "shapes2d_plugin")) break :blk mods.shapes2d;
+            if (std.mem.eql(u8, name, "shapes3d_plugin")) break :blk mods.shapes3d;
             if (std.mem.eql(u8, name, "time_plugin")) break :blk mods.time;
             if (std.mem.eql(u8, name, "imgui_plugin")) break :blk mods.imgui;
             if (std.mem.eql(u8, name, "input_plugin")) break :blk mods.input;
@@ -643,7 +658,8 @@ fn exampleContext(options: ExampleOptions, deps: DependencySet) AppBuildContext 
         .dep_sparze = deps.sparze,
         .plugin_lookup = .{ .modules = .{
             .render_context = deps.render_context_plugin_mod,
-            .graphics = deps.graphics_plugin_mod,
+            .shapes2d = deps.shapes2d_plugin_mod,
+            .shapes3d = deps.shapes3d_plugin_mod,
             .time = deps.time_plugin_mod,
             .imgui = deps.imgui_plugin_mod,
             .input = deps.input_plugin_mod,

@@ -85,7 +85,7 @@ fn endPass() void {
 
 /// Flush all sokol.gl 2D draw commands to the GPU.
 /// Runs at high priority (200) after all 2D rendering systems but before endPass.
-/// This allows SpritePlugin, GraphicsPlugin, and other plugins to queue sokol.gl
+/// This allows SpritePlugin, Shapes2DPlugin, and other plugins to queue sokol.gl
 /// commands independently without needing to call draw() themselves.
 fn flushGL() void {
     sokol.gl.draw();
@@ -126,7 +126,7 @@ pub const systems = .{
             },
         },
         // Flush sokol.gl 2D commands after all rendering systems (priority 200)
-        // GraphicsPlugin draw systems: 0-120, SpritePlugin: 115
+        // Shapes2DPlugin draw systems: 0-default, SpritePlugin: 115
         // This ensures all 2D commands are flushed before endPass
         .{
             .system = flushGL,

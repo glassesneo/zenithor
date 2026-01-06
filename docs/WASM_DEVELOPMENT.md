@@ -149,9 +149,10 @@ WASM has stricter memory constraints than native:
    defer allocator.free(buffer);
    ```
 
-3. **Graphics Plugin Memory**
+3. **Shapes3D Plugin Memory**
    - 3D rendering uses heap-allocated staging buffers (~3.6MB)
-   - Allocated once at startup, reused every frame
+   - Allocated lazily on first 3D entity, then reused every frame
+   - Shapes2D plugin uses sokol.gl immediate mode with no heap allocation
    - No per-frame allocation overhead
 
 ### Input Handling
@@ -217,7 +218,8 @@ WASM performance tips:
    - Requires modern browsers (Chrome 91+, Firefox 89+)
 
 3. **Minimize Draw Calls**
-   - Graphics plugin batches 2D/3D shapes
+   - Shapes2D batches 2D primitives via sokol.gl (flushed once per frame)
+   - Shapes3D batches 3D geometry into a single vertex/index buffer per frame
    - Use fewer, larger meshes vs many small ones
 
 4. **Avoid Blocking Operations**

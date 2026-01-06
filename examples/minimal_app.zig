@@ -8,14 +8,14 @@
 ///
 /// See: src/core/CLAUDE.md
 const zenithor = @import("zenithor");
-const GraphicsPlugin = @import("graphics_plugin").Default;
+const Shapes2DPlugin = @import("shapes2d_plugin");
 const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
 
 pub fn main() !void {
     // Entry point: pass plugin tuple and options placeholder
     // BuiltinPlugin is added automatically
-    zenithor.run(.{ GraphicsPlugin, Game }, .{});
+    zenithor.run(.{ Shapes2DPlugin, Game }, .{});
 }
 
 // Game plugin definition
@@ -36,7 +36,7 @@ const Game = struct {
 // Single startup system: creates a centered white circle
 fn setup(commands: anytype) !void {
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Circle{ .radius = 50, .segments = 48 },
+        Shapes2DPlugin.Circle{ .radius = 50, .segments = 48 },
         zenithor.Transform{ .x = 640, .y = 400, .z = 0 },
         zenithor.Color.white,
     });

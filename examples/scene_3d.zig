@@ -11,7 +11,7 @@
 ///   1/2/3 - Switch shader type (Unlit/Blinn-Phong/PBR)
 ///   Space - Toggle camera orbit
 ///
-/// See: plugins/graphics/CLAUDE.md (3D Components, Shader Selection sections)
+/// See: plugins/shapes3d/CLAUDE.md
 const std = @import("std");
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
@@ -20,19 +20,19 @@ const Color = zenithor.Color;
 const Resource = zenithor.Resource;
 const ResourceMut = zenithor.ResourceMut;
 const Query = zenithor.Query;
-const GraphicsPlugin = @import("graphics_plugin").Default;
+const Shapes3DPlugin = @import("shapes3d_plugin");
 const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ GraphicsPlugin, TimePlugin, InputPlugin, ImGuiPlugin, Game }, .{});
+    zenithor.run(.{ Shapes3DPlugin, TimePlugin, InputPlugin, ImGuiPlugin, Game }, .{});
 }
 
 // Demo state resource
 const DemoState = struct {
     orbit_enabled: bool = true,
-    current_shader: GraphicsPlugin.ShaderType = .blinn_phong,
+    current_shader: Shapes3DPlugin.ShaderType = .blinn_phong,
 };
 
 const Game = struct {
@@ -56,7 +56,7 @@ fn setup(commands: anytype) !void {
     commands.setResource(DemoState, .{});
 
     // Configure Camera3D resource
-    commands.setResource(GraphicsPlugin.Camera3D, .{
+    commands.setResource(Shapes3DPlugin.Camera3D, .{
         .eye = .{ 0, 3, 8 }, // Camera position
         .target = .{ 0, 0, 0 }, // Look-at point
         .up = .{ 0, 1, 0 }, // Up vector
@@ -66,7 +66,7 @@ fn setup(commands: anytype) !void {
     });
 
     // Configure Light3D resource
-    commands.setResource(GraphicsPlugin.Light3D, .{
+    commands.setResource(Shapes3DPlugin.Light3D, .{
         .position = .{ 5, 5, 5 },
         .color = .{ 1, 1, 1 },
         .ambient_strength = 0.15,
@@ -74,51 +74,51 @@ fn setup(commands: anytype) !void {
 
     // Ground plane
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Plane3D{ .width = 12.0, .depth = 12.0, .tiles = 6 },
+        Shapes3DPlugin.Plane3D{ .width = 12.0, .depth = 12.0, .tiles = 6 },
         Transform{ .x = 0, .y = -1.5, .z = 0 },
         Color{ .r = 0.35, .g = 0.35, .b = 0.4, .a = 1.0 },
-        GraphicsPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = .blinn_phong },
     });
 
     // Red sphere (left)
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Sphere3D{ .radius = 0.8, .slices = 32, .stacks = 24 },
+        Shapes3DPlugin.Sphere3D{ .radius = 0.8, .slices = 32, .stacks = 24 },
         Transform{ .x = -2.5, .y = 0, .z = 0 },
         Color.red,
-        GraphicsPlugin.Material{ .shader = .blinn_phong, .shininess = 64.0 },
+        Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 64.0 },
     });
 
     // Green box (center)
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Box3D{ .width = 1.2, .height = 1.2, .depth = 1.2 },
+        Shapes3DPlugin.Box3D{ .width = 1.2, .height = 1.2, .depth = 1.2 },
         Transform{ .x = 0, .y = 0, .z = 0 },
         Rotation{},
         Color.green,
-        GraphicsPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = .blinn_phong },
     });
 
     // Blue cylinder (right)
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Cylinder3D{ .radius = 0.5, .height = 1.5, .slices = 24 },
+        Shapes3DPlugin.Cylinder3D{ .radius = 0.5, .height = 1.5, .slices = 24 },
         Transform{ .x = 2.5, .y = 0, .z = 0 },
         Color.blue,
-        GraphicsPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = .blinn_phong },
     });
 
     // Yellow torus (above)
     _ = try commands.createEntityWith(.{
-        GraphicsPlugin.Torus3D{ .radius = 0.6, .ring_radius = 0.2, .sides = 24, .rings = 24 },
+        Shapes3DPlugin.Torus3D{ .radius = 0.6, .ring_radius = 0.2, .sides = 24, .rings = 24 },
         Transform{ .x = 0, .y = 2.0, .z = 0 },
         Rotation{},
         Color.yellow,
-        GraphicsPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = .blinn_phong },
     });
 }
 
 fn handleInput(
     keyboard: Resource(InputPlugin.Keyboard),
     demo: ResourceMut(DemoState),
-    materials: Query(struct { GraphicsPlugin.Material }),
+    materials: Query(struct { Shapes3DPlugin.Material }),
 ) void {
     // Toggle camera orbit
     if (keyboard.isPressed(.SPACE)) {
@@ -126,7 +126,7 @@ fn handleInput(
     }
 
     // Shader selection (isPressed for discrete toggle)
-    var new_shader: ?GraphicsPlugin.ShaderType = null;
+    var new_shader: ?Shapes3DPlugin.ShaderType = null;
     if (keyboard.isPressed(._1)) new_shader = .unlit;
     if (keyboard.isPressed(._2)) new_shader = .blinn_phong;
     if (keyboard.isPressed(._3)) new_shader = .pbr;
@@ -136,7 +136,7 @@ fn handleInput(
         // Update all materials
         for (materials.entities) |entity| {
             if (!materials.filter(entity)) continue;
-            const mat = materials.getComponentMut(entity, GraphicsPlugin.Material);
+            const mat = materials.getComponentMut(entity, Shapes3DPlugin.Material);
             mat.shader = shader;
         }
     }
@@ -145,7 +145,7 @@ fn handleInput(
 fn animateCamera(
     time: Resource(TimePlugin.Time),
     demo: Resource(DemoState),
-    camera: ResourceMut(GraphicsPlugin.Camera3D),
+    camera: ResourceMut(Shapes3DPlugin.Camera3D),
     rotating: Query(struct { Rotation }),
 ) void {
     const t = time.total_time;
@@ -172,8 +172,8 @@ fn animateCamera(
 
 fn drawUI(
     demo: Resource(DemoState),
-    camera: ResourceMut(GraphicsPlugin.Camera3D),
-    light: ResourceMut(GraphicsPlugin.Light3D),
+    camera: ResourceMut(Shapes3DPlugin.Camera3D),
+    light: ResourceMut(Shapes3DPlugin.Light3D),
 ) void {
     ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = 10 }, .Once);
     ImGuiPlugin.setNextWindowSize(.{ .x = 320, .y = 420 }, .Once);
