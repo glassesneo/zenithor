@@ -11,6 +11,189 @@ const BuiltinPlugin = @import("builtin.zig");
 const sparze = @import("sparze");
 const sokol = @import("sokol");
 
+// =============================================================================
+// PLATFORM ABSTRACTION LAYER
+// =============================================================================
+// Stateless wrappers over sokol.app functions. These provide a stable API
+// that hides the underlying platform layer from user code.
+//
+// **Design principle**: Users should never need to import `sokol` directly
+// for common application operations.
+
+/// Mouse cursor types for `setCursor()`.
+pub const Cursor = sokol.app.MouseCursor;
+
+// -----------------------------------------------------------------------------
+// Window Functions
+// -----------------------------------------------------------------------------
+
+/// Returns the current window width in pixels.
+pub fn windowWidth() i32 {
+    return sokol.app.width();
+}
+
+/// Returns the current window height in pixels.
+pub fn windowHeight() i32 {
+    return sokol.app.height();
+}
+
+/// Returns the current window width as a float.
+pub fn windowWidthF() f32 {
+    return sokol.app.widthf();
+}
+
+/// Returns the current window height as a float.
+pub fn windowHeightF() f32 {
+    return sokol.app.heightf();
+}
+
+/// Returns the DPI scale factor (e.g., 2.0 on Retina displays).
+pub fn dpiScale() f32 {
+    return sokol.app.dpiScale();
+}
+
+/// Returns true if running in high-DPI mode.
+pub fn isHighDpi() bool {
+    return sokol.app.highDpi();
+}
+
+/// Returns true if the window is currently fullscreen.
+pub fn isFullscreen() bool {
+    return sokol.app.isFullscreen();
+}
+
+/// Toggles fullscreen mode.
+pub fn toggleFullscreen() void {
+    sokol.app.toggleFullscreen();
+}
+
+/// Sets the window title.
+pub fn setWindowTitle(title: [:0]const u8) void {
+    sokol.app.setWindowTitle(title);
+}
+
+// -----------------------------------------------------------------------------
+// Cursor Functions
+// -----------------------------------------------------------------------------
+
+/// Shows or hides the mouse cursor.
+pub fn showCursor(visible: bool) void {
+    sokol.app.showMouse(visible);
+}
+
+/// Returns true if the cursor is currently visible.
+pub fn isCursorVisible() bool {
+    return sokol.app.mouseShown();
+}
+
+/// Locks the mouse cursor to the window (for FPS-style camera controls).
+/// When locked, the cursor is hidden and mouse movement is reported as deltas.
+pub fn lockCursor(locked: bool) void {
+    sokol.app.lockMouse(locked);
+}
+
+/// Returns true if the cursor is currently locked.
+pub fn isCursorLocked() bool {
+    return sokol.app.mouseLocked();
+}
+
+/// Sets the mouse cursor shape.
+pub fn setCursor(cursor: Cursor) void {
+    sokol.app.setMouseCursor(cursor);
+}
+
+/// Returns the current mouse cursor shape.
+pub fn getCursor() Cursor {
+    return sokol.app.getMouseCursor();
+}
+
+/// Convenience function: captures the cursor for FPS-style controls.
+/// Hides and locks the cursor in one call.
+pub fn captureCursor(captured: bool) void {
+    showCursor(!captured);
+    lockCursor(captured);
+}
+
+// -----------------------------------------------------------------------------
+// Clipboard Functions
+// -----------------------------------------------------------------------------
+
+/// Copies a string to the system clipboard.
+pub fn setClipboard(text: [:0]const u8) void {
+    sokol.app.setClipboardString(text);
+}
+
+/// Returns the current clipboard contents (empty string if unavailable).
+pub fn getClipboard() [:0]const u8 {
+    return sokol.app.getClipboardString();
+}
+
+// -----------------------------------------------------------------------------
+// Application Lifecycle Functions
+// -----------------------------------------------------------------------------
+
+/// Requests the application to quit. This triggers the cleanup phase.
+/// The quit can be cancelled by calling `cancelQuit()` in an event handler.
+pub fn requestQuit() void {
+    sokol.app.requestQuit();
+}
+
+/// Cancels a pending quit request (call from QUIT_REQUESTED event handler).
+pub fn cancelQuit() void {
+    sokol.app.cancelQuit();
+}
+
+/// Immediately terminates the application without cleanup.
+/// Prefer `requestQuit()` for graceful shutdown.
+pub fn quit() void {
+    sokol.app.quit();
+}
+
+/// Returns the total number of frames rendered since app start.
+pub fn frameCount() u64 {
+    return sokol.app.frameCount();
+}
+
+/// Returns the duration of the last frame in seconds.
+/// Note: For game logic, prefer using TimePlugin.Time.delta_time instead.
+pub fn frameDuration() f64 {
+    return sokol.app.frameDuration();
+}
+
+// -----------------------------------------------------------------------------
+// Mobile/Virtual Keyboard Functions
+// -----------------------------------------------------------------------------
+
+/// Shows or hides the virtual keyboard (mobile platforms only).
+pub fn showKeyboard(visible: bool) void {
+    sokol.app.showKeyboard(visible);
+}
+
+/// Returns true if the virtual keyboard is currently shown.
+pub fn isKeyboardVisible() bool {
+    return sokol.app.keyboardShown();
+}
+
+// -----------------------------------------------------------------------------
+// File Drop Functions
+// -----------------------------------------------------------------------------
+
+/// Returns the number of files dropped onto the window.
+/// Only valid during/after a FILES_DROPPED event.
+pub fn getDroppedFileCount() i32 {
+    return sokol.app.getNumDroppedFiles();
+}
+
+/// Returns the path of a dropped file by index.
+/// Only valid during/after a FILES_DROPPED event.
+pub fn getDroppedFilePath(index: i32) [:0]const u8 {
+    return sokol.app.getDroppedFilePath(index);
+}
+
+// =============================================================================
+// END PLATFORM ABSTRACTION LAYER
+// =============================================================================
+
 fn containsType(comptime arr: anytype, comptime T: type, comptime n: usize) bool {
     return inline for (0..n) |i| {
         if (arr[i] == T) break true;

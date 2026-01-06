@@ -76,7 +76,6 @@ const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const SerializationPlugin = @import("serialization_plugin");
-const sokol = @import("sokol");
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
@@ -315,8 +314,7 @@ const GamePlugin = struct {
         commands.setResource(SceneStats, .{});
 
         // Hide and lock mouse cursor for 1st person camera
-        sokol.app.showMouse(false);
-        sokol.app.lockMouse(true);
+        zenithor.captureCursor(true);
 
         // Set background color
         pass_action.colors[0].clear_value = .{ .r = 0.05, .g = 0.05, .b = 0.1, .a = 1.0 };
@@ -529,8 +527,7 @@ const GamePlugin = struct {
         // Tab - Toggle mouse capture
         if (keyboard.isPressed(.TAB)) {
             game.mouse_captured = !game.mouse_captured;
-            sokol.app.showMouse(!game.mouse_captured);
-            sokol.app.lockMouse(game.mouse_captured);
+            zenithor.captureCursor(game.mouse_captured);
         }
 
         // F1 - Toggle help

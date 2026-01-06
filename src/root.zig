@@ -4,6 +4,7 @@
 //!
 //! This module re-exports the core APIs for building Zenithor applications:
 //! - Application lifecycle (`run`)
+//! - Platform abstraction (window, cursor, clipboard)
 //! - System scheduling (`Stage`, `SystemConfig`)
 //! - Builtin components (`Transform`, `Color`, `Rotation`, `Scale`)
 //! - Sparze ECS types (`Entity`, `Query`, `Resource`, `EventWriter`, etc.)
@@ -99,6 +100,54 @@ pub const Transform = BuiltinPlugin.Transform;
 pub const Rotation = BuiltinPlugin.Rotation;
 pub const Scale = BuiltinPlugin.Scale;
 pub const Color = BuiltinPlugin.Color;
+
+// =============================================================================
+// PLATFORM ABSTRACTION LAYER
+// =============================================================================
+// Stateless functions for window, cursor, clipboard, and application control.
+// These wrap the underlying platform layer so users never need to import sokol.
+
+/// Mouse cursor types for `setCursor()`.
+pub const Cursor = application_module.Cursor;
+
+// Window functions
+pub const windowWidth = application_module.windowWidth;
+pub const windowHeight = application_module.windowHeight;
+pub const windowWidthF = application_module.windowWidthF;
+pub const windowHeightF = application_module.windowHeightF;
+pub const dpiScale = application_module.dpiScale;
+pub const isHighDpi = application_module.isHighDpi;
+pub const isFullscreen = application_module.isFullscreen;
+pub const toggleFullscreen = application_module.toggleFullscreen;
+pub const setWindowTitle = application_module.setWindowTitle;
+
+// Cursor functions
+pub const showCursor = application_module.showCursor;
+pub const isCursorVisible = application_module.isCursorVisible;
+pub const lockCursor = application_module.lockCursor;
+pub const isCursorLocked = application_module.isCursorLocked;
+pub const setCursor = application_module.setCursor;
+pub const getCursor = application_module.getCursor;
+pub const captureCursor = application_module.captureCursor;
+
+// Clipboard functions
+pub const setClipboard = application_module.setClipboard;
+pub const getClipboard = application_module.getClipboard;
+
+// Application lifecycle functions
+pub const requestQuit = application_module.requestQuit;
+pub const cancelQuit = application_module.cancelQuit;
+pub const quit = application_module.quit;
+pub const frameCount = application_module.frameCount;
+pub const frameDuration = application_module.frameDuration;
+
+// Mobile/virtual keyboard functions
+pub const showKeyboard = application_module.showKeyboard;
+pub const isKeyboardVisible = application_module.isKeyboardVisible;
+
+// File drop functions
+pub const getDroppedFileCount = application_module.getDroppedFileCount;
+pub const getDroppedFilePath = application_module.getDroppedFilePath;
 
 const sparze = @import("sparze");
 pub const Entity = sparze.Entity;

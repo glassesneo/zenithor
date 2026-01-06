@@ -131,7 +131,7 @@ fn drawTexturedQuad(texture: *const AssetPlugin.Texture) void {
     // Setup 2D orthographic projection
     sokol.gl.defaults();
     sokol.gl.matrixModeProjection();
-    sokol.gl.ortho(0, sokol.app.widthf(), sokol.app.heightf(), 0, -1, 1);
+    sokol.gl.ortho(0, zenithor.windowWidthF(), zenithor.windowHeightF(), 0, -1, 1);
 
     // Enable texturing and bind the texture (using cached view, not per-frame creation)
     sokol.gl.enableTexture();
@@ -144,8 +144,8 @@ fn drawTexturedQuad(texture: *const AssetPlugin.Texture) void {
     const sprite_h = @as(f32, @floatFromInt(texture.height)) * scale;
 
     // Center the sprite on screen
-    const screen_w = sokol.app.widthf();
-    const screen_h = sokol.app.heightf();
+    const screen_w = zenithor.windowWidthF();
+    const screen_h = zenithor.windowHeightF();
     const x = (screen_w - sprite_w) / 2.0;
     const y = (screen_h - sprite_h) / 2.0 - 50.0; // Offset up a bit for UI
 
@@ -183,7 +183,7 @@ fn showAssetUI(
     query: zenithor.Query(struct { TestAssetComponent }),
 ) !void {
     // Position the window at the bottom
-    ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = sokol.app.heightf() - 260 }, .Once);
+    ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = zenithor.windowHeightF() - 260 }, .Once);
     ImGuiPlugin.setNextWindowSize(.{ .x = 320, .y = 250 }, .Once);
 
     if (ImGuiPlugin.begin("Asset Loading Demo", null, .None)) {
