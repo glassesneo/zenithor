@@ -85,7 +85,6 @@ fn setup(
 }
 
 fn requestAsset(
-    commands: anytype,
     registry: zenithor.ResourceMut(AssetPlugin.AssetRegistry),
     query: zenithor.Query(struct { TestAssetComponent }),
     writer: zenithor.EventWriter(AssetPlugin.AssetRequest),
@@ -93,25 +92,23 @@ fn requestAsset(
     for (query.entities) |entity| {
         const comp = query.getComponentMut(entity, TestAssetComponent);
 
-        if (!comp.requested) {
-            // Request the demo texture from embedded source (explicit per-asset choice)
-            const locator = AssetPlugin.AssetLocator.embedded("demo_texture.png");
-            comp.handle = try registry.createHandle(AssetPlugin.Texture, locator);
+        if (comp.requested) continue;
 
-            try writer.enqueue(.{
-                .type_id = comp.handle.handle.id.type_id,
-                .path = locator.path,
-                .source = locator.source,
-                .priority = 255,
-                .requester = @bitCast(entity),
-            });
+        // Request the demo texture from embedded source (explicit per-asset choice)
+        const locator = AssetPlugin.AssetLocator.embedded("demo_texture.png");
+        comp.handle = try registry.createHandle(AssetPlugin.Texture, locator);
 
-            comp.requested = true;
-            std.debug.print("[Game] Requested asset: demo_texture.png (source: embedded)\n", .{});
-        }
+        try writer.enqueue(.{
+            .type_id = comp.handle.handle.id.type_id,
+            .path = locator.path,
+            .source = locator.source,
+            .priority = 255,
+            .requester = @bitCast(entity),
+        });
+
+        comp.requested = true;
+        std.debug.print("[Game] Requested asset: demo_texture.png (source: embedded)\n", .{});
     }
-
-    _ = commands;
 }
 
 /// Render the loaded texture as a sprite
@@ -119,22 +116,14 @@ fn renderSprite(
     registry: zenithor.Resource(AssetPlugin.AssetRegistry),
     query: zenithor.Query(struct { TestAssetComponent }),
 ) !void {
-    // Find the loaded texture
-    for (query.entities) |_| {
-        const comp = query.getComponent(query.entities[0], TestAssetComponent);
+    const comp = query.getComponent(query.entities[0], TestAssetComponent);
+    const entry = registry.validateHandle(comp.handle.handle) orelse return;
+    if (entry.state != .ready) return;
+    const payload = entry.payload orelse return;
+    const texture: *const AssetPlugin.Texture = @ptrCast(@alignCast(payload));
 
-        if (registry.validateHandle(comp.handle.handle)) |entry| {
-            if (entry.state == .ready) {
-                if (entry.payload) |payload| {
-                    const texture: *const AssetPlugin.Texture = @ptrCast(@alignCast(payload));
-
-                    // Draw the texture as a scaled sprite using sokol.gl
-                    drawTexturedQuad(texture);
-                }
-            }
-        }
-        break;
-    }
+    // Draw the texture as a scaled sprite using sokol.gl
+    drawTexturedQuad(texture);
 }
 
 /// Draw a textured quad using sokol.gl immediate mode

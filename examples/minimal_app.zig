@@ -14,8 +14,8 @@ const InputPlugin = @import("input_plugin");
 
 pub fn main() !void {
     // Entry point: pass plugin tuple and options placeholder
-    // BuiltinPlugin (Transform, Color) is added automatically
-    zenithor.run(.{ GraphicsPlugin, TimePlugin, InputPlugin, Game }, .{});
+    // BuiltinPlugin is added automatically
+    zenithor.run(.{ GraphicsPlugin, Game }, .{});
 }
 
 // Game plugin definition
