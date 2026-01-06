@@ -26,6 +26,9 @@ const examples = [_]Example{
     .{ .name = "sprite_rendering", .plugins = &.{ "renderer_plugin", "time_plugin", "asset_plugin", "sprite_plugin", "imgui_plugin" } },
     // Comprehensive 3D showcase - demonstrates ALL features
     .{ .name = "showcase_3d", .plugins = &.{ "renderer_plugin", "shapes3d_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
+    // Custom shader demonstration - rim/Fresnel lighting effect
+    .{ .name = "custom_shader_3d", .plugins = &.{ "shapes3d_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
+    // Test shader
 };
 
 const Example = struct {
@@ -77,6 +80,9 @@ const DependencySet = struct {
     serialization_plugin_mod: *Build.Module,
     asset_plugin_mod: *Build.Module,
     sprite_plugin_mod: *Build.Module,
+    // Custom shader modules (for custom_shader_3d example)
+    rim_shader_mod: *Build.Module,
+    rim_spec_mod: *Build.Module,
 };
 
 const ExampleResult = struct {
@@ -192,6 +198,22 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .shdc_dep = dep_shdc,
         .input = "plugins/shapes3d/src/unlit.glsl",
         .output = "unlit_shader.zig",
+        .slang = .{
+            .glsl410 = true,
+            .glsl300es = true,
+            .hlsl5 = true,
+            .metal_macos = true,
+            .metal_ios = true,
+            .metal_sim = true,
+            .wgsl = true,
+        },
+    });
+
+    // Rim shader (custom shader example)
+    const rim_shader_mod = try sokol.shdc.createModule(b, "rim_shader", sokol_mod, .{
+        .shdc_dep = dep_shdc,
+        .input = "examples/shaders/rim.glsl",
+        .output = "rim_shader.zig",
         .slang = .{
             .glsl410 = true,
             .glsl300es = true,
@@ -323,6 +345,18 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         },
     });
 
+    // Rim shader spec module (for custom_shader_3d example)
+    const rim_spec_mod = b.addModule("rim_spec", .{
+        .root_source_file = b.path("examples/shaders/rim.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "sokol", .module = sokol_mod },
+            .{ .name = "rim_shader", .module = rim_shader_mod },
+            .{ .name = "shapes3d_plugin", .module = shapes3d_mod },
+        },
+    });
+
     addDarwinIncludePaths(target, dep_sokol);
 
     return .{
@@ -343,6 +377,8 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
             .serialization_plugin_mod = serialization_mod,
             .asset_plugin_mod = asset_mod,
             .sprite_plugin_mod = sprite_mod,
+            .rim_shader_mod = rim_shader_mod,
+            .rim_spec_mod = rim_spec_mod,
         },
     };
 }
@@ -482,6 +518,11 @@ fn buildNativeExample(b: *Build, example: Example, options: ExampleOptions, deps
         .optimize = options.optimize,
     });
 
+    // Add rim_spec module for custom_shader_3d example
+    if (std.mem.eql(u8, example.name, "custom_shader_3d")) {
+        mod.addImport("rim_spec", deps.rim_spec_mod);
+    }
+
     const exe = b.addExecutable(.{
         .name = example.name,
         .root_module = mod,
@@ -526,6 +567,11 @@ fn buildWebExample(b: *Build, example: Example, options: ExampleOptions, deps: D
         .target = options.target,
         .optimize = options.optimize,
     });
+
+    // Add rim_spec module for custom_shader_3d example
+    if (std.mem.eql(u8, example.name, "custom_shader_3d")) {
+        mod.addImport("rim_spec", deps.rim_spec_mod);
+    }
 
     const lib = b.addLibrary(.{
         .name = example.name,

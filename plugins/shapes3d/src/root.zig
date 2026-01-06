@@ -3,7 +3,6 @@ const Query = sparze.Query;
 const Resource = sparze.Resource;
 const ResourceMut = sparze.ResourceMut;
 const sokol = @import("sokol");
-const Pipeline = sokol.gfx.Pipeline;
 
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
@@ -15,15 +14,15 @@ const std = @import("std");
 const builtin = @import("builtin");
 const RendererPlugin = @import("renderer_plugin");
 
-// Shader imports (generated modules from build.zig)
-const pbr_shader = @import("pbr_shader");
-const blinn_phong_shader = @import("blinn_phong_shader");
-const unlit_shader = @import("unlit_shader");
-
 // Shader spec imports
 const UnlitShader = @import("shaders/unlit.zig");
 const BlinnPhongShader = @import("shaders/blinn_phong.zig");
 const PbrShader = @import("shaders/pbr.zig");
+
+// Shared types
+pub const types = @import("types.zig");
+pub const VsUniformParams = types.VsUniformParams;
+pub const FsUniformParams = types.FsUniformParams;
 
 const is_debug = builtin.mode == .Debug;
 
@@ -94,18 +93,95 @@ pub const Torus3D = struct {
 };
 
 // =============================================================================
-// Shader Selection
+// Shader Registry
 // =============================================================================
 
-pub const ShaderType = enum {
-    unlit,
-    blinn_phong,
-    pbr,
+/// Entry for a registered shader (built-in or custom)
+pub const ShaderEntry = struct {
+    name: []const u8,
+    shader: sokol.gfx.Shader,
+    pipeline: sokol.gfx.Pipeline,
+    applyVsUniforms: *const fn (params: VsUniformParams) void,
+    applyFsUniforms: *const fn (params: FsUniformParams) void,
+};
+
+/// Registry of all available shaders (built-in and custom)
+/// Replaces the old Render3DShaders resource with a unified system.
+pub const ShaderRegistry = struct {
+    pub const serialized = false; // Runtime-only GPU state
+
+    const max_shaders = 16;
+
+    entries: [max_shaders]?ShaderEntry = [_]?ShaderEntry{null} ** max_shaders,
+    count: usize = 0,
+    default_shader: []const u8 = "blinn_phong",
+    layout: sokol.gfx.VertexLayoutState = .{},
+    depth_state: sokol.gfx.DepthState = .{},
+
+    /// Initialize the registry (called automatically by Sparze)
+    pub fn init(allocator: std.mem.Allocator) ShaderRegistry {
+        _ = allocator;
+        return .{};
+    }
+
+    /// Deinitialize and destroy all shaders/pipelines
+    pub fn deinit(self: *ShaderRegistry, allocator: std.mem.Allocator) void {
+        _ = allocator;
+        for (&self.entries) |*entry| {
+            if (entry.*) |e| {
+                if (e.pipeline.id != 0) sokol.gfx.destroyPipeline(e.pipeline);
+                if (e.shader.id != 0) sokol.gfx.destroyShader(e.shader);
+                entry.* = null;
+            }
+        }
+        self.count = 0;
+    }
+
+    /// Register a shader spec (comptime interface)
+    pub fn register(self: *ShaderRegistry, comptime Spec: type) void {
+        if (self.count >= max_shaders) {
+            if (is_debug) @panic("ShaderRegistry: too many shaders registered");
+            return;
+        }
+
+        const backend = sokol.gfx.queryBackend();
+        const shader = sokol.gfx.makeShader(Spec.shaderDesc(backend));
+        var pipeline_desc = Spec.pipelineDesc(self.layout);
+        pipeline_desc.shader = shader;
+        pipeline_desc.depth = self.depth_state;
+        const pipeline = sokol.gfx.makePipeline(pipeline_desc);
+
+        self.entries[self.count] = ShaderEntry{
+            .name = Spec.name,
+            .shader = shader,
+            .pipeline = pipeline,
+            .applyVsUniforms = Spec.applyVsUniforms,
+            .applyFsUniforms = Spec.applyFsUniforms,
+        };
+        self.count += 1;
+    }
+
+    /// Get shader entry by name
+    pub fn get(self: *const ShaderRegistry, name: []const u8) ?ShaderEntry {
+        for (self.entries[0..self.count]) |entry| {
+            if (entry) |e| {
+                if (std.mem.eql(u8, e.name, name)) {
+                    return e;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// Get shader entry by name, falling back to default if not found
+    pub fn getOrDefault(self: *const ShaderRegistry, name: []const u8) ?ShaderEntry {
+        return self.get(name) orelse self.get(self.default_shader);
+    }
 };
 
 /// Material component for shader selection and parameters
 pub const Material = struct {
-    shader: ShaderType = .blinn_phong,
+    shader: []const u8 = "blinn_phong", // Shader name (unified for built-in and custom)
     // Blinn-Phong parameters
     shininess: f32 = 32.0,
     specular_strength: f32 = 0.5,
@@ -114,8 +190,101 @@ pub const Material = struct {
     roughness: f32 = 0.5,
 
     pub fn format(self: Material, writer: anytype) !void {
-        try writer.print("Material(shader: {s})", .{@tagName(self.shader)});
+        try writer.print("Material(shader: {s})", .{self.shader});
     }
+
+    /// Custom serializer for Material (shader name is not POD)
+    /// Note: Custom shader names are preserved via string interning. Unknown shaders
+    /// at deserialize time will use the stored name, which may fail at runtime if
+    /// the shader isn't registered. This is intentional - it allows save files to
+    /// work across sessions where custom shaders are registered.
+    pub const Serializer = struct {
+        const max_shader_name = 64;
+
+        // String intern table for deserialized shader names
+        // This allows custom shader names to persist across save/load cycles
+        var intern_table: [16][max_shader_name]u8 = undefined;
+        var intern_lens: [16]u8 = [_]u8{0} ** 16;
+        var intern_count: usize = 0;
+
+        pub fn serialize(mat: Material, writer: anytype) !void {
+            // Write shader name as length-prefixed string
+            const len: u8 = @intCast(@min(mat.shader.len, max_shader_name));
+            try writer.writeByte(len);
+            try writer.writeAll(mat.shader[0..len]);
+            // Write POD fields
+            try writer.writeAll(std.mem.asBytes(&mat.shininess));
+            try writer.writeAll(std.mem.asBytes(&mat.specular_strength));
+            try writer.writeAll(std.mem.asBytes(&mat.metallic));
+            try writer.writeAll(std.mem.asBytes(&mat.roughness));
+        }
+
+        pub fn deserialize(reader: anytype) !Material {
+            // Read shader name length with bounds check
+            const len = try reader.readByte();
+            if (len > max_shader_name) {
+                // Corrupted data - skip invalid bytes and use default
+                var skip_buf: [256]u8 = undefined;
+                var remaining = len;
+                while (remaining > 0) {
+                    const to_read = @min(remaining, skip_buf.len);
+                    _ = try reader.readAtLeast(skip_buf[0..to_read], to_read);
+                    remaining -= @as(u8, @intCast(to_read));
+                }
+                // Skip POD fields too
+                var pod_skip: [16]u8 = undefined;
+                _ = try reader.readAtLeast(&pod_skip, 16);
+                return .{ .shader = "blinn_phong" };
+            }
+
+            var shader_buf: [max_shader_name]u8 = undefined;
+            _ = try reader.readAtLeast(shader_buf[0..len], len);
+
+            // Map to compile-time strings for known shaders (avoids allocation)
+            const shader_name: []const u8 = blk: {
+                const read_name = shader_buf[0..len];
+                if (std.mem.eql(u8, read_name, "unlit")) break :blk "unlit";
+                if (std.mem.eql(u8, read_name, "blinn_phong")) break :blk "blinn_phong";
+                if (std.mem.eql(u8, read_name, "pbr")) break :blk "pbr";
+                if (std.mem.eql(u8, read_name, "rim")) break :blk "rim";
+                // Unknown shader - intern the name for persistence
+                // First check if already interned
+                for (0..intern_count) |i| {
+                    const interned = intern_table[i][0..intern_lens[i]];
+                    if (std.mem.eql(u8, interned, read_name)) {
+                        break :blk interned;
+                    }
+                }
+                // Intern new name if space available
+                if (intern_count < intern_table.len) {
+                    @memcpy(intern_table[intern_count][0..len], read_name);
+                    intern_lens[intern_count] = len;
+                    const result = intern_table[intern_count][0..len];
+                    intern_count += 1;
+                    break :blk result;
+                }
+                // Intern table full - fall back to default
+                break :blk "blinn_phong";
+            };
+
+            // Read POD fields
+            var shininess: f32 = undefined;
+            var specular_strength: f32 = undefined;
+            var metallic: f32 = undefined;
+            var roughness: f32 = undefined;
+            _ = try reader.readAtLeast(std.mem.asBytes(&shininess), @sizeOf(f32));
+            _ = try reader.readAtLeast(std.mem.asBytes(&specular_strength), @sizeOf(f32));
+            _ = try reader.readAtLeast(std.mem.asBytes(&metallic), @sizeOf(f32));
+            _ = try reader.readAtLeast(std.mem.asBytes(&roughness), @sizeOf(f32));
+            return .{
+                .shader = shader_name,
+                .shininess = shininess,
+                .specular_strength = specular_strength,
+                .metallic = metallic,
+                .roughness = roughness,
+            };
+        }
+    };
 };
 
 // =============================================================================
@@ -160,15 +329,7 @@ pub const Render3DBuffers = struct {
     draw_count: u32 = 0,
 };
 
-/// 3D Shaders resource - stores shader and pipeline handles
-pub const Render3DShaders = struct {
-    shader_unlit: sokol.gfx.Shader = .{},
-    pipeline_unlit: sokol.gfx.Pipeline = .{},
-    shader_blinn_phong: sokol.gfx.Shader = .{},
-    pipeline_blinn_phong: sokol.gfx.Pipeline = .{},
-    shader_pbr: sokol.gfx.Shader = .{},
-    pipeline_pbr: sokol.gfx.Pipeline = .{},
-};
+// Note: Render3DShaders has been replaced by ShaderRegistry
 
 // =============================================================================
 // Helper Types
@@ -332,7 +493,7 @@ fn colorToU32(c: Color) u32 {
 // =============================================================================
 
 fn init(commands: anytype, allocator: std.mem.Allocator) !void {
-    // Initialize shader registry with layout and depth state
+    // Setup vertex layout for sokol.shape
     var layout = sokol.gfx.VertexLayoutState{};
     layout.buffers[0] = sokol.shape.vertexBufferLayoutState();
     layout.attrs[0] = sokol.shape.positionVertexAttrState();
@@ -345,36 +506,17 @@ fn init(commands: anytype, allocator: std.mem.Allocator) !void {
         .compare = .LESS_EQUAL,
     };
 
-    // Create shaders directly (WASM-compatible)
-    const backend = sokol.gfx.queryBackend();
+    // Initialize shader registry with layout and depth state
+    var registry = ShaderRegistry{};
+    registry.layout = layout;
+    registry.depth_state = depth_state;
 
-    const shader_unlit = sokol.gfx.makeShader(UnlitShader.shaderDesc(backend));
-    var pipeline_desc_unlit = UnlitShader.pipelineDesc(layout);
-    pipeline_desc_unlit.shader = shader_unlit;
-    pipeline_desc_unlit.depth = depth_state;
-    const pipeline_unlit = sokol.gfx.makePipeline(pipeline_desc_unlit);
+    // Register built-in shaders (same unified interface as custom shaders)
+    registry.register(UnlitShader);
+    registry.register(BlinnPhongShader);
+    registry.register(PbrShader);
 
-    const shader_blinn_phong = sokol.gfx.makeShader(BlinnPhongShader.shaderDesc(backend));
-    var pipeline_desc_blinn_phong = BlinnPhongShader.pipelineDesc(layout);
-    pipeline_desc_blinn_phong.shader = shader_blinn_phong;
-    pipeline_desc_blinn_phong.depth = depth_state;
-    const pipeline_blinn_phong = sokol.gfx.makePipeline(pipeline_desc_blinn_phong);
-
-    const shader_pbr = sokol.gfx.makeShader(PbrShader.shaderDesc(backend));
-    var pipeline_desc_pbr = PbrShader.pipelineDesc(layout);
-    pipeline_desc_pbr.shader = shader_pbr;
-    pipeline_desc_pbr.depth = depth_state;
-    const pipeline_pbr = sokol.gfx.makePipeline(pipeline_desc_pbr);
-
-    // Store shaders in simple resource
-    commands.setResource(Render3DShaders, .{
-        .shader_unlit = shader_unlit,
-        .pipeline_unlit = pipeline_unlit,
-        .shader_blinn_phong = shader_blinn_phong,
-        .pipeline_blinn_phong = pipeline_blinn_phong,
-        .shader_pbr = shader_pbr,
-        .pipeline_pbr = pipeline_pbr,
-    });
+    commands.setResource(ShaderRegistry, registry);
 
     // Initialize 3D buffers resource (not yet allocated)
     var buffers = Render3DBuffers{};
@@ -449,48 +591,61 @@ const DrawCommand = struct {
     material: Material,
 };
 
-/// Command buckets for batching draw calls by shader type
-const CommandBuckets = struct {
+/// Shader bucket for batching draw calls
+const ShaderBucket = struct {
+    shader_name: []const u8 = "",
+    commands: [max_commands]DrawCommand = undefined,
+    count: usize = 0,
+
     const max_commands = 1024;
+};
 
-    unlit: [max_commands]DrawCommand = undefined,
-    unlit_count: usize = 0,
-    blinn: [max_commands]DrawCommand = undefined,
-    blinn_count: usize = 0,
-    pbr: [max_commands]DrawCommand = undefined,
-    pbr_count: usize = 0,
+/// Command buckets for batching draw calls by shader name (unified for all shaders)
+/// Note: max_shaders is limited to 4 to keep stack usage reasonable (~800KB vs ~600KB original).
+/// For more shaders, consider heap allocation or reducing max_commands.
+const CommandBuckets = struct {
+    const max_shaders = 4;
 
-    fn add(self: *CommandBuckets, shader: ShaderType, cmd: DrawCommand) void {
-        switch (shader) {
-            .unlit => {
-                if (self.unlit_count >= max_commands) {
-                    if (is_debug) @panic("Too many unlit draw commands");
+    buckets: [max_shaders]ShaderBucket = [_]ShaderBucket{.{}} ** max_shaders,
+    bucket_count: usize = 0,
+
+    /// Add a draw command to the appropriate shader bucket
+    fn add(self: *CommandBuckets, shader_name: []const u8, cmd: DrawCommand) void {
+        // Find existing bucket for this shader
+        for (self.buckets[0..self.bucket_count]) |*bucket| {
+            if (std.mem.eql(u8, bucket.shader_name, shader_name)) {
+                if (bucket.count >= ShaderBucket.max_commands) {
+                    if (is_debug) @panic("Too many draw commands for shader");
                     return;
                 }
-                self.unlit[self.unlit_count] = cmd;
-                self.unlit_count += 1;
-            },
-            .blinn_phong => {
-                if (self.blinn_count >= max_commands) {
-                    if (is_debug) @panic("Too many blinn_phong draw commands");
-                    return;
-                }
-                self.blinn[self.blinn_count] = cmd;
-                self.blinn_count += 1;
-            },
-            .pbr => {
-                if (self.pbr_count >= max_commands) {
-                    if (is_debug) @panic("Too many pbr draw commands");
-                    return;
-                }
-                self.pbr[self.pbr_count] = cmd;
-                self.pbr_count += 1;
-            },
+                bucket.commands[bucket.count] = cmd;
+                bucket.count += 1;
+                return;
+            }
         }
+
+        // Create new bucket for this shader
+        if (self.bucket_count >= max_shaders) {
+            if (is_debug) @panic("Too many different shaders in use");
+            return;
+        }
+
+        self.buckets[self.bucket_count] = ShaderBucket{
+            .shader_name = shader_name,
+            .commands = undefined,
+            .count = 1,
+        };
+        self.buckets[self.bucket_count].commands[0] = cmd;
+        self.bucket_count += 1;
     }
 
+    /// Get total command count across all buckets
     fn total(self: *const CommandBuckets) usize {
-        return self.unlit_count + self.blinn_count + self.pbr_count;
+        var count: usize = 0;
+        for (self.buckets[0..self.bucket_count]) |bucket| {
+            count += bucket.count;
+        }
+        return count;
     }
 };
 
@@ -510,83 +665,46 @@ fn hasCapacityForShape(buf: sokol.shape.Buffer, max_vertices: usize, max_indices
     return true;
 }
 
-/// Draw all commands in the unlit bucket
-fn drawUnlitBucket(
-    cmds: []const DrawCommand,
-    pip: Pipeline,
-    bindings: sokol.gfx.Bindings,
-) void {
-    if (cmds.len == 0) return;
-    sokol.gfx.applyPipeline(pip);
-    sokol.gfx.applyBindings(bindings);
-    for (cmds) |cmd| {
-        sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&unlit_shader.VsParams{
-            .mvp = cmd.mvp,
-        }));
-        sokol.gfx.draw(cmd.base_element, cmd.num_elements, 1);
-    }
-}
-
-/// Draw all commands in the Blinn-Phong bucket
-fn drawBlinnPhongBucket(
-    cmds: []const DrawCommand,
-    pip: Pipeline,
+/// Draw all commands in a shader bucket using the unified shader interface
+fn drawShaderBucket(
+    bucket: ShaderBucket,
+    entry: ShaderEntry,
     bindings: sokol.gfx.Bindings,
     light: Light3D,
     camera: Camera3D,
 ) void {
-    if (cmds.len == 0) return;
-    sokol.gfx.applyPipeline(pip);
-    sokol.gfx.applyBindings(bindings);
-    for (cmds) |cmd| {
-        sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&blinn_phong_shader.VsParams{
-            .mvp = cmd.mvp,
-            .model = cmd.model,
-        }));
-        sokol.gfx.applyUniforms(1, sokol.gfx.asRange(&blinn_phong_shader.FsParams{
-            .light_pos = light.position,
-            ._pad0 = 0,
-            .view_pos = camera.eye,
-            .shininess = cmd.material.shininess,
-            .light_color = light.color,
-            .ambient_strength = light.ambient_strength,
-            .specular_strength = cmd.material.specular_strength,
-            ._pad1 = 0,
-            ._pad2 = 0,
-            ._pad3 = 0,
-        }));
-        sokol.gfx.draw(cmd.base_element, cmd.num_elements, 1);
-    }
-}
+    if (bucket.count == 0) return;
 
-/// Draw all commands in the PBR bucket
-fn drawPbrBucket(
-    cmds: []const DrawCommand,
-    pip: Pipeline,
-    bindings: sokol.gfx.Bindings,
-    light: Light3D,
-    camera: Camera3D,
-) void {
-    if (cmds.len == 0) return;
-    sokol.gfx.applyPipeline(pip);
+    sokol.gfx.applyPipeline(entry.pipeline);
     sokol.gfx.applyBindings(bindings);
-    for (cmds) |cmd| {
-        sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&pbr_shader.VsParams{
+
+    // Build FS uniform params once (light/camera don't change per-command)
+    const fs_base = FsUniformParams{
+        .light_pos = light.position,
+        .view_pos = camera.eye,
+        .light_color = light.color,
+        .ambient_strength = light.ambient_strength,
+        .shininess = 0,
+        .specular_strength = 0,
+        .metallic = 0,
+        .roughness = 0,
+    };
+
+    for (bucket.commands[0..bucket.count]) |cmd| {
+        // Apply VS uniforms
+        entry.applyVsUniforms(.{
             .mvp = cmd.mvp,
             .model = cmd.model,
-        }));
-        sokol.gfx.applyUniforms(1, sokol.gfx.asRange(&pbr_shader.FsParams{
-            .light_pos = light.position,
-            ._pad0 = 0,
-            .view_pos = camera.eye,
-            .metallic = cmd.material.metallic,
-            .light_color = light.color,
-            .roughness = cmd.material.roughness,
-            .ambient_strength = light.ambient_strength,
-            ._pad1 = 0,
-            ._pad2 = 0,
-            ._pad3 = 0,
-        }));
+        });
+
+        // Apply FS uniforms with material params
+        var fs_params = fs_base;
+        fs_params.shininess = cmd.material.shininess;
+        fs_params.specular_strength = cmd.material.specular_strength;
+        fs_params.metallic = cmd.material.metallic;
+        fs_params.roughness = cmd.material.roughness;
+        entry.applyFsUniforms(fs_params);
+
         sokol.gfx.draw(cmd.base_element, cmd.num_elements, 1);
     }
 }
@@ -600,7 +718,7 @@ fn draw3D(
     camera: Resource(Camera3D),
     light: Resource(Light3D),
     buffers: ResourceMut(Render3DBuffers),
-    shader_res: Resource(Render3DShaders),
+    registry: Resource(ShaderRegistry),
     // Commands for Rotation/Scale lookup (avoids comptime branch quota explosion from adding
     // ?Rotation/?Scale to each shape query - would exceed Zig's 3000 branch limit)
     commands: anytype,
@@ -843,22 +961,23 @@ fn draw3D(
         bindings.vertex_buffers[0] = buffers.vertex_buffer;
         bindings.index_buffer = buffers.index_buffer;
 
-        // Draw each shader bucket (pipelines created at startup)
-        if (buckets.unlit_count > 0) {
-            drawUnlitBucket(buckets.unlit[0..buckets.unlit_count], shader_res.pipeline_unlit, bindings);
-        }
-        if (buckets.blinn_count > 0) {
-            drawBlinnPhongBucket(buckets.blinn[0..buckets.blinn_count], shader_res.pipeline_blinn_phong, bindings, light.*, camera.*);
-        }
-        if (buckets.pbr_count > 0) {
-            drawPbrBucket(buckets.pbr[0..buckets.pbr_count], shader_res.pipeline_pbr, bindings, light.*, camera.*);
+        // Draw each shader bucket using the unified registry
+        for (buckets.buckets[0..buckets.bucket_count]) |bucket| {
+            if (bucket.count == 0) continue;
+
+            // Look up shader in registry
+            if (registry.getOrDefault(bucket.shader_name)) |entry| {
+                drawShaderBucket(bucket, entry, bindings, light.*, camera.*);
+            } else if (is_debug) {
+                std.debug.print("Warning: shader '{s}' not found in registry\n", .{bucket.shader_name});
+            }
         }
     }
 
     buffers.draw_count = @intCast(total_count);
 }
 
-fn cleanup(buffers: ResourceMut(Render3DBuffers), shader_res: Resource(Render3DShaders)) void {
+fn cleanup(buffers: ResourceMut(Render3DBuffers), registry: ResourceMut(ShaderRegistry)) void {
     // Free heap-allocated staging buffers
     if (buffers.allocator) |allocator| {
         if (buffers.vertices.len > 0) allocator.free(buffers.vertices);
@@ -871,15 +990,17 @@ fn cleanup(buffers: ResourceMut(Render3DBuffers), shader_res: Resource(Render3DS
         if (buffers.index_buffer.id != 0) sokol.gfx.destroyBuffer(buffers.index_buffer);
     }
 
-    // Destroy shaders and pipelines
-    if (shader_res.pipeline_unlit.id != 0) sokol.gfx.destroyPipeline(shader_res.pipeline_unlit);
-    if (shader_res.shader_unlit.id != 0) sokol.gfx.destroyShader(shader_res.shader_unlit);
-    if (shader_res.pipeline_blinn_phong.id != 0) sokol.gfx.destroyPipeline(shader_res.pipeline_blinn_phong);
-    if (shader_res.shader_blinn_phong.id != 0) sokol.gfx.destroyShader(shader_res.shader_blinn_phong);
-    if (shader_res.pipeline_pbr.id != 0) sokol.gfx.destroyPipeline(shader_res.pipeline_pbr);
-    if (shader_res.shader_pbr.id != 0) sokol.gfx.destroyShader(shader_res.shader_pbr);
+    // Destroy all registered shaders and pipelines via registry
+    for (&registry.entries) |*entry| {
+        if (entry.*) |e| {
+            if (e.pipeline.id != 0) sokol.gfx.destroyPipeline(e.pipeline);
+            if (e.shader.id != 0) sokol.gfx.destroyShader(e.shader);
+            entry.* = null;
+        }
+    }
+    registry.count = 0;
 
-    // Zero out all fields to prevent accidental reuse or double-free
+    // Zero out buffer fields to prevent accidental reuse or double-free
     buffers.vertices = &.{};
     buffers.indices = &.{};
     buffers.allocator = null;
@@ -906,7 +1027,7 @@ pub const Resources = .{
     Camera3D,
     Light3D,
     Render3DBuffers,
-    Render3DShaders,
+    ShaderRegistry,
 };
 
 pub const Events = .{};

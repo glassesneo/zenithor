@@ -12,7 +12,7 @@
 /// - All 3D shapes: Plane3D, Box3D, Sphere3D, Cylinder3D, Torus3D
 /// - Camera3D resource with orbit/fly controls
 /// - Light3D resource with position and ambient
-/// - Material component with shader selection (.unlit, .blinn_phong, .pbr)
+/// - Material component with shader selection ("unlit", "blinn_phong", "pbr")
 /// - PassAction resource for background color
 ///
 /// TIME PLUGIN:
@@ -238,15 +238,17 @@ const GamePlugin = struct {
     pub const Bouncing = struct { min_y: f32, max_y: f32 };
     pub const Pulsing = struct { min_scale: f32, max_scale: f32, speed: f32 };
 
-    // Game state resource
+    // Game state resource (runtime-only, not serialized)
     pub const GameState = struct {
+        pub const serialized = false; // Contains runtime state and non-POD fields
+
         camera_mode: CameraMode = .fly, // Default to 1st person perspective
         show_help: bool = true,
         show_stats: bool = true,
         show_controls: bool = true,
         show_scene: bool = true,
         wireframe_mode: bool = false,
-        selected_shader: Shapes3DPlugin.ShaderType = .blinn_phong,
+        selected_shader: []const u8 = "blinn_phong",
         // Fly mode: yaw/pitch for direct camera control
         yaw: f32 = std.math.pi, // Face -Z direction (toward scene center)
         pitch: f32 = -0.3, // Slightly looking down
@@ -341,7 +343,7 @@ const GamePlugin = struct {
             Shapes3DPlugin.Plane3D{ .width = 50.0, .depth = 50.0, .tiles = 25 },
             Transform{ .x = 0, .y = -2, .z = 0 },
             Color{ .r = 0.2, .g = 0.25, .b = 0.3, .a = 1.0 },
-            Shapes3DPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong" },
         });
 
         // === CENTRAL STRUCTURE ===
@@ -351,7 +353,7 @@ const GamePlugin = struct {
             Transform{ .x = 0, .y = 0, .z = 0 },
             Rotation{},
             Color{ .r = 0.9, .g = 0.7, .b = 0.2, .a = 1.0 }, // Gold
-            Shapes3DPlugin.Material{ .shader = .pbr, .metallic = 0.9, .roughness = 0.1 },
+            Shapes3DPlugin.Material{ .shader = "pbr", .metallic = 0.9, .roughness = 0.1 },
             PhysicsPlugin.AngularVelocity{ .y = 0.2 },
             Interactable{},
         });
@@ -363,7 +365,7 @@ const GamePlugin = struct {
             Transform{ .x = 4, .y = 0, .z = 0 },
             Rotation{},
             Color.red,
-            Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 64.0 },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong", .shininess = 64.0 },
             PhysicsPlugin.AngularVelocity{ .x = 1.0, .y = 0.5 },
             Orbiting{ .center_x = 0, .center_y = 0, .center_z = 0, .radius = 4, .speed = 0.5 },
             Interactable{},
@@ -374,7 +376,7 @@ const GamePlugin = struct {
             Shapes3DPlugin.Sphere3D{ .radius = 0.5, .slices = 24, .stacks = 18 },
             Transform{ .x = 0, .y = 0, .z = 5 },
             Color.green,
-            Shapes3DPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong" },
             Orbiting{ .center_x = 0, .center_y = 0, .center_z = 0, .radius = 5, .speed = -0.3 },
             Interactable{},
         });
@@ -385,7 +387,7 @@ const GamePlugin = struct {
             Transform{ .x = 6, .y = 1, .z = 0 },
             Rotation{},
             Color.blue,
-            Shapes3DPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong" },
             PhysicsPlugin.AngularVelocity{ .x = 0.3, .z = 0.5 },
             Orbiting{ .center_x = 0, .center_y = 1, .center_z = 0, .radius = 6, .speed = 0.2 },
             Interactable{},
@@ -397,7 +399,7 @@ const GamePlugin = struct {
             Shapes3DPlugin.Cylinder3D{ .radius = 0.4, .height = 1.0, .slices = 20 },
             Transform{ .x = -5, .y = 0, .z = 3 },
             Color.cyan,
-            Shapes3DPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong" },
             Bouncing{ .min_y = -1.5, .max_y = 2.0 },
             Interactable{},
         });
@@ -407,7 +409,7 @@ const GamePlugin = struct {
             Shapes3DPlugin.Sphere3D{ .radius = 0.6, .slices = 24, .stacks = 18 },
             Transform{ .x = 5, .y = 0, .z = -3 },
             Color.magenta,
-            Shapes3DPlugin.Material{ .shader = .pbr, .metallic = 0.3, .roughness = 0.4 },
+            Shapes3DPlugin.Material{ .shader = "pbr", .metallic = 0.3, .roughness = 0.4 },
             Bouncing{ .min_y = -1.5, .max_y = 3.0 },
             Interactable{},
         });
@@ -420,7 +422,7 @@ const GamePlugin = struct {
             Rotation{},
             Scale{ .x = 1, .y = 1, .z = 1 },
             Color.white,
-            Shapes3DPlugin.Material{ .shader = .unlit },
+            Shapes3DPlugin.Material{ .shader = "unlit" },
             PhysicsPlugin.AngularVelocity{ .y = 0.8 },
             Pulsing{ .min_scale = 0.5, .max_scale = 1.5, .speed = 2.0 },
             Interactable{},
@@ -433,7 +435,7 @@ const GamePlugin = struct {
             Rotation{},
             Scale{ .x = 1, .y = 1, .z = 1 },
             Color.orange,
-            Shapes3DPlugin.Material{ .shader = .pbr, .metallic = 0.7, .roughness = 0.2 },
+            Shapes3DPlugin.Material{ .shader = "pbr", .metallic = 0.7, .roughness = 0.2 },
             PhysicsPlugin.AngularVelocity{ .x = 0.5, .y = 0.3 },
             Pulsing{ .min_scale = 0.7, .max_scale = 1.3, .speed = 1.5 },
             Interactable{},
@@ -447,13 +449,13 @@ const GamePlugin = struct {
             Shapes3DPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
             Transform{ .x = -8, .y = 0, .z = -8 },
             Color{ .r = 0.8, .g = 0.2, .b = 0.2, .a = 1.0 },
-            Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong", .shininess = 32.0 },
         });
         _ = try commands.createEntityWith(.{
             Shapes3DPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
             Transform{ .x = -8, .y = 2.3, .z = -8 },
             Color{ .r = 0.8, .g = 0.2, .b = 0.2, .a = 1.0 },
-            Shapes3DPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong" },
         });
 
         // Pillar 2: Green (-8, 8)
@@ -461,13 +463,13 @@ const GamePlugin = struct {
             Shapes3DPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
             Transform{ .x = -8, .y = 0, .z = 8 },
             Color{ .r = 0.2, .g = 0.8, .b = 0.2, .a = 1.0 },
-            Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong", .shininess = 32.0 },
         });
         _ = try commands.createEntityWith(.{
             Shapes3DPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
             Transform{ .x = -8, .y = 2.3, .z = 8 },
             Color{ .r = 0.2, .g = 0.8, .b = 0.2, .a = 1.0 },
-            Shapes3DPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong" },
         });
 
         // Pillar 3: Blue (8, -8)
@@ -475,13 +477,13 @@ const GamePlugin = struct {
             Shapes3DPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
             Transform{ .x = 8, .y = 0, .z = -8 },
             Color{ .r = 0.2, .g = 0.2, .b = 0.8, .a = 1.0 },
-            Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong", .shininess = 32.0 },
         });
         _ = try commands.createEntityWith(.{
             Shapes3DPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
             Transform{ .x = 8, .y = 2.3, .z = -8 },
             Color{ .r = 0.2, .g = 0.2, .b = 0.8, .a = 1.0 },
-            Shapes3DPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong" },
         });
 
         // Pillar 4: Yellow (8, 8)
@@ -489,13 +491,13 @@ const GamePlugin = struct {
             Shapes3DPlugin.Cylinder3D{ .radius = 0.5, .height = 4.0, .slices = 16 },
             Transform{ .x = 8, .y = 0, .z = 8 },
             Color{ .r = 0.8, .g = 0.8, .b = 0.2, .a = 1.0 },
-            Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 32.0 },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong", .shininess = 32.0 },
         });
         _ = try commands.createEntityWith(.{
             Shapes3DPlugin.Sphere3D{ .radius = 0.6, .slices = 16, .stacks = 12 },
             Transform{ .x = 8, .y = 2.3, .z = 8 },
             Color{ .r = 0.8, .g = 0.8, .b = 0.2, .a = 1.0 },
-            Shapes3DPlugin.Material{ .shader = .blinn_phong },
+            Shapes3DPlugin.Material{ .shader = "blinn_phong" },
         });
 
         // Arch between pillars
@@ -504,7 +506,7 @@ const GamePlugin = struct {
             Transform{ .x = 0, .y = 4, .z = -8 },
             Rotation{ .x = std.math.pi / 2.0 },
             Color{ .r = 0.6, .g = 0.4, .b = 0.8, .a = 1.0 }, // Purple
-            Shapes3DPlugin.Material{ .shader = .pbr, .metallic = 0.5, .roughness = 0.3 },
+            Shapes3DPlugin.Material{ .shader = "pbr", .metallic = 0.5, .roughness = 0.3 },
         });
 
         std.debug.print("\n=== ZENITHOR 3D SHOWCASE ===\n", .{});
@@ -567,16 +569,16 @@ const GamePlugin = struct {
 
         // 1/2/3 - Shader selection
         if (keyboard.isPressed(._1)) {
-            game.selected_shader = .unlit;
-            updateAllMaterials(materials, .unlit);
+            game.selected_shader = "unlit";
+            updateAllMaterials(materials, "unlit");
         }
         if (keyboard.isPressed(._2)) {
-            game.selected_shader = .blinn_phong;
-            updateAllMaterials(materials, .blinn_phong);
+            game.selected_shader = "blinn_phong";
+            updateAllMaterials(materials, "blinn_phong");
         }
         if (keyboard.isPressed(._3)) {
-            game.selected_shader = .pbr;
-            updateAllMaterials(materials, .pbr);
+            game.selected_shader = "pbr";
+            updateAllMaterials(materials, "pbr");
         }
 
         // 4/5/6/7 - Shape selection for spawning
@@ -680,7 +682,7 @@ const GamePlugin = struct {
         };
     }
 
-    fn updateAllMaterials(materials: Query(struct { Shapes3DPlugin.Material }), shader: Shapes3DPlugin.ShaderType) void {
+    fn updateAllMaterials(materials: Query(struct { Shapes3DPlugin.Material }), shader: []const u8) void {
         for (materials.entities) |entity| {
             if (!materials.filter(entity)) continue;
             const mat = materials.getComponentMut(entity, Shapes3DPlugin.Material);
@@ -1048,22 +1050,25 @@ const GamePlugin = struct {
             ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Shaders");
             ImGuiPlugin.separator();
 
-            var shader_idx: i32 = switch (game.selected_shader) {
-                .unlit => 0,
-                .blinn_phong => 1,
-                .pbr => 2,
-            };
+            var shader_idx: i32 = if (std.mem.eql(u8, game.selected_shader, "unlit"))
+                @as(i32, 0)
+            else if (std.mem.eql(u8, game.selected_shader, "blinn_phong"))
+                @as(i32, 1)
+            else if (std.mem.eql(u8, game.selected_shader, "pbr"))
+                @as(i32, 2)
+            else
+                @as(i32, 1);
             const old_shader = shader_idx;
             _ = ig.igRadioButtonIntPtr("Unlit", &shader_idx, 0);
             _ = ig.igRadioButtonIntPtr("Blinn-Phong", &shader_idx, 1);
             _ = ig.igRadioButtonIntPtr("PBR", &shader_idx, 2);
 
             if (shader_idx != old_shader) {
-                const new_shader: Shapes3DPlugin.ShaderType = switch (shader_idx) {
-                    0 => .unlit,
-                    1 => .blinn_phong,
-                    2 => .pbr,
-                    else => .blinn_phong,
+                const new_shader: []const u8 = switch (shader_idx) {
+                    0 => "unlit",
+                    1 => "blinn_phong",
+                    2 => "pbr",
+                    else => "blinn_phong",
                 };
                 game.selected_shader = new_shader;
                 updateAllMaterials(materials, new_shader);

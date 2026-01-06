@@ -12,6 +12,7 @@
 /// parameters (metallic, roughness) instead of artistic parameters (shininess, specular).
 const sokol = @import("sokol");
 const pbr_shader = @import("pbr_shader");
+const types = @import("../types.zig");
 
 /// Shader identifier
 pub const name = "pbr";
@@ -52,4 +53,28 @@ pub fn pipelineDesc(layout: sokol.gfx.VertexLayoutState) sokol.gfx.PipelineDesc 
             .compare = .LESS_EQUAL,
         },
     };
+}
+
+/// Apply vertex shader uniforms
+pub fn applyVsUniforms(params: types.VsUniformParams) void {
+    sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&pbr_shader.VsParams{
+        .mvp = params.mvp,
+        .model = params.model,
+    }));
+}
+
+/// Apply fragment shader uniforms
+pub fn applyFsUniforms(params: types.FsUniformParams) void {
+    sokol.gfx.applyUniforms(1, sokol.gfx.asRange(&pbr_shader.FsParams{
+        .light_pos = params.light_pos,
+        ._pad0 = 0,
+        .view_pos = params.view_pos,
+        .metallic = params.metallic,
+        .light_color = params.light_color,
+        .roughness = params.roughness,
+        .ambient_strength = params.ambient_strength,
+        ._pad1 = 0,
+        ._pad2 = 0,
+        ._pad3 = 0,
+    }));
 }

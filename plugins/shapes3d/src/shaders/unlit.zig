@@ -5,6 +5,7 @@
 /// should maintain their exact colors without shading.
 const sokol = @import("sokol");
 const unlit_shader = @import("unlit_shader");
+const types = @import("../types.zig");
 
 /// Shader identifier
 pub const name = "unlit";
@@ -36,4 +37,16 @@ pub fn pipelineDesc(layout: sokol.gfx.VertexLayoutState) sokol.gfx.PipelineDesc 
             .compare = .LESS_EQUAL,
         },
     };
+}
+
+/// Apply vertex shader uniforms
+pub fn applyVsUniforms(params: types.VsUniformParams) void {
+    sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&unlit_shader.VsParams{
+        .mvp = params.mvp,
+    }));
+}
+
+/// Apply fragment shader uniforms (unlit has no FS uniforms)
+pub fn applyFsUniforms(params: types.FsUniformParams) void {
+    _ = params; // Unlit shader has no fragment uniforms
 }

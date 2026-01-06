@@ -3,7 +3,7 @@
 /// Demonstrates 3D rendering fundamentals:
 /// - Camera3D resource for view/projection control
 /// - Light3D resource for scene lighting
-/// - Material component with shader selection (.unlit, .blinn_phong, .pbr)
+/// - Material component with shader selection ("unlit", "blinn_phong", "pbr")
 /// - Orbiting camera animation
 /// - Interactive shader toggling
 ///
@@ -32,7 +32,7 @@ pub fn main() !void {
 // Demo state resource
 const DemoState = struct {
     orbit_enabled: bool = true,
-    current_shader: Shapes3DPlugin.ShaderType = .blinn_phong,
+    current_shader: []const u8 = "blinn_phong",
 };
 
 const Game = struct {
@@ -77,7 +77,7 @@ fn setup(commands: anytype) !void {
         Shapes3DPlugin.Plane3D{ .width = 12.0, .depth = 12.0, .tiles = 6 },
         Transform{ .x = 0, .y = -1.5, .z = 0 },
         Color{ .r = 0.35, .g = 0.35, .b = 0.4, .a = 1.0 },
-        Shapes3DPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = "blinn_phong" },
     });
 
     // Red sphere (left)
@@ -85,7 +85,7 @@ fn setup(commands: anytype) !void {
         Shapes3DPlugin.Sphere3D{ .radius = 0.8, .slices = 32, .stacks = 24 },
         Transform{ .x = -2.5, .y = 0, .z = 0 },
         Color.red,
-        Shapes3DPlugin.Material{ .shader = .blinn_phong, .shininess = 64.0 },
+        Shapes3DPlugin.Material{ .shader = "blinn_phong", .shininess = 64.0 },
     });
 
     // Green box (center)
@@ -94,7 +94,7 @@ fn setup(commands: anytype) !void {
         Transform{ .x = 0, .y = 0, .z = 0 },
         Rotation{},
         Color.green,
-        Shapes3DPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = "blinn_phong" },
     });
 
     // Blue cylinder (right)
@@ -102,7 +102,7 @@ fn setup(commands: anytype) !void {
         Shapes3DPlugin.Cylinder3D{ .radius = 0.5, .height = 1.5, .slices = 24 },
         Transform{ .x = 2.5, .y = 0, .z = 0 },
         Color.blue,
-        Shapes3DPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = "blinn_phong" },
     });
 
     // Yellow torus (above)
@@ -111,7 +111,7 @@ fn setup(commands: anytype) !void {
         Transform{ .x = 0, .y = 2.0, .z = 0 },
         Rotation{},
         Color.yellow,
-        Shapes3DPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = "blinn_phong" },
     });
 }
 
@@ -126,10 +126,10 @@ fn handleInput(
     }
 
     // Shader selection (isPressed for discrete toggle)
-    var new_shader: ?Shapes3DPlugin.ShaderType = null;
-    if (keyboard.isPressed(._1)) new_shader = .unlit;
-    if (keyboard.isPressed(._2)) new_shader = .blinn_phong;
-    if (keyboard.isPressed(._3)) new_shader = .pbr;
+    var new_shader: ?[]const u8 = null;
+    if (keyboard.isPressed(._1)) new_shader = "unlit";
+    if (keyboard.isPressed(._2)) new_shader = "blinn_phong";
+    if (keyboard.isPressed(._3)) new_shader = "pbr";
 
     if (new_shader) |shader| {
         demo.current_shader = shader;
@@ -181,12 +181,7 @@ fn drawUI(
     if (ImGuiPlugin.begin("3D Scene Demo", null, .None)) {
         ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Shader Types");
         ImGuiPlugin.separator();
-        const shader_name: [:0]const u8 = switch (demo.current_shader) {
-            .unlit => "Unlit",
-            .blinn_phong => "Blinn-Phong",
-            .pbr => "PBR",
-        };
-        ImGuiPlugin.textFmt("Current: {s}", .{shader_name});
+        ImGuiPlugin.textFmt("Current: {s}", .{demo.current_shader});
         ImGuiPlugin.bulletText("1 - Unlit (no lighting)");
         ImGuiPlugin.bulletText("2 - Blinn-Phong (classic)");
         ImGuiPlugin.bulletText("3 - PBR (physically-based)");

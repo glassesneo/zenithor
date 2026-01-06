@@ -73,7 +73,7 @@ fn setup(commands: anytype) !void {
         Shapes3DPlugin.Plane3D{ .width = 10.0, .depth = 10.0, .tiles = 5 },
         Transform{ .x = 0, .y = -1.5, .z = 0 },
         Color{ .r = 0.3, .g = 0.3, .b = 0.35, .a = 1.0 },
-        Shapes3DPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = "blinn_phong" },
     });
 
     // Animated objects
@@ -82,7 +82,7 @@ fn setup(commands: anytype) !void {
         Transform{ .x = -2.0, .y = 0, .z = 0 },
         Rotation{},
         Color.red,
-        Shapes3DPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = "blinn_phong" },
         Animated{},
     });
 
@@ -90,7 +90,7 @@ fn setup(commands: anytype) !void {
         Shapes3DPlugin.Sphere3D{ .radius = 0.8, .slices = 24, .stacks = 18 },
         Transform{ .x = 0, .y = 0, .z = 0 },
         Color.green,
-        Shapes3DPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = "blinn_phong" },
     });
 
     _ = try commands.createEntityWith(.{
@@ -98,7 +98,7 @@ fn setup(commands: anytype) !void {
         Transform{ .x = 2.0, .y = 0, .z = 0 },
         Rotation{},
         Color.blue,
-        Shapes3DPlugin.Material{ .shader = .blinn_phong },
+        Shapes3DPlugin.Material{ .shader = "blinn_phong" },
         Animated{},
     });
 }
@@ -129,11 +129,11 @@ fn applySettings(
     pass_action.colors[0].clear_value = .{ .r = bg[0], .g = bg[1], .b = bg[2], .a = 1.0 };
 
     // Apply shader selection
-    const shader: Shapes3DPlugin.ShaderType = switch (settings.selected_shader) {
-        0 => .unlit,
-        1 => .blinn_phong,
-        2 => .pbr,
-        else => .blinn_phong,
+    const shader: []const u8 = switch (settings.selected_shader) {
+        0 => "unlit",
+        1 => "blinn_phong",
+        2 => "pbr",
+        else => "blinn_phong",
     };
 
     for (materials.entities) |entity| {

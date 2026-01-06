@@ -10,6 +10,7 @@
 /// - Specular: Mirror-like reflections (Blinn half-vector optimization)
 const sokol = @import("sokol");
 const blinn_phong_shader = @import("blinn_phong_shader");
+const types = @import("../types.zig");
 
 /// Shader identifier
 pub const name = "blinn_phong";
@@ -46,4 +47,28 @@ pub fn pipelineDesc(layout: sokol.gfx.VertexLayoutState) sokol.gfx.PipelineDesc 
             .compare = .LESS_EQUAL,
         },
     };
+}
+
+/// Apply vertex shader uniforms
+pub fn applyVsUniforms(params: types.VsUniformParams) void {
+    sokol.gfx.applyUniforms(0, sokol.gfx.asRange(&blinn_phong_shader.VsParams{
+        .mvp = params.mvp,
+        .model = params.model,
+    }));
+}
+
+/// Apply fragment shader uniforms
+pub fn applyFsUniforms(params: types.FsUniformParams) void {
+    sokol.gfx.applyUniforms(1, sokol.gfx.asRange(&blinn_phong_shader.FsParams{
+        .light_pos = params.light_pos,
+        ._pad0 = 0,
+        .view_pos = params.view_pos,
+        .shininess = params.shininess,
+        .light_color = params.light_color,
+        .ambient_strength = params.ambient_strength,
+        .specular_strength = params.specular_strength,
+        ._pad1 = 0,
+        ._pad2 = 0,
+        ._pad3 = 0,
+    }));
 }
