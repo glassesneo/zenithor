@@ -11,11 +11,10 @@ const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
 const Shapes2DPlugin = @import("shapes2d_plugin");
-const ImGuiPlugin = @import("imgui_plugin");
 const Renderer = @import("renderer_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ Shapes2DPlugin, ImGuiPlugin, Game }, .{});
+    zenithor.run(.{ Shapes2DPlugin, Game }, .{});
 }
 
 const Game = struct {
@@ -26,9 +25,6 @@ const Game = struct {
     pub const systems = .{
         .startup = &.{
             .{ .system = setup, .stage = .first },
-        },
-        .main = &.{
-            .{ .system = drawUI, .stage = .render },
         },
     };
 };
@@ -125,39 +121,4 @@ fn setup(commands: anytype, pass_action: zenithor.ResourceMut(Renderer.PassActio
         Transform{ .x = 320, .y = 650, .z = 0 },
         Color.purple,
     });
-}
-
-fn drawUI() void {
-    ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = 10 }, .Once);
-    ImGuiPlugin.setNextWindowSize(.{ .x = 280, .y = 350 }, .Once);
-
-    if (ImGuiPlugin.begin("2D Rendering Demo", null, .None)) {
-        ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Z-Index Ordering");
-        ImGuiPlugin.separator();
-        ImGuiPlugin.textWrapped("Left side shows overlapping shapes at different Z depths:");
-        ImGuiPlugin.bulletText("z = -0.5 (front): Cyan circle");
-        ImGuiPlugin.bulletText("z = 0.0 (middle): Red/Green rects");
-        ImGuiPlugin.bulletText("z = 0.5 (back): Dark blue rect");
-
-        ImGuiPlugin.spacing();
-        ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "2D Shape Types");
-        ImGuiPlugin.separator();
-        ImGuiPlugin.bulletText("Point - single pixel");
-        ImGuiPlugin.bulletText("Line - start to offset");
-        ImGuiPlugin.bulletText("Triangle - 3 vertices");
-        ImGuiPlugin.bulletText("Rectangle - width x height");
-        ImGuiPlugin.bulletText("Circle - radius + segments");
-
-        ImGuiPlugin.spacing();
-        ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.5, .z = 0.5, .w = 1.0 }, "Color Override");
-        ImGuiPlugin.separator();
-        ImGuiPlugin.textWrapped("Bottom circles: left has no Color (defaults to red), right has Color.purple override.");
-
-        ImGuiPlugin.spacing();
-        ImGuiPlugin.textColored(.{ .x = 0.5, .y = 0.5, .z = 0.5, .w = 1.0 }, "Coordinate System");
-        ImGuiPlugin.separator();
-        ImGuiPlugin.text("Origin: top-left (0, 0)");
-        ImGuiPlugin.text("Y-axis: increases downward");
-    }
-    ImGuiPlugin.end();
 }

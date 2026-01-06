@@ -23,10 +23,9 @@ const Shapes2DPlugin = @import("shapes2d_plugin");
 const Renderer = @import("renderer_plugin");
 const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
-const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ Shapes2DPlugin, TimePlugin, InputPlugin, ImGuiPlugin, Game }, .{});
+    zenithor.run(.{ Shapes2DPlugin, TimePlugin, InputPlugin, Game }, .{});
 }
 
 // Tag component to identify the player entity
@@ -43,7 +42,6 @@ const Game = struct {
         },
         .main = &.{
             .{ .system = handleInput, .stage = .update },
-            .{ .system = drawUI, .stage = .render },
         },
     };
 };
@@ -95,40 +93,4 @@ fn handleInput(
         transform.x = std.math.clamp(transform.x, 30, 1250);
         transform.y = std.math.clamp(transform.y, 30, 770);
     }
-}
-
-fn drawUI(time: Resource(TimePlugin.Time), keyboard: Resource(InputPlugin.Keyboard)) void {
-    ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = 10 }, .Once);
-    ImGuiPlugin.setNextWindowSize(.{ .x = 320, .y = 280 }, .Once);
-
-    if (ImGuiPlugin.begin("Input + Time Demo", null, .None)) {
-        ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.8, .w = 1.0 }, "Time Resource");
-        ImGuiPlugin.separator();
-        ImGuiPlugin.textFmt("delta_time: {d:.4}s", .{time.delta_time});
-        ImGuiPlugin.textFmt("time_scale: {d:.2}x", .{time.time_scale});
-        ImGuiPlugin.textFmt("total_time: {d:.2}s", .{time.total_time});
-        ImGuiPlugin.textFmt("fps: {d:.1}", .{time.fps});
-        ImGuiPlugin.textFmt("frame_count: {}", .{time.frame_count});
-
-        ImGuiPlugin.spacing();
-        ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.8, .z = 0.2, .w = 1.0 }, "Controls");
-        ImGuiPlugin.separator();
-        ImGuiPlugin.bulletText("WASD/Arrows - Move");
-        ImGuiPlugin.bulletText("Space - Toggle pause");
-        ImGuiPlugin.bulletText("1/2 - Adjust time_scale");
-
-        ImGuiPlugin.spacing();
-        ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.5, .z = 0.5, .w = 1.0 }, "Input State");
-        ImGuiPlugin.separator();
-
-        // Show isHeld vs isPressed difference
-        const w_held = keyboard.isHeld(.W);
-        const w_frames = keyboard.heldFrames(.W);
-        ImGuiPlugin.textFmt("W key: held={}, frames={}", .{ w_held, w_frames });
-
-        const space_held = keyboard.isHeld(.SPACE);
-        const space_frames = keyboard.heldFrames(.SPACE);
-        ImGuiPlugin.textFmt("Space: held={}, frames={}", .{ space_held, space_frames });
-    }
-    ImGuiPlugin.end();
 }
