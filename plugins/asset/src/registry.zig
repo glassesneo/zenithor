@@ -1,14 +1,16 @@
 const std = @import("std");
+const config_mod = @import("config.zig");
 
 /// Unique identifier for an asset (stable across reloads)
+/// Includes source to prevent cache collisions between embedded and filesystem assets with the same path.
 pub const AssetId = struct {
     type_id: u32, // Hash of asset type
-    path_hash: u64, // Hash of normalized path
+    path_hash: u64, // Hash of normalized path + source
 
-    pub fn init(comptime T: type, path: []const u8) AssetId {
+    pub fn init(comptime T: type, path: []const u8, source: config_mod.AssetSource) AssetId {
         return .{
             .type_id = comptime typeId(T),
-            .path_hash = hashPath(path),
+            .path_hash = hashPathWithSource(path, source),
         };
     }
 
@@ -21,9 +23,12 @@ pub const AssetId = struct {
         return @truncate(std.hash.Wyhash.hash(0, type_name));
     }
 
-    pub fn hashPath(path: []const u8) u64 {
-        // Normalize path (lowercase, forward slashes) for consistent hashing
+    /// Hash path with source to ensure embedded and filesystem assets don't collide
+    pub fn hashPathWithSource(path: []const u8, source: config_mod.AssetSource) u64 {
         var hasher = std.hash.Wyhash.init(0);
+        // Include source as first byte to differentiate same paths with different sources
+        hasher.update(&[_]u8{@intFromEnum(source)});
+        // Normalize path (lowercase, forward slashes) for consistent hashing
         for (path) |c| {
             const normalized = if (c == '\\') '/' else std.ascii.toLower(c);
             hasher.update(&[_]u8{normalized});
@@ -90,6 +95,7 @@ pub const AssetErrorKind = enum {
     io_error,
     gpu_upload_failed,
     unsupported_format,
+    source_unavailable, // Requested source not available (e.g., filesystem on WASM)
 };
 
 pub const AssetError = struct {
@@ -183,8 +189,8 @@ pub const AssetRegistry = struct {
     }
 
     /// Create a new handle for an asset
-    pub fn createHandle(self: *AssetRegistry, comptime T: type, path: []const u8) !TypedHandle(T) {
-        const id = AssetId.init(T, path);
+    pub fn createHandle(self: *AssetRegistry, comptime T: type, locator: config_mod.AssetLocator) !TypedHandle(T) {
+        const id = AssetId.init(T, locator.path, locator.source);
         const entry = try self.getOrCreateEntry(id);
         return TypedHandle(T).init(id, entry.generation);
     }
@@ -248,14 +254,16 @@ pub const AssetRegistry = struct {
 
 test "AssetId hashing" {
     const T = struct {};
-    const id1 = AssetId.init(T, "textures/player.png");
-    const id2 = AssetId.init(T, "textures/player.png");
-    const id3 = AssetId.init(T, "TEXTURES/PLAYER.PNG"); // Different case
-    const id4 = AssetId.init(T, "textures\\player.png"); // Different separators
+    const id1 = AssetId.init(T, "textures/player.png", .filesystem);
+    const id2 = AssetId.init(T, "textures/player.png", .filesystem);
+    const id3 = AssetId.init(T, "TEXTURES/PLAYER.PNG", .filesystem); // Different case
+    const id4 = AssetId.init(T, "textures\\player.png", .filesystem); // Different separators
+    const id5 = AssetId.init(T, "textures/player.png", .embedded); // Different source
 
     try std.testing.expect(id1.eql(id2));
     try std.testing.expect(id1.eql(id3)); // Case-insensitive
     try std.testing.expect(id1.eql(id4)); // Separator-insensitive
+    try std.testing.expect(!id1.eql(id5)); // Different source should NOT match
 }
 
 test "AssetRegistry basic operations" {
@@ -263,8 +271,8 @@ test "AssetRegistry basic operations" {
     var registry = AssetRegistry.init(std.testing.allocator);
     defer registry.deinit(std.testing.allocator);
 
-    const path = "test.asset";
-    const handle = try registry.createHandle(T, path);
+    const locator = config_mod.AssetLocator.filesystem("test.asset");
+    const handle = try registry.createHandle(T, locator);
 
     // Entry should exist
     const entry = registry.validateHandle(handle.handle);
@@ -284,7 +292,7 @@ test "Handle generation invalidation" {
     var registry = AssetRegistry.init(std.testing.allocator);
     defer registry.deinit(std.testing.allocator);
 
-    const handle = try registry.createHandle(T, "test.asset");
+    const handle = try registry.createHandle(T, config_mod.AssetLocator.filesystem("test.asset"));
 
     // Valid initially
     try std.testing.expect(registry.validateHandle(handle.handle) != null);

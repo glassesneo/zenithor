@@ -32,6 +32,9 @@ pub const AssetEvicted = events.AssetEvicted;
 pub const IoConfig = config.IoConfig;
 pub const AssetStats = config.AssetStats;
 pub const CachePolicy = config.CachePolicy;
+pub const EmbeddedAssets = config.EmbeddedAssets;
+pub const AssetSource = config.AssetSource;
+pub const AssetLocator = config.AssetLocator;
 
 // Import systems
 const systems_module = @import("systems.zig");
@@ -49,6 +52,7 @@ pub const Resources = .{
     JobPipeline,
     IoConfig,
     AssetStats,
+    EmbeddedAssets,
 };
 
 pub const Events = .{
@@ -91,8 +95,10 @@ pub const systems = .{
         } },
     },
     .terminate = &.{
+        // Run BEFORE render_context's shutdownGraphics (priority 0)
+        // so GPU resources can be destroyed while sokol.gfx is still valid
         .{ .system = systems_module.flushAndRelease, .stage = .last, .config = .{
-            .priority = 100,
+            .priority = -100,
         } },
     },
 };

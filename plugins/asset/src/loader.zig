@@ -1,5 +1,6 @@
 const std = @import("std");
 const registry = @import("registry.zig");
+const config_mod = @import("config.zig");
 
 pub const AssetId = registry.AssetId;
 pub const AssetHandle = registry.AssetHandle;
@@ -40,6 +41,7 @@ pub const JobStage = enum {
 pub const JobData = union(JobStage) {
     io: struct {
         path: []const u8,
+        source: config_mod.AssetSource, // Explicit source for loading
         buffer: ?[]u8 = null,
     },
     decode: struct {

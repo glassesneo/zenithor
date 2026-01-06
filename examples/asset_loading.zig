@@ -1,20 +1,37 @@
 /// Example: Asset Loading
 ///
-/// Demonstrates the asset management system:
-/// - Loading textures (uses procedural texture when file not found)
-/// - Monitoring asset loading states (unloaded/loading/ready/failed)
-/// - Asset caching and refcounting
-/// - Debug UI showing asset statistics
+/// Demonstrates the asset management system with actual texture rendering:
+/// - Loading textures using explicit source (embedded or filesystem)
+/// - PNG decoding and GPU texture upload
+/// - Rendering the loaded texture as a 2D sprite using sokol.gl
+/// - Asset state monitoring (queued/io/decode/upload/ready/failed)
 ///
-/// Note: This example requests "demo_texture.png" which may not exist.
-/// The asset system gracefully handles missing files and shows the failed state.
+/// The demo_texture.png is an 8x8 checkerboard pattern stored in examples/assets/.
+/// Once loaded, it's displayed as a scaled sprite in the center of the screen.
+///
+/// This example uses embedded assets via @embedFile, which works on both
+/// native and WASM builds. Users explicitly specify the source per-asset.
 ///
 /// See: plugins/asset/src/root.zig
+const std = @import("std");
+const builtin = @import("builtin");
 const zenithor = @import("zenithor");
+const sokol = @import("sokol");
 const AssetPlugin = @import("asset_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const RenderContext = @import("render_context_plugin");
 const TimePlugin = @import("time_plugin");
+
+/// Embed the demo texture at compile time
+const demo_texture_png = @embedFile("assets/demo_texture.png");
+
+/// Get platform-appropriate allocator
+fn getAllocator() std.mem.Allocator {
+    return if (builtin.target.cpu.arch.isWasm())
+        std.heap.c_allocator
+    else
+        std.heap.page_allocator;
+}
 
 pub fn main() !void {
     zenithor.run(.{ TimePlugin, AssetPlugin, ImGuiPlugin, Game }, .{});
@@ -34,11 +51,14 @@ const Game = struct {
         .main = &.{
             .{ .system = requestAsset, .stage = .update },
             .{
+                .system = renderSprite,
+                .stage = .render,
+                .config = .{ .priority = 50 }, // Before ImGui
+            },
+            .{
                 .system = showAssetUI,
                 .stage = .render,
-                .config = .{
-                    .priority = 100, // After main rendering
-                },
+                .config = .{ .priority = 100 }, // After sprite rendering
             },
         },
     };
@@ -50,11 +70,17 @@ const TestAssetComponent = struct {
     requested: bool = false,
 };
 
-fn setup(commands: anytype, pass_action: zenithor.ResourceMut(RenderContext.PassAction)) !void {
+fn setup(
+    commands: anytype,
+    pass_action: zenithor.ResourceMut(RenderContext.PassAction),
+    embedded: zenithor.ResourceMut(AssetPlugin.EmbeddedAssets),
+) !void {
     pass_action.colors[0].clear_value = .{ .r = 0.15, .g = 0.15, .b = 0.2, .a = 1.0 };
 
+    // Register embedded texture (works on all platforms)
+    try embedded.register(getAllocator(), "demo_texture.png", demo_texture_png);
+
     // Create an entity that will request an asset
-    // Note: The handle will be initialized in requestAsset system
     _ = try commands.createEntityWith(.{
         TestAssetComponent{
             .handle = .{ .handle = .{
@@ -76,26 +102,97 @@ fn requestAsset(
         const comp = query.getComponentMut(entity, TestAssetComponent);
 
         if (!comp.requested) {
-            // Request the asset (this will trigger loading)
-            // Note: demo_texture.png may not exist - this demonstrates error handling
-            comp.handle = try registry.createHandle(
-                AssetPlugin.Texture,
-                "demo_texture.png",
-            );
+            // Request the demo texture from embedded source (explicit per-asset choice)
+            const locator = AssetPlugin.AssetLocator.embedded("demo_texture.png");
+            comp.handle = try registry.createHandle(AssetPlugin.Texture, locator);
 
             try writer.enqueue(.{
                 .type_id = comp.handle.handle.id.type_id,
-                .path = "demo_texture.png",
+                .path = locator.path,
+                .source = locator.source,
                 .priority = 255,
                 .requester = @bitCast(entity),
             });
 
             comp.requested = true;
-            std.debug.print("[Game] Requested asset: demo_texture.png\n", .{});
+            std.debug.print("[Game] Requested asset: demo_texture.png (source: embedded)\n", .{});
         }
     }
 
     _ = commands;
+}
+
+/// Render the loaded texture as a sprite
+fn renderSprite(
+    registry: zenithor.Resource(AssetPlugin.AssetRegistry),
+    query: zenithor.Query(struct { TestAssetComponent }),
+) !void {
+    // Find the loaded texture
+    for (query.entities) |_| {
+        const comp = query.getComponent(query.entities[0], TestAssetComponent);
+
+        if (registry.validateHandle(comp.handle.handle)) |entry| {
+            if (entry.state == .ready) {
+                if (entry.payload) |payload| {
+                    const texture: *const AssetPlugin.Texture = @ptrCast(@alignCast(payload));
+
+                    // Draw the texture as a scaled sprite using sokol.gl
+                    drawTexturedQuad(texture);
+                }
+            }
+        }
+        break;
+    }
+}
+
+/// Draw a textured quad using sokol.gl immediate mode
+fn drawTexturedQuad(texture: *const AssetPlugin.Texture) void {
+    // Setup 2D orthographic projection
+    sokol.gl.defaults();
+    sokol.gl.matrixModeProjection();
+    sokol.gl.ortho(0, sokol.app.widthf(), sokol.app.heightf(), 0, -1, 1);
+
+    // Enable texturing and bind the texture (using cached view, not per-frame creation)
+    sokol.gl.enableTexture();
+    sokol.gl.texture(texture.view, texture.sampler);
+
+    // Calculate sprite position and size
+    // Scale up the 8x8 texture to be visible (32x scale = 256x256 display)
+    const scale: f32 = 32.0;
+    const sprite_w = @as(f32, @floatFromInt(texture.width)) * scale;
+    const sprite_h = @as(f32, @floatFromInt(texture.height)) * scale;
+
+    // Center the sprite on screen
+    const screen_w = sokol.app.widthf();
+    const screen_h = sokol.app.heightf();
+    const x = (screen_w - sprite_w) / 2.0;
+    const y = (screen_h - sprite_h) / 2.0 - 50.0; // Offset up a bit for UI
+
+    // Draw textured quad
+    sokol.gl.c4f(1.0, 1.0, 1.0, 1.0); // White tint (use texture colors)
+    sokol.gl.beginQuads();
+
+    // Top-left
+    sokol.gl.t2f(0.0, 0.0);
+    sokol.gl.v2f(x, y);
+
+    // Top-right
+    sokol.gl.t2f(1.0, 0.0);
+    sokol.gl.v2f(x + sprite_w, y);
+
+    // Bottom-right
+    sokol.gl.t2f(1.0, 1.0);
+    sokol.gl.v2f(x + sprite_w, y + sprite_h);
+
+    // Bottom-left
+    sokol.gl.t2f(0.0, 1.0);
+    sokol.gl.v2f(x, y + sprite_h);
+
+    sokol.gl.end();
+    sokol.gl.disableTexture();
+
+    // Flush sokol.gl commands
+    sokol.gl.draw();
 }
 
 fn showAssetUI(
@@ -104,6 +201,10 @@ fn showAssetUI(
     pipeline: zenithor.Resource(AssetPlugin.JobPipeline),
     query: zenithor.Query(struct { TestAssetComponent }),
 ) !void {
+    // Position the window at the bottom
+    ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = sokol.app.heightf() - 260 }, .Once);
+    ImGuiPlugin.setNextWindowSize(.{ .x = 320, .y = 250 }, .Once);
+
     if (ImGuiPlugin.begin("Asset Loading Demo", null, .None)) {
         ImGuiPlugin.text("Asset Management System");
         ImGuiPlugin.separator();
@@ -115,10 +216,10 @@ fn showAssetUI(
         ImGuiPlugin.textFmt("  Loading: {d}", .{stats.loading_assets});
         ImGuiPlugin.textFmt("  Failed: {d}", .{stats.failed_assets});
 
-        const cpu_mb = @as(f32, @floatFromInt(registry.total_cpu_bytes)) / (1024.0 * 1024.0);
-        const gpu_mb = @as(f32, @floatFromInt(registry.total_gpu_bytes)) / (1024.0 * 1024.0);
-        ImGuiPlugin.textFmt("  CPU Memory: {d:.2} MB", .{cpu_mb});
-        ImGuiPlugin.textFmt("  GPU Memory: {d:.2} MB", .{gpu_mb});
+        const cpu_kb = @as(f32, @floatFromInt(registry.total_cpu_bytes)) / 1024.0;
+        const gpu_kb = @as(f32, @floatFromInt(registry.total_gpu_bytes)) / 1024.0;
+        ImGuiPlugin.textFmt("  CPU Memory: {d:.2} KB", .{cpu_kb});
+        ImGuiPlugin.textFmt("  GPU Memory: {d:.2} KB", .{gpu_kb});
 
         ImGuiPlugin.separator();
 
@@ -131,33 +232,32 @@ fn showAssetUI(
         ImGuiPlugin.separator();
 
         // Show test asset status
-        ImGuiPlugin.text("Test Asset (demo_texture.png):");
+        ImGuiPlugin.text("Texture (demo_texture.png):");
         for (query.entities) |_| {
             const comp = query.getComponent(query.entities[0], TestAssetComponent);
 
             if (registry.validateHandle(comp.handle.handle)) |entry| {
                 ImGuiPlugin.textFmt("  State: {s}", .{@tagName(entry.state)});
-                ImGuiPlugin.textFmt("  Generation: {d}", .{entry.generation});
-                ImGuiPlugin.textFmt("  Refcount: {d}", .{entry.refcount});
 
                 if (entry.last_error) |err| {
-                    ImGuiPlugin.textFmt("  Error: {s}", .{err.message});
+                    ImGuiPlugin.textColored(.{ .x = 1.0, .y = 0.3, .z = 0.3, .w = 1.0 }, "  Error:");
+                    ImGuiPlugin.textFmt("    {s}", .{err.message});
                 }
 
                 if (entry.state == .ready) {
-                    ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.2, .w = 1.0 }, "  Asset loaded successfully!");
+                    ImGuiPlugin.textColored(.{ .x = 0.2, .y = 1.0, .z = 0.2, .w = 1.0 }, "  Loaded & Rendering!");
+
+                    if (entry.payload) |payload| {
+                        const texture: *const AssetPlugin.Texture = @ptrCast(@alignCast(payload));
+                        ImGuiPlugin.textFmt("  Size: {d}x{d} pixels", .{ texture.width, texture.height });
+                        ImGuiPlugin.textFmt("  GPU Image ID: {d}", .{texture.image.id});
+                    }
                 }
             } else {
-                ImGuiPlugin.text("  Status: Invalid handle");
+                ImGuiPlugin.text("  Status: Waiting...");
             }
-            break; // Only show first entity
+            break;
         }
-
-        ImGuiPlugin.separator();
-        ImGuiPlugin.text("Note: demo_texture.png is intentionally missing to");
-        ImGuiPlugin.text("demonstrate asset error handling.");
     }
     ImGuiPlugin.end();
 }
-
-const std = @import("std");

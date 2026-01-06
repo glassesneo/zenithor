@@ -45,12 +45,13 @@ pub fn initRegistry(loader_registry: sparze.ResourceMut(LoaderRegistry)) void {
     std.debug.print("[Asset] Initialized asset management system\n", .{});
 }
 
-/// Process IO jobs (read files from disk)
+/// Process IO jobs (read files from disk or embedded assets)
 pub fn pumpIoJobs(
     registry: sparze.ResourceMut(AssetRegistry),
     loaders: sparze.Resource(LoaderRegistry),
     pipeline: sparze.ResourceMut(JobPipeline),
     io_config: sparze.Resource(IoConfig),
+    embedded: sparze.Resource(config_mod.EmbeddedAssets),
     stats: sparze.ResourceMut(AssetStats),
     requests: sparze.EventReader(AssetRequest),
     loaded_writer: sparze.EventWriter(AssetLoaded),
@@ -63,7 +64,7 @@ pub fn pumpIoJobs(
     for (requests.read()) |request| {
         const id = registry_mod.AssetId{
             .type_id = request.type_id,
-            .path_hash = registry_mod.AssetId.hashPath(request.path),
+            .path_hash = registry_mod.AssetId.hashPathWithSource(request.path, request.source),
         };
 
         // Check if asset already exists
@@ -92,10 +93,13 @@ pub fn pumpIoJobs(
             .generation = entry.generation,
         };
 
-        // Create IO job
+        // Create IO job with explicit source
         const path_copy = try pipeline.allocator.dupe(u8, request.path);
         const job = LoadJob.init(handle, request.priority, .{
-            .io = .{ .path = path_copy },
+            .io = .{
+                .path = path_copy,
+                .source = request.source,
+            },
         });
 
         try pipeline.enqueueIo(job);
@@ -115,11 +119,12 @@ pub fn pumpIoJobs(
             entry.state = .io;
         }
 
-        // Read file from disk
+        // Try to load asset data using explicit source
         const path = job.data.io.path;
-        const file_result = readFile(pipeline.allocator, io_config.asset_root, path);
+        const source = job.data.io.source;
+        const load_result = loadAssetData(pipeline.allocator, io_config, embedded, source, path);
 
-        if (file_result) |bytes| {
+        if (load_result) |bytes| {
             // Get loader for this type
             if (loaders.getLoaderById(job.handle.id.type_id)) |loader_vtable| {
                 // Move to decode queue
@@ -143,10 +148,11 @@ pub fn pumpIoJobs(
                 pipeline.allocator.free(bytes);
             }
         } else |err| {
-            // IO error
+            // IO error - map to appropriate error kind
             const error_kind: registry_mod.AssetErrorKind = switch (err) {
                 error.FileNotFound => .not_found,
-                else => .io_error,
+                error.SourceUnavailable => .source_unavailable,
+                error.AccessDenied, error.IoError, error.IncompleteRead, error.FileTooLarge, error.OutOfMemory => .io_error,
             };
 
             try emitLoadFailure(registry, failed_writer, job.handle, error_kind, job.retry_count);
@@ -312,21 +318,69 @@ pub fn flushAndRelease(
 
 // Helper functions
 
-fn readFile(allocator: std.mem.Allocator, asset_root: []const u8, path: []const u8) ![]u8 {
+/// Custom errors for asset loading
+const LoadError = error{
+    FileNotFound,
+    SourceUnavailable,
+    FileTooLarge,
+    IncompleteRead,
+    OutOfMemory,
+    AccessDenied,
+    IoError,
+};
+
+/// Load asset data based on explicit source
+fn loadAssetData(
+    allocator: std.mem.Allocator,
+    io_config: *const IoConfig,
+    embedded: *const config_mod.EmbeddedAssets,
+    source: config_mod.AssetSource,
+    path: []const u8,
+) LoadError![]u8 {
+    const builtin = @import("builtin");
+
+    switch (source) {
+        .embedded => {
+            if (embedded.get(path)) |data| {
+                // Copy embedded data to allocator (caller expects to own and free it)
+                const buffer = allocator.alloc(u8, data.len) catch return error.OutOfMemory;
+                @memcpy(buffer, data);
+                return buffer;
+            }
+            return error.FileNotFound;
+        },
+        .filesystem => {
+            // Block filesystem access on WASM
+            if (builtin.target.cpu.arch.isWasm()) {
+                return error.SourceUnavailable;
+            }
+            return readFile(allocator, io_config.asset_root, path);
+        },
+    }
+}
+
+fn readFile(allocator: std.mem.Allocator, asset_root: [:0]const u8, path: []const u8) LoadError![]u8 {
     // Build full path
-    const full_path = try std.fs.path.join(allocator, &.{ asset_root, path });
+    const full_path = std.fs.path.join(allocator, &.{ asset_root, path }) catch return error.OutOfMemory;
     defer allocator.free(full_path);
 
-    // Open and read file
-    const file = try std.fs.cwd().openFile(full_path, .{});
+    // Open file - preserve distinct error types
+    const file = std.fs.cwd().openFile(full_path, .{}) catch |err| switch (err) {
+        error.FileNotFound => return error.FileNotFound,
+        error.AccessDenied => return error.AccessDenied,
+        else => return error.IoError,
+    };
     defer file.close();
 
-    const file_size = try file.getEndPos();
-    const buffer = try allocator.alloc(u8, file_size);
+    const file_size = file.getEndPos() catch return error.IoError;
+    // Bounds check for 32-bit platforms (WASM)
+    if (file_size > std.math.maxInt(usize)) return error.FileTooLarge;
+    const size: usize = @intCast(file_size);
+    const buffer = allocator.alloc(u8, size) catch return error.OutOfMemory;
     errdefer allocator.free(buffer);
 
-    const bytes_read = try file.readAll(buffer);
-    if (bytes_read != file_size) {
+    const bytes_read = file.readAll(buffer) catch return error.IoError;
+    if (bytes_read != size) {
         return error.IncompleteRead;
     }
 

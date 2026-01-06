@@ -1,14 +1,17 @@
 const registry = @import("registry.zig");
+const config = @import("config.zig");
 
 pub const AssetHandle = registry.AssetHandle;
 pub const AssetErrorKind = registry.AssetErrorKind;
 pub const EvictionReason = registry.EvictionReason;
 pub const AssetId = registry.AssetId;
+pub const AssetSource = config.AssetSource;
 
 /// Request to load an asset
 pub const AssetRequest = struct {
     type_id: u32,
     path: []const u8,
+    source: AssetSource, // Explicit source for this asset
     priority: u8 = 128,
     requester: u32, // Entity ID for tracking
 
