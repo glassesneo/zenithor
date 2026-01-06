@@ -461,6 +461,82 @@ zig build run-my_plugin_test    # Integration test (after adding example to buil
 - ❌ Don't mutate components in event handlers directly (use commands)
 - ❌ Don't use global variables (use Resources instead)
 
+## Allocator Usage
+
+Systems that need dynamic memory allocation should request the allocator as a parameter. Sparze automatically injects the World's allocator, which is already platform-aware:
+
+- **WASM**: Uses `std.heap.c_allocator`
+- **Native**: Uses `std.heap.page_allocator` (or user-specified via `zenithor.run(..., .{ .allocator = my_allocator })`)
+
+### Correct Pattern
+
+```zig
+fn mySystem(
+    allocator: std.mem.Allocator,  // ← Sparze injects world.allocator
+    commands: anytype,
+    my_resource: zenithor.ResourceMut(MyResource),
+) !void {
+    // Use the injected allocator for any dynamic allocations
+    const buffer = try allocator.alloc(u8, 1024);
+    defer allocator.free(buffer);
+    
+    // Pass to resource methods that need allocation
+    try my_resource.addItem(allocator, item);
+}
+```
+
+### Incorrect Pattern (Do Not Use)
+
+```zig
+// ❌ WRONG: Manual platform detection bypasses zenithor's abstraction
+fn getAllocator() std.mem.Allocator {
+    const builtin = @import("builtin");
+    return if (builtin.target.cpu.arch.isWasm())
+        std.heap.c_allocator
+    else
+        std.heap.page_allocator;
+}
+
+fn badSystem(my_resource: zenithor.ResourceMut(MyResource)) !void {
+    // ❌ This can cause allocator mismatch bugs!
+    try my_resource.addItem(getAllocator(), item);
+}
+```
+
+**Why the manual pattern is wrong:**
+1. Ignores user-specified allocator from `zenithor.run()` options
+2. Can cause allocator mismatch if resource `deinit()` uses a different allocator
+3. Duplicates logic that Zenithor already handles
+
+### Resource Init with Allocator
+
+Resources that need an allocator should store it during initialization. Sparze calls `init(allocator)` automatically with the World's allocator:
+
+```zig
+pub const MyResource = struct {
+    items: std.ArrayList(Item),
+    allocator: std.mem.Allocator,
+
+    /// Sparze auto-calls this with world.allocator
+    pub fn init(allocator: std.mem.Allocator) MyResource {
+        return .{
+            .items = std.ArrayList(Item).init(allocator),
+            .allocator = allocator,
+        };
+    }
+
+    /// Sparze auto-calls this during World.deinit()
+    pub fn deinit(self: *MyResource, allocator: std.mem.Allocator) void {
+        _ = allocator; // Use self.allocator for consistency
+        self.items.deinit();
+    }
+
+    pub fn addItem(self: *MyResource, item: Item) !void {
+        try self.items.append(item);
+    }
+};
+```
+
 ## Advanced Topics
 
 ### Custom Serialization

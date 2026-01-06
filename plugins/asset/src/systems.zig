@@ -22,15 +22,6 @@ pub const AssetRequest = events_mod.AssetRequest;
 pub const AssetLoaded = events_mod.AssetLoaded;
 pub const AssetFailed = events_mod.AssetFailed;
 
-/// Get appropriate allocator for current platform
-fn getAllocator() std.mem.Allocator {
-    const builtin = @import("builtin");
-    return if (builtin.target.cpu.arch.isWasm())
-        std.heap.c_allocator
-    else
-        std.heap.page_allocator;
-}
-
 /// Initialize asset system resources
 /// Note: AssetRegistry, LoaderRegistry, JobPipeline, IoConfig, and AssetStats
 /// are now auto-initialized by Sparze's Resource system via their init() methods.

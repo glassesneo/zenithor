@@ -20,6 +20,8 @@ zig build serve-examples -Dtarget=wasm32-emscripten  # WASM examples
 
 **IMPORTANT**: Zig 0.15.1+ required
 
+**IMPORTANT**: For allocator usage in systems, request `allocator: std.mem.Allocator` as a system parameter. Sparze injects the world allocator which is already platform-aware (WASM uses `c_allocator`, native uses `page_allocator` or user-specified). Never use `builtin.target.cpu.arch.isWasm()` checks to pick allocators manually. See @docs/PLUGIN_DEVELOPMENT.md for details.
+
 ## Common Commands
 
 ```bash

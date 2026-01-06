@@ -14,7 +14,6 @@
 ///
 /// See: plugins/asset/src/root.zig
 const std = @import("std");
-const builtin = @import("builtin");
 const zenithor = @import("zenithor");
 const sokol = @import("sokol");
 const AssetPlugin = @import("asset_plugin");
@@ -24,14 +23,6 @@ const TimePlugin = @import("time_plugin");
 
 /// Embed the demo texture at compile time
 const demo_texture_png = @embedFile("assets/demo_texture.png");
-
-/// Get platform-appropriate allocator
-fn getAllocator() std.mem.Allocator {
-    return if (builtin.target.cpu.arch.isWasm())
-        std.heap.c_allocator
-    else
-        std.heap.page_allocator;
-}
 
 pub fn main() !void {
     zenithor.run(.{ TimePlugin, AssetPlugin, ImGuiPlugin, Game }, .{});
@@ -72,13 +63,14 @@ const TestAssetComponent = struct {
 
 fn setup(
     commands: anytype,
+    allocator: std.mem.Allocator,
     pass_action: zenithor.ResourceMut(RenderContext.PassAction),
     embedded: zenithor.ResourceMut(AssetPlugin.EmbeddedAssets),
 ) !void {
     pass_action.colors[0].clear_value = .{ .r = 0.15, .g = 0.15, .b = 0.2, .a = 1.0 };
 
     // Register embedded texture (works on all platforms)
-    try embedded.register(getAllocator(), "demo_texture.png", demo_texture_png);
+    try embedded.register(allocator, "demo_texture.png", demo_texture_png);
 
     // Create an entity that will request an asset
     _ = try commands.createEntityWith(.{
