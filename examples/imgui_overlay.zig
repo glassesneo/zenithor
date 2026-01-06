@@ -16,7 +16,7 @@ const Resource = zenithor.Resource;
 const ResourceMut = zenithor.ResourceMut;
 const Query = zenithor.Query;
 const Shapes3DPlugin = @import("shapes3d_plugin");
-const RenderContext = @import("render_context_plugin");
+const Renderer = @import("renderer_plugin");
 const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const ig = ImGuiPlugin.ig;
@@ -121,7 +121,7 @@ fn updateAnimation(
 
 fn applySettings(
     settings: Resource(DebugSettings),
-    pass_action: ResourceMut(RenderContext.PassAction),
+    pass_action: ResourceMut(Renderer.PassAction),
     materials: Query(struct { Shapes3DPlugin.Material }),
 ) void {
     // Apply background color

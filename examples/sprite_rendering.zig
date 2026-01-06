@@ -15,7 +15,7 @@ const zenithor = @import("zenithor");
 const AssetPlugin = @import("asset_plugin");
 const SpritePlugin = @import("sprite_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
-const RenderContext = @import("render_context_plugin");
+const Renderer = @import("renderer_plugin");
 const TimePlugin = @import("time_plugin");
 
 const Transform = zenithor.Transform;
@@ -26,7 +26,7 @@ const Color = zenithor.Color;
 const demo_texture_png = @embedFile("assets/demo_texture.png");
 
 pub fn main() !void {
-    // SpritePlugin works standalone - RenderContextPlugin handles sokol.gl.draw()
+    // SpritePlugin works standalone - RendererPlugin handles sokol.gl.draw()
     zenithor.run(.{ TimePlugin, AssetPlugin, SpritePlugin, ImGuiPlugin, Game }, .{});
 }
 
@@ -54,7 +54,7 @@ const Game = struct {
 fn setup(
     commands: anytype,
     allocator: std.mem.Allocator,
-    pass_action: zenithor.ResourceMut(RenderContext.PassAction),
+    pass_action: zenithor.ResourceMut(Renderer.PassAction),
     embedded: zenithor.ResourceMut(AssetPlugin.EmbeddedAssets),
     registry: zenithor.ResourceMut(AssetPlugin.AssetRegistry),
     writer: zenithor.EventWriter(AssetPlugin.AssetRequest),

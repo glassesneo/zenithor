@@ -523,7 +523,7 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
             app_state.terminate_system_scheduler.finalize();
 
             // All Sokol subsystems initialized by plugins:
-            // - Graphics (gfx + gl) by render_context plugin
+            // - Graphics (gfx + gl) by renderer plugin
             // - Time by time_plugin
             // Core only manages app loop and plugin orchestration
 
@@ -547,7 +547,7 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
             app_state.deinit();
 
             // Shutdown sokol modules
-            // Graphics (gfx + gl) shutdown by render_context plugin
+            // Graphics (gfx + gl) shutdown by renderer plugin
             // sokol.time does not require explicit shutdown
         }
 

@@ -269,12 +269,12 @@ The engine automatically includes dependencies (transitively) and detects circul
 
 ## Integrating with Render Pass
 
-If your plugin needs to render content, depend on `render_context_plugin`:
+If your plugin needs to render content, depend on `renderer_plugin`:
 
 ```zig
-const RenderContext = @import("render_context_plugin");
+const Renderer = @import("renderer_plugin");
 
-pub const Requires = .{RenderContext};
+pub const Requires = .{Renderer};
 
 fn myRenderSystem() void {
     // Draw calls here - automatically inside render pass
@@ -295,7 +295,7 @@ pub const systems = .{
 
 **Modifying background color**:
 ```zig
-fn setBackgroundColor(pass_action: ResourceMut(RenderContext.PassAction)) void {
+fn setBackgroundColor(pass_action: ResourceMut(Renderer.PassAction)) void {
     pass_action.value.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.2, .a = 1.0 };
 }
 ```
@@ -454,7 +454,7 @@ zig build run-my_plugin_test    # Integration test (after adding example to buil
 - ✅ Use tag components (empty structs) for entity classification
 
 ### Don'ts
-- ❌ Don't call `sokol.gfx.setup()`/`sokol.gl.setup()` (render_context plugin owns these) or `sokol.time.setup()` (time_plugin owns this)
+- ❌ Don't call `sokol.gfx.setup()`/`sokol.gl.setup()` (renderer plugin owns these) or `sokol.time.setup()` (time_plugin owns this)
 - ❌ Don't use `try` in void return systems (use `!void` signature)
 - ❌ Don't create circular plugin dependencies
 - ❌ Don't store allocators in components (use commands parameter)

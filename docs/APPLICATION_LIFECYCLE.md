@@ -54,7 +54,7 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
 ┌─────────────────────────────────────────────────┐
 │ Phase 4: Startup Systems                        │
 │ - Run startup_scheduler (plugins init)         │
-│   - render_context: sokol.gfx + sokol.gl      │
+│   - renderer: sokol.gfx + sokol.gl           │
 │   - time_plugin: sokol.time                    │
 │   - Other plugins: resources, entities, etc.   │
 └─────────────────┬───────────────────────────────┘
@@ -165,10 +165,10 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
    MyGamePlugin.Events = .{};
    MyGamePlugin.Groups = .{};
 
-   RenderContext.Components = .{};
-   RenderContext.Resources = .{ PassAction };
-   RenderContext.Events = .{};
-   RenderContext.Groups = .{};
+   Renderer.Components = .{};
+   Renderer.Resources = .{ PassAction };
+   Renderer.Events = .{};
+   Renderer.Groups = .{};
    ```
 
 2. **Deduplicate Types**
@@ -326,7 +326,7 @@ fn appInit(state: ?*anyopaque) callconv(.c) void {
     // ... World and scheduler setup ...
 
     // All Sokol subsystems initialized by plugins:
-    // - Graphics (gfx + gl) by render_context plugin
+    // - Graphics (gfx + gl) by renderer plugin
     // - Time by time_plugin
     // Core only manages app loop and plugin orchestration
 
@@ -338,18 +338,18 @@ fn appInit(state: ?*anyopaque) callconv(.c) void {
 ```
 
 **Startup systems** (executed in order by priority):
-1. **render_context.initGraphics** (priority -32768, lowest) - Initializes `sokol.gfx` and `sokol.gl`, prints graphics backend in Debug mode
+1. **renderer.initGraphics** (priority -32768, lowest) - Initializes `sokol.gfx` and `sokol.gl`, prints graphics backend in Debug mode
 2. **time_plugin.initTime** (priority -32767) - Initializes `sokol.time`
-3. **render_context.initPassAction** (default priority) - Sets default clear color (gray-blue)
+3. **renderer.initPassAction** (default priority) - Sets default clear color (gray-blue)
 4. **time_plugin.init** (default priority) - Creates Time resource
 5. Other plugin startup systems
 
-**Critical**: Core does NOT initialize any Sokol subsystems. All initialization is handled by plugins: `render_context` for graphics, `time_plugin` for timing, `imgui_plugin` for ImGui, etc. Core only manages the app loop and plugin orchestration.
+**Critical**: Core does NOT initialize any Sokol subsystems. All initialization is handled by plugins: `renderer` for graphics, `time_plugin` for timing, `imgui_plugin` for ImGui, etc. Core only manages the app loop and plugin orchestration.
 
 ### Code Reference
 
 `src/core/application.zig` (search for `startup_scheduler.run`)
-`plugins/render_context/src/root.zig` (search for `initGraphics`)
+`plugins/renderer/src/root.zig` (search for `initGraphics`)
 `plugins/time/src/root.zig` (search for `initTime`)
 
 ## Phase 5: Main Loop
@@ -572,7 +572,7 @@ T=16ms   | Frame 1: appFrame()
          |   │   ├─ .first: TimePlugin.updateTime()
          |   │   ├─ .update: MyPlugin.updateGame()
          |   │   ├─ .render: MyRenderPlugin.renderShapes()
-         |   │   └─ .post_render: RenderContext.commit()
+         |   │   └─ .post_render: Renderer.commit()
          |
 T=32ms   | Frame 2: appFrame()
          |   ├─ ... (repeat)

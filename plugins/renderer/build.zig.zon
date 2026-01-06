@@ -1,5 +1,5 @@
 .{
-    .name = "render_context_plugin",
+    .name = "renderer_plugin",
     .version = "0.1.0",
     .minimum_zig_version = "0.15.1",
     .dependencies = .{},

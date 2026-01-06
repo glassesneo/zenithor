@@ -11,13 +11,13 @@ const Stage = zenithor.Stage;
 const SystemConfig = zenithor.SystemConfig;
 
 // Import dependencies
-const RenderContextPlugin = @import("render_context_plugin");
+const RendererPlugin = @import("renderer_plugin");
 
 pub const Components = .{};
 pub const Events = .{};
 
-// Declare dependency on RenderContext plugin for render pass management
-pub const Requires = .{RenderContextPlugin};
+// Declare dependency on Renderer plugin for render pass management
+pub const Requires = .{RendererPlugin};
 
 pub const ImVec2 = ig.ImVec2;
 pub const ImVec4 = ig.ImVec4;

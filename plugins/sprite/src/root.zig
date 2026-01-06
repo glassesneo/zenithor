@@ -9,7 +9,7 @@ const sparze = @import("sparze");
 const sokol = @import("sokol");
 const zenithor = @import("zenithor");
 const AssetPlugin = @import("asset_plugin");
-const RenderContextPlugin = @import("render_context_plugin");
+const RendererPlugin = @import("renderer_plugin");
 
 const Query = sparze.Query;
 const Resource = sparze.Resource;
@@ -315,9 +315,9 @@ pub const Resources = .{};
 
 pub const Events = .{};
 
-/// SpritePlugin depends on RenderContextPlugin (for sokol.gl setup) and
+/// SpritePlugin depends on RendererPlugin (for sokol.gl setup) and
 /// AssetPlugin (for texture loading and AssetRegistry).
-pub const Requires = .{ RenderContextPlugin, AssetPlugin };
+pub const Requires = .{ RendererPlugin, AssetPlugin };
 
 pub const systems = .{
     .main = &.{
@@ -332,7 +332,7 @@ pub const systems = .{
             },
         },
         // Draw sprites after Shapes2DPlugin shapes but before sokol.gl.draw()
-        // RenderContextPlugin.flushGL is at priority 200
+        // RendererPlugin.flushGL is at priority 200
         // Note: .after constraints only work within the same stage, so we rely
         // on stage ordering (pre_render runs before render) for resolveTextureRefs
         .{

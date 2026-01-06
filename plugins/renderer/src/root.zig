@@ -34,7 +34,7 @@ fn initGraphics() void {
     // Debug info
     if (builtin.mode == .Debug) {
         const backend = sokol.gfx.queryBackend();
-        std.debug.print("[RenderContext] Graphics backend: {}\n", .{backend});
+        std.debug.print("[Renderer] Graphics backend: {}\n", .{backend});
     }
 }
 

@@ -1,4 +1,4 @@
-# RenderContext Plugin
+# Renderer Plugin
 
 Core graphics subsystem and render pass lifecycle management for the Zenithor rendering pipeline.
 
@@ -20,10 +20,10 @@ Provides stable, platform-level graphics infrastructure that all rendering plugi
 ## Usage
 
 ```zig
-const RenderContext = @import("render_context_plugin");
+const Renderer = @import("renderer_plugin");
 
 // Depend on render context
-pub const Requires = .{RenderContext};
+pub const Requires = .{Renderer};
 
 // Render within the pass
 fn myRenderSystem() void {
@@ -33,7 +33,7 @@ fn myRenderSystem() void {
 pub const systems = .{
     .main = &.{
         .{ .system = myRenderSystem, .stage = .render },
-        // Automatically ordered by RenderContext's extreme priorities
+        // Automatically ordered by Renderer's extreme priorities
     },
 };
 ```
@@ -41,9 +41,9 @@ pub const systems = .{
 ## Mutating Background Color
 
 ```zig
-const RenderContext = @import("render_context_plugin");
+const Renderer = @import("renderer_plugin");
 
-fn setBackgroundColor(pass_action: ResourceMut(RenderContext.PassAction)) void {
+fn setBackgroundColor(pass_action: ResourceMut(Renderer.PassAction)) void {
     pass_action.value.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.2, .a = 1.0 };
 }
 ```

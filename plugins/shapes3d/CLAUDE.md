@@ -61,9 +61,9 @@ commands.setResource(Shapes3D.Light3D, .{
 
 ## Critical Notes
 
-**IMPORTANT**: Shapes3D depends on RenderContextPlugin for render pass lifecycle.
+**IMPORTANT**: Shapes3D depends on RendererPlugin for render pass lifecycle.
 
-**System Priorities**: 3D systems run at priorities 100 (buffer init) and 110 (drawing), before RenderContextPlugin.flushGL (200).
+**System Priorities**: 3D systems run at priorities 100 (buffer init) and 110 (drawing), before RendererPlugin.flushGL (200).
 
 **Memory**: Uses ~3.6MB heap-allocated staging buffers (allocated lazily on first 3D entity).
 

@@ -10,7 +10,7 @@ Application lifecycle, builtin components (Transform, Rotation, Scale, Color), s
 
 ## Critical Rules
 
-**IMPORTANT**: Core owns the `sokol.app` loop and manages plugin orchestration. All Sokol subsystems are initialized by plugins: `render_context` plugin initializes graphics (`sokol.gfx` and `sokol.gl`), `time_plugin` initializes timing (`sokol.time`), and other subsystem plugins initialize their own modules (e.g. `imgui_plugin` initializes `sokol.imgui`).
+**IMPORTANT**: Core owns the `sokol.app` loop and manages plugin orchestration. All Sokol subsystems are initialized by plugins: `renderer` plugin initializes graphics (`sokol.gfx` and `sokol.gl`), `time_plugin` initializes timing (`sokol.time`), and other subsystem plugins initialize their own modules (e.g. `imgui_plugin` initializes `sokol.imgui`).
 
 **IMPORTANT**: World type constructed from tuple VALUES: `sparze.World(.{Components}, .{Resources}, .{Events}, .{Groups})`
 

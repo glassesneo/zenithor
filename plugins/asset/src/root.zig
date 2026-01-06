@@ -95,7 +95,7 @@ pub const systems = .{
         } },
     },
     .terminate = &.{
-        // Run BEFORE render_context's shutdownGraphics (priority 0)
+        // Run BEFORE renderer's shutdownGraphics (priority 0)
         // so GPU resources can be destroyed while sokol.gfx is still valid
         .{ .system = systems_module.flushAndRelease, .stage = .last, .config = .{
             .priority = -100,

@@ -90,7 +90,7 @@ The codebase also includes extensive DocComments on public APIs with ubiquitous 
 ```
 src/root.zig            # Public API exports (with comprehensive DocComments)
 src/core/               # Engine core (application, builtin, scheduler)
-plugins/                # Standard plugins (render_context, shapes2d, shapes3d, time, input, imgui, asset, sprite, serialization)
+plugins/                # Standard plugins (renderer, shapes2d, shapes3d, time, input, imgui, asset, sprite, serialization)
 examples/               # Example programs
 docs/                   # Detailed documentation
 build.zig               # Build graph and plugin module wiring

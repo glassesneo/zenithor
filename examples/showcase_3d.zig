@@ -71,7 +71,7 @@ const EventReader = zenithor.EventReader;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const Stage = zenithor.Stage;
 const Shapes3DPlugin = @import("shapes3d_plugin");
-const RenderContext = @import("render_context_plugin");
+const Renderer = @import("renderer_plugin");
 const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
@@ -307,7 +307,7 @@ const GamePlugin = struct {
 
     fn setupScene(
         commands: anytype,
-        pass_action: ResourceMut(RenderContext.PassAction),
+        pass_action: ResourceMut(Renderer.PassAction),
     ) !void {
         // Initialize resources
         commands.setResource(GameState, .{});
@@ -1111,7 +1111,7 @@ const GamePlugin = struct {
 
     fn drawSceneWindow(
         game: Resource(GameState),
-        pass_action: ResourceMut(RenderContext.PassAction),
+        pass_action: ResourceMut(Renderer.PassAction),
     ) void {
         if (!game.show_scene) return;
 

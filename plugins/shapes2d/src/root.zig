@@ -8,7 +8,7 @@ const Color = zenithor.Color;
 const Stage = zenithor.Stage;
 const std = @import("std");
 const builtin = @import("builtin");
-const RenderContextPlugin = @import("render_context_plugin");
+const RendererPlugin = @import("renderer_plugin");
 
 const is_debug = builtin.mode == .Debug;
 
@@ -191,7 +191,7 @@ pub const Resources = .{};
 
 pub const Events = .{};
 
-pub const Requires = .{RenderContextPlugin};
+pub const Requires = .{RendererPlugin};
 
 pub const systems = .{
     .main = &.{

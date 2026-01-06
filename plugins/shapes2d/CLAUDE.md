@@ -36,7 +36,7 @@ _ = try commands.createEntityWith(.{
 
 ## Critical Notes
 
-**IMPORTANT**: Shapes2D depends on RenderContextPlugin for render pass lifecycle. RenderContextPlugin provides `beginPass/endPass/commit` and owns the `PassAction` resource for controlling clear color.
+**IMPORTANT**: Shapes2D depends on RendererPlugin for render pass lifecycle. RendererPlugin provides `beginPass/endPass/commit` and owns the `PassAction` resource for controlling clear color.
 
 **2D Coordinate System**: Origin (0,0) at top-left, Y increases downward.
 
