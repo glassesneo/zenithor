@@ -94,6 +94,7 @@ All examples support WASM builds:
 | error_handling | Error recovery | `zig build error_handling -Dtarget=wasm32-emscripten` |
 | serialization | Save/load state | `zig build serialization -Dtarget=wasm32-emscripten -Dfilesystem` |
 | imgui_overlay | ImGui debug UI | `zig build imgui_overlay -Dtarget=wasm32-emscripten` |
+| sprite_rendering | Sprite rendering | `zig build sprite_rendering -Dtarget=wasm32-emscripten` |
 | plugin_authoring | Plugin example | `zig build plugin_authoring -Dtarget=wasm32-emscripten` |
 | showcase_3d | Complete 3D demo | `zig build showcase_3d -Dtarget=wasm32-emscripten` |
 

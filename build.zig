@@ -22,8 +22,8 @@ const examples = [_]Example{
     .{ .name = "imgui_overlay", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "imgui_plugin" } },
     // Plugin authoring + Requires
     .{ .name = "plugin_authoring", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
-    // Asset loading and management
-    .{ .name = "asset_loading", .plugins = &.{ "render_context_plugin", "time_plugin", "asset_plugin", "imgui_plugin" } },
+    // Sprite rendering (replaces asset_loading)
+    .{ .name = "sprite_rendering", .plugins = &.{ "render_context_plugin", "time_plugin", "asset_plugin", "sprite_plugin", "imgui_plugin" } },
     // Comprehensive 3D showcase - demonstrates ALL features
     .{ .name = "showcase_3d", .plugins = &.{ "render_context_plugin", "graphics_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
 };
@@ -75,6 +75,7 @@ const DependencySet = struct {
     input_plugin_mod: *Build.Module,
     serialization_plugin_mod: *Build.Module,
     asset_plugin_mod: *Build.Module,
+    sprite_plugin_mod: *Build.Module,
 };
 
 const ExampleResult = struct {
@@ -90,6 +91,7 @@ const PluginModules = struct {
     input: *Build.Module,
     serialization: *Build.Module,
     asset: *Build.Module,
+    sprite: *Build.Module,
 };
 
 const PluginLookup = union(enum) {
@@ -298,6 +300,15 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .optimize = optimize,
         .imports = exported_imports[0..],
     });
+    const sprite_mod = b.addModule("sprite_plugin", .{
+        .root_source_file = b.path("plugins/sprite/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = exported_imports[0..] ++ &[_]Build.Module.Import{
+            .{ .name = "render_context_plugin", .module = render_context_mod },
+            .{ .name = "asset_plugin", .module = asset_mod },
+        },
+    });
 
     addDarwinIncludePaths(target, dep_sokol);
 
@@ -317,6 +328,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
             .input_plugin_mod = input_mod,
             .serialization_plugin_mod = serialization_mod,
             .asset_plugin_mod = asset_mod,
+            .sprite_plugin_mod = sprite_mod,
         },
     };
 }
@@ -347,6 +359,7 @@ fn resolvePluginModule(lookup: PluginLookup, name: []const u8) *Build.Module {
             if (std.mem.eql(u8, name, "input_plugin")) break :blk mods.input;
             if (std.mem.eql(u8, name, "serialization_plugin")) break :blk mods.serialization;
             if (std.mem.eql(u8, name, "asset_plugin")) break :blk mods.asset;
+            if (std.mem.eql(u8, name, "sprite_plugin")) break :blk mods.sprite;
             std.debug.panic("Unknown plugin name: {s}", .{name});
         },
     };
@@ -636,6 +649,7 @@ fn exampleContext(options: ExampleOptions, deps: DependencySet) AppBuildContext 
             .input = deps.input_plugin_mod,
             .serialization = deps.serialization_plugin_mod,
             .asset = deps.asset_plugin_mod,
+            .sprite = deps.sprite_plugin_mod,
         } },
     };
 }

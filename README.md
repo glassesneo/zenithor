@@ -55,6 +55,7 @@ All examples are in `examples/` and can be built with `zig build <name>` or run 
 - **error_handling**: Event flow and error handling
 - **serialization**: Serialization round-trip
 - **imgui_overlay**: ImGui debug overlay
+- **sprite_rendering**: Sprite rendering with textures
 - **plugin_authoring**: Plugin authoring + Requires
 - **showcase_3d**: Comprehensive 3D showcase (demonstrates all features)
 
@@ -65,6 +66,7 @@ All examples are in `examples/` and can be built with `zig build <name>` or run 
 - **Input**: Mouse and Keyboard resources, event handlers.
 - **ImGui**: Dear ImGui frame setup/render submit, docking optional.
 - **Asset**: Asset loading, caching, and lifecycle management for textures.
+- **Sprite**: ECS-integrated 2D textured sprite rendering with sprite sheets and Z-depth ordering.
 - **Serialization**: Save/load game state, WASM filesystem support via `-Dfilesystem`.
 - **Builtin**: Transform, Rotation, Scale, and Color components always included.
 
@@ -87,7 +89,7 @@ The codebase also includes extensive DocComments on public APIs with ubiquitous 
 ```
 src/root.zig            # Public API exports (with comprehensive DocComments)
 src/core/               # Engine core (application, builtin, scheduler)
-plugins/                # Standard plugins (render_context, graphics, time, input, imgui, asset, serialization)
+plugins/                # Standard plugins (render_context, graphics, time, input, imgui, asset, sprite, serialization)
 examples/               # Example programs
 docs/                   # Detailed documentation
 build.zig               # Build graph and plugin module wiring

@@ -509,14 +509,8 @@ pub fn Plugin(comptime shaders: anytype) type {
             buffers.initialized = true;
         }
 
-        fn setDefaults() void {
-            sokol.gl.defaults();
-        }
-
-        fn setup2d() void {
-            sokol.gl.matrixModeProjection();
-            sokol.gl.ortho(0, sokol.app.widthf(), sokol.app.heightf(), 0, -1, 1);
-        }
+        // Note: sokol.gl.defaults() and ortho projection are now handled by
+        // RenderContextPlugin.setupGL which runs at priority -32767
 
         // 2D drawing systems (unchanged)
         fn drawPoint(points: Query(struct { Point, Transform, ?Color })) void {
@@ -1050,12 +1044,6 @@ pub fn Plugin(comptime shaders: anytype) type {
             buffers.draw_count = @intCast(total_count);
         }
 
-        fn draw2D() void {
-            // Draw sokol.gl content (2D)
-            // All the 2D rendering commands recorded (drawTriangle, drawCircle) are executed here
-            sokol.gl.draw();
-        }
-
         fn cleanup(buffers: ResourceMut(Render3DBuffers), shader_res: Resource(Render3DShaders)) void {
             // Free heap-allocated staging buffers
             if (buffers.allocator) |allocator| {
@@ -1093,8 +1081,7 @@ pub fn Plugin(comptime shaders: anytype) type {
                 .{ .system = init, .stage = .first },
             },
             .main = &.{
-                .{ .system = setDefaults, .stage = .pre_render },
-                .{ .system = setup2d, .stage = .pre_render },
+                // Note: sokol.gl.defaults() and ortho setup are handled by RenderContextPlugin
                 .{ .system = drawPoint, .stage = .render },
                 .{ .system = drawLine, .stage = .render },
                 .{ .system = drawTriangle, .stage = .render },
@@ -1109,9 +1096,7 @@ pub fn Plugin(comptime shaders: anytype) type {
                     .after = &.{"3d-init"},
                     .tags = &.{"3d-render"},
                 } },
-                .{ .system = draw2D, .stage = .render, .config = .{
-                    .priority = 120,
-                } },
+                // Note: sokol.gl.draw() is now handled by RenderContextPlugin.flushGL at priority 200
             },
             .terminate = &.{
                 .{ .system = cleanup, .stage = .first },
