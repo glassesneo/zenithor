@@ -11,6 +11,7 @@
 ///
 /// See: plugins/sprite/CLAUDE.md
 const std = @import("std");
+const log = std.log.scoped(.sprite_rendering);
 const zenithor = @import("zenithor");
 const AssetPlugin = @import("asset_plugin");
 const SpritePlugin = @import("sprite_plugin");
@@ -96,7 +97,7 @@ fn setup(
     try commands.addComponent(entity, Scale, .{ .x = 32.0, .y = 32.0 }); // 8x8 texture scaled to 256x256
     try commands.addComponent(entity, Color, Color.white);
 
-    std.debug.print("[Game] Created sprite entity with asset handle\n", .{});
+    log.info("Created sprite entity with asset handle", .{});
 }
 
 fn showUI(

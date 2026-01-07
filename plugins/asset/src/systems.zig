@@ -1,4 +1,5 @@
 const std = @import("std");
+const log = std.log.scoped(.asset);
 const sparze = @import("sparze");
 const sokol = @import("sokol");
 
@@ -30,10 +31,10 @@ pub fn initRegistry(loader_registry: sparze.ResourceMut(LoaderRegistry)) void {
     // Register built-in loaders
     const texture_vtable = loader_mod.makeLoaderVTable(texture_loader.TextureLoader);
     loader_registry.registerLoader(texture_loader.Texture, texture_vtable) catch {
-        std.debug.print("Failed to register texture loader\n", .{});
+        log.err("Failed to register texture loader", .{});
     };
 
-    std.debug.print("[Asset] Initialized asset management system\n", .{});
+    log.info("Initialized asset management system", .{});
 }
 
 /// Process IO jobs (read files from disk or embedded assets)
@@ -272,7 +273,7 @@ pub fn flushAndRelease(
     loaders: sparze.Resource(LoaderRegistry),
     pipeline: sparze.ResourceMut(JobPipeline),
 ) void {
-    std.debug.print("[Asset] Flushing and releasing all assets\n", .{});
+    log.info("Flushing and releasing all assets", .{});
 
     // Clear all queues and free job-specific allocations
     for (pipeline.io_queue.items) |job| {

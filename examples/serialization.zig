@@ -15,6 +15,7 @@
 ///
 /// See: plugins/serialization/CLAUDE.md
 const std = @import("std");
+const log = std.log.scoped(.serialization_example);
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
@@ -76,7 +77,7 @@ fn setup(commands: anytype, pass_action: ResourceMut(Renderer.PassAction)) !void
     try commands.addComponent(player, Transform, .{ .x = 640, .y = 400, .z = 0 });
     try commands.addComponent(player, Color, Color.cyan);
 
-    std.debug.print("Game initialized. F5 to save, F9 to load.\n", .{});
+    log.info("Game initialized. F5 to save, F9 to load.", .{});
 }
 
 fn handleInput(
@@ -92,12 +93,12 @@ fn handleInput(
     // Save/Load with isPressed (fires once per key press)
     if (keyboard.isPressed(.F5)) {
         try SerializationPlugin.saveGame(commands, save_file);
-        std.debug.print("Game saved! Score: {}, Level: {}\n", .{ game.score, game.level });
+        log.info("Game saved! Score: {}, Level: {}", .{ game.score, game.level });
     }
 
     if (keyboard.isPressed(.F9)) {
         try SerializationPlugin.loadGame(commands, save_file);
-        std.debug.print("Game loaded!\n", .{});
+        log.info("Game loaded!", .{});
     }
 
     // Simulate gameplay

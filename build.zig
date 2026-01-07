@@ -1,5 +1,6 @@
 const std = @import("std");
 const Build = std.Build;
+const log = std.log.scoped(.build);
 const sokol = @import("sokol");
 const cimgui = @import("cimgui");
 
@@ -556,7 +557,7 @@ fn buildNativeExample(b: *Build, example: Example, options: ExampleOptions, deps
             .allocator = allocator,
             .argv = &.{ "xcrun", "--sdk", sdk_name, "--show-sdk-path" },
         }) catch |err| {
-            std.debug.print("Warning: Failed to get iOS SDK path: {}\n", .{err});
+            log.warn("Failed to get iOS SDK path: {}", .{err});
             const run = b.addRunArtifact(exe);
             return .{ .build = &exe.step, .run = run };
         };

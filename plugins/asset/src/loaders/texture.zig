@@ -1,4 +1,5 @@
 const std = @import("std");
+const log = std.log.scoped(.asset_texture);
 const registry = @import("../registry.zig");
 const sokol = @import("sokol");
 
@@ -86,7 +87,7 @@ pub const TextureLoader = struct {
             .view = view,
         };
 
-        std.debug.print("[Texture] Loaded {d}x{d} texture (GPU image id: {d})\n", .{
+        log.debug("Loaded {d}x{d} texture (GPU image id: {d})", .{
             decoded.width,
             decoded.height,
             image.id,

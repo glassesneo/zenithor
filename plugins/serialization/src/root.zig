@@ -1,4 +1,5 @@
 const std = @import("std");
+const log = std.log.scoped(.serialization);
 const sparze = @import("sparze");
 const builtin = @import("builtin");
 
@@ -46,7 +47,7 @@ pub fn saveGame(
     const path = save_file.getPath();
     if (path.len == 0) return;
 
-    std.debug.print("💾 Saving game to: {s}\n", .{path});
+    log.info("💾 Saving game to: {s}", .{path});
 
     try commands.serializeToFile(path);
 
@@ -57,7 +58,7 @@ pub fn saveGame(
     save_file.timestamp = stat.mtime;
     save_file.checksum_valid = true;
 
-    std.debug.print("✅ Save complete!\n", .{});
+    log.info("✅ Save complete!", .{});
 }
 
 /// Load game system - uses Commands API only
@@ -69,12 +70,12 @@ pub fn loadGame(
     if (path.len == 0) return;
 
     const file = std.fs.cwd().openFile(path, .{}) catch |err| {
-        std.debug.print("❌ Save file not found: {s}\n", .{@errorName(err)});
+        log.err("❌ Save file not found: {s}", .{@errorName(err)});
         return;
     };
     defer file.close();
 
-    std.debug.print("📂 Loading game from: {s}\n", .{path});
+    log.info("📂 Loading game from: {s}", .{path});
 
     try commands.deserializeFromFile(path);
 
@@ -83,7 +84,7 @@ pub fn loadGame(
     save_file.timestamp = stat.mtime;
     save_file.checksum_valid = true;
 
-    std.debug.print("✅ Load complete!\n", .{});
+    log.info("✅ Load complete!", .{});
 }
 
 fn init(commands: anytype) void {
@@ -99,8 +100,8 @@ fn init(commands: anytype) void {
 
     commands.setResource(SaveFile, save_path);
 
-    std.debug.print("SerializationPlugin: Save/Load systems available\n", .{});
-    std.debug.print("Default save path: {s}\n", .{save_path.getPath()});
+    log.info("SerializationPlugin: Save/Load systems available", .{});
+    log.info("Default save path: {s}", .{save_path.getPath()});
 }
 
 // Declarative system registration

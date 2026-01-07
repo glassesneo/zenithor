@@ -11,6 +11,7 @@
 ///
 /// See: CLAUDE.md (Plugin Development, Plugin Dependencies sections)
 const std = @import("std");
+const log = std.log.scoped(.plugin_authoring);
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
@@ -153,8 +154,8 @@ const GamePlugin = struct {
         try commands.addComponent(player, Color, Color.green);
         try commands.addComponent(player, HealthPlugin.Health, .{ .current = 100, .max = 100 });
 
-        std.debug.print("Plugin Authoring Demo\n", .{});
-        std.debug.print("GamePlugin -> HealthPlugin -> TimePlugin (transitive)\n", .{});
+        log.info("Plugin Authoring Demo", .{});
+        log.info("GamePlugin -> HealthPlugin -> TimePlugin (transitive)", .{});
     }
 
     fn handleGameInput(

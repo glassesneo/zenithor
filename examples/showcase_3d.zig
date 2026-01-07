@@ -57,6 +57,7 @@
 ///   F1 - Toggle help window
 ///   Escape - Toggle pause
 const std = @import("std");
+const log = std.log.scoped(.showcase_3d);
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Rotation = zenithor.Rotation;
@@ -501,11 +502,11 @@ const GamePlugin = struct {
             Shapes3DPlugin.Material{ .shader = "pbr", .metallic = 0.5, .roughness = 0.3 },
         });
 
-        std.debug.print("\n=== ZENITHOR 3D SHOWCASE ===\n", .{});
-        std.debug.print("Press F1 to toggle help\n", .{});
-        std.debug.print("Press WASD/QE to fly, Arrows to orbit\n", .{});
-        std.debug.print("Press 1/2/3 to change shaders\n", .{});
-        std.debug.print("Press F5/F9 to save/load\n\n", .{});
+        log.info("=== ZENITHOR 3D SHOWCASE ===", .{});
+        log.info("Press F1 to toggle help", .{});
+        log.info("Press WASD/QE to fly, Arrows to orbit", .{});
+        log.info("Press 1/2/3 to change shaders", .{});
+        log.info("Press F5/F9 to save/load", .{});
     }
 
     fn handleInput(
@@ -631,13 +632,13 @@ const GamePlugin = struct {
         // F5 - Save
         if (keyboard.isPressed(.F5)) {
             try SerializationPlugin.saveGame(commands, save_file);
-            std.debug.print("Game saved!\n", .{});
+            log.info("Game saved!", .{});
         }
 
         // F9 - Load
         if (keyboard.isPressed(.F9)) {
             try SerializationPlugin.loadGame(commands, save_file);
-            std.debug.print("Game loaded!\n", .{});
+            log.info("Game loaded!", .{});
             return; // Skip remaining input handling to avoid stale resource pointers
         }
 
@@ -900,10 +901,10 @@ const GamePlugin = struct {
     ) void {
         // Log any errors that occurred
         for (game_errors.read()) |err| {
-            std.debug.print("GameLoopError: {any}\n", .{err.err});
+            log.err("GameLoopError: {any}", .{err.err});
         }
         for (event_errors.read()) |err| {
-            std.debug.print("EventLoopError: {any}\n", .{err.err});
+            log.err("EventLoopError: {any}", .{err.err});
         }
     }
 

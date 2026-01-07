@@ -1,4 +1,5 @@
 const std = @import("std");
+const log = std.log.scoped(.application);
 const testing = std.testing;
 const builtin = @import("builtin");
 
@@ -557,7 +558,7 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
                 app_state.event_handlers[i](ev, &app_state.world) catch |err| {
                     var queue = app_state.world.getEventStoragePtrMut(BuiltinPlugin.EventLoopError);
                     queue.enqueue(.{ .err = err }) catch |alloc_err| {
-                        std.debug.print("Failed to allocate memory: {any}\n", .{alloc_err});
+                        log.err("Failed to allocate memory: {any}", .{alloc_err});
                     };
                 };
             }

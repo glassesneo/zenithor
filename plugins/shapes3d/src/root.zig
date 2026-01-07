@@ -11,6 +11,7 @@ const Scale = zenithor.Scale;
 const Color = zenithor.Color;
 const Stage = zenithor.Stage;
 const std = @import("std");
+const log = std.log.scoped(.shapes3d);
 const builtin = @import("builtin");
 const RendererPlugin = @import("renderer_plugin");
 
@@ -969,7 +970,7 @@ fn draw3D(
             if (registry.getOrDefault(bucket.shader_name)) |entry| {
                 drawShaderBucket(bucket, entry, bindings, light.*, camera.*);
             } else if (is_debug) {
-                std.debug.print("Warning: shader '{s}' not found in registry\n", .{bucket.shader_name});
+                log.warn("Shader '{s}' not found in registry", .{bucket.shader_name});
             }
         }
     }

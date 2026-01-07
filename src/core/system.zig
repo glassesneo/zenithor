@@ -1,4 +1,5 @@
 const std = @import("std");
+const log = std.log.scoped(.system);
 const builtin = @import("builtin");
 const EnumArray = std.EnumArray;
 const BuiltinPlugin = @import("builtin.zig");
@@ -393,7 +394,7 @@ pub fn SystemScheduler(comptime World: type) type {
                     system_fn(world) catch |err| {
                         var queue = world.getEventStoragePtrMut(BuiltinPlugin.GameLoopError);
                         queue.enqueue(.{ .err = err }) catch |alloc_err| {
-                            std.debug.print("Failed to allocate memory: {any}\n", .{alloc_err});
+                            log.err("Failed to allocate memory: {any}", .{alloc_err});
                         };
                     };
                 }

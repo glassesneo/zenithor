@@ -3,6 +3,7 @@ const sparze = @import("sparze");
 const zenithor = @import("zenithor");
 const builtin = @import("builtin");
 const std = @import("std");
+const log = std.log.scoped(.renderer);
 
 // Stable tag constants for ecosystem use
 pub const Tags = struct {
@@ -28,7 +29,7 @@ fn initGraphics() void {
     // Debug info
     if (builtin.mode == .Debug) {
         const backend = sokol.gfx.queryBackend();
-        std.debug.print("[Renderer] Graphics backend: {}\n", .{backend});
+        log.info("Graphics backend: {}", .{backend});
     }
 }
 
