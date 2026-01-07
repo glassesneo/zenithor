@@ -72,6 +72,7 @@ const DependencySet = struct {
     cimgui: *Build.Dependency,
     sparze: *Build.Dependency,
     renderer_plugin_mod: *Build.Module,
+    gl2d_plugin_mod: *Build.Module,
     shapes2d_plugin_mod: *Build.Module,
     shapes3d_plugin_mod: *Build.Module,
     time_plugin_mod: *Build.Module,
@@ -92,6 +93,7 @@ const ExampleResult = struct {
 
 const PluginModules = struct {
     renderer: *Build.Module,
+    gl2d: *Build.Module,
     shapes2d: *Build.Module,
     shapes3d: *Build.Module,
     time: *Build.Module,
@@ -275,13 +277,23 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .imports = exported_imports[0..],
     });
 
+    // GL2D plugin - sokol.gl 2D rendering pipeline
+    const gl2d_mod = b.addModule("gl2d_plugin", .{
+        .root_source_file = b.path("plugins/gl2d/src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = exported_imports[0..] ++ &[_]Build.Module.Import{
+            .{ .name = "renderer_plugin", .module = renderer_mod },
+        },
+    });
+
     // Shapes2D plugin - 2D shape rendering
     const shapes2d_mod = b.addModule("shapes2d_plugin", .{
         .root_source_file = b.path("plugins/shapes2d/src/root.zig"),
         .target = target,
         .optimize = optimize,
         .imports = exported_imports[0..] ++ &[_]Build.Module.Import{
-            .{ .name = "renderer_plugin", .module = renderer_mod },
+            .{ .name = "gl2d_plugin", .module = gl2d_mod },
         },
     });
 
@@ -342,7 +354,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .target = target,
         .optimize = optimize,
         .imports = exported_imports[0..] ++ &[_]Build.Module.Import{
-            .{ .name = "renderer_plugin", .module = renderer_mod },
+            .{ .name = "gl2d_plugin", .module = gl2d_mod },
             .{ .name = "asset_plugin", .module = asset_mod },
         },
     });
@@ -371,6 +383,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
             .cimgui = dep_cimgui,
             .sparze = dep_sparze,
             .renderer_plugin_mod = renderer_mod,
+            .gl2d_plugin_mod = gl2d_mod,
             .shapes2d_plugin_mod = shapes2d_mod,
             .shapes3d_plugin_mod = shapes3d_mod,
             .time_plugin_mod = time_mod,
@@ -405,6 +418,7 @@ fn resolvePluginModule(lookup: PluginLookup, name: []const u8) *Build.Module {
         .dependency => |dep| dep.module(name),
         .modules => |mods| blk: {
             if (std.mem.eql(u8, name, "renderer_plugin")) break :blk mods.renderer;
+            if (std.mem.eql(u8, name, "gl2d_plugin")) break :blk mods.gl2d;
             if (std.mem.eql(u8, name, "shapes2d_plugin")) break :blk mods.shapes2d;
             if (std.mem.eql(u8, name, "shapes3d_plugin")) break :blk mods.shapes3d;
             if (std.mem.eql(u8, name, "time_plugin")) break :blk mods.time;
@@ -706,6 +720,7 @@ fn exampleContext(options: ExampleOptions, deps: DependencySet) AppBuildContext 
         .dep_sparze = deps.sparze,
         .plugin_lookup = .{ .modules = .{
             .renderer = deps.renderer_plugin_mod,
+            .gl2d = deps.gl2d_plugin_mod,
             .shapes2d = deps.shapes2d_plugin_mod,
             .shapes3d = deps.shapes3d_plugin_mod,
             .time = deps.time_plugin_mod,
