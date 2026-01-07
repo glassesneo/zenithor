@@ -7,7 +7,6 @@
 /// - Window positioning and sizing
 ///
 /// See: plugins/imgui/CLAUDE.md
-const std = @import("std");
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Rotation = zenithor.Rotation;
@@ -22,7 +21,7 @@ const ImGuiPlugin = @import("imgui_plugin");
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
-    zenithor.run(.{ Shapes3DPlugin, TimePlugin, ImGuiPlugin, Game }, .{});
+    zenithor.run(.{Game}, .{});
 }
 
 // Tag component for animated objects
@@ -39,6 +38,8 @@ const DebugSettings = struct {
 };
 
 const Game = struct {
+    pub const Requires = .{ Shapes3DPlugin, TimePlugin, ImGuiPlugin };
+
     pub const Components = .{Animated};
     pub const Resources = .{DebugSettings};
     pub const Events = .{};

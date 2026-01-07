@@ -9,17 +9,17 @@
 /// See: src/core/CLAUDE.md
 const zenithor = @import("zenithor");
 const Shapes2DPlugin = @import("shapes2d_plugin");
-const TimePlugin = @import("time_plugin");
-const InputPlugin = @import("input_plugin");
 
 pub fn main() !void {
     // Entry point: pass plugin tuple and options placeholder
-    // BuiltinPlugin is added automatically
-    zenithor.run(.{ Shapes2DPlugin, Game }, .{});
+    // BuiltinPlugin is added automatically, dependencies via Requires
+    zenithor.run(.{Game}, .{});
 }
 
 // Game plugin definition
 const Game = struct {
+    pub const Requires = .{Shapes2DPlugin};
+
     // Declare component, resource, and event types (can be empty)
     pub const Components = .{};
     pub const Resources = .{};

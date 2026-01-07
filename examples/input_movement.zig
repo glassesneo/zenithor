@@ -25,13 +25,15 @@ const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ Shapes2DPlugin, TimePlugin, InputPlugin, Game }, .{});
+    zenithor.run(.{Game}, .{});
 }
 
 // Tag component to identify the player entity
 const Player = struct {};
 
 const Game = struct {
+    pub const Requires = .{ Shapes2DPlugin, TimePlugin, InputPlugin };
+
     pub const Components = .{Player};
     pub const Resources = .{};
     pub const Events = .{};

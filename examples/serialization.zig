@@ -29,7 +29,7 @@ const ImGuiPlugin = @import("imgui_plugin");
 const SerializationPlugin = @import("serialization_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ Shapes2DPlugin, TimePlugin, InputPlugin, ImGuiPlugin, SerializationPlugin, Game }, .{});
+    zenithor.run(.{Game}, .{});
 }
 
 // Tag component for player
@@ -43,6 +43,8 @@ const GameState = struct {
 };
 
 const Game = struct {
+    pub const Requires = .{ Shapes2DPlugin, TimePlugin, InputPlugin, ImGuiPlugin, SerializationPlugin };
+
     pub const Components = .{Player};
     pub const Resources = .{GameState};
     pub const Events = .{};

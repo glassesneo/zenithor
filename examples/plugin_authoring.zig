@@ -26,8 +26,8 @@ const InputPlugin = @import("input_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {
-    // Only include GamePlugin - dependencies (HealthPlugin, TimePlugin) auto-included
-    zenithor.run(.{ Shapes2DPlugin, InputPlugin, ImGuiPlugin, GamePlugin }, .{});
+    // Only include GamePlugin - all dependencies auto-included via Requires
+    zenithor.run(.{GamePlugin}, .{});
 }
 
 // =============================================================================
@@ -121,9 +121,9 @@ const HealthPlugin = struct {
 // GAME PLUGIN - Uses HealthPlugin (demonstrates plugin dependencies)
 // =============================================================================
 const GamePlugin = struct {
-    // Declare dependency on HealthPlugin (which depends on TimePlugin)
-    // TimePlugin is transitively included
-    pub const Requires = .{HealthPlugin};
+    // Declare all direct dependencies (HealthPlugin already includes TimePlugin transitively)
+    // Best practice: explicitly declare every plugin whose types you use
+    pub const Requires = .{ HealthPlugin, Renderer, Shapes2DPlugin, InputPlugin, ImGuiPlugin };
 
     // Tag component
     pub const Player = struct {};

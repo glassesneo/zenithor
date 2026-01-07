@@ -10,19 +10,17 @@
 /// Click the button to trigger a system error and see it captured.
 ///
 /// See: src/core/CLAUDE.md (Error Handling section)
-const std = @import("std");
 const zenithor = @import("zenithor");
 const BuiltinPlugin = zenithor.BuiltinPlugin;
 const Resource = zenithor.Resource;
 const ResourceMut = zenithor.ResourceMut;
 const EventReader = zenithor.EventReader;
-const Shapes2DPlugin = @import("shapes2d_plugin");
 const Renderer = @import("renderer_plugin");
 const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ Shapes2DPlugin, TimePlugin, ImGuiPlugin, ErrorDemo }, .{});
+    zenithor.run(.{ErrorDemo}, .{});
 }
 
 // Configuration resource
@@ -63,6 +61,8 @@ const ErrorLog = struct {
 };
 
 const ErrorDemo = struct {
+    pub const Requires = .{ Renderer, TimePlugin, ImGuiPlugin };
+
     pub const Components = .{};
     pub const Resources = .{ ErrorConfig, ErrorLog };
     // Declare the error events we want to read

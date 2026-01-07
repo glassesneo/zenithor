@@ -14,10 +14,12 @@ const Shapes2DPlugin = @import("shapes2d_plugin");
 const Renderer = @import("renderer_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ Shapes2DPlugin, Game }, .{});
+    zenithor.run(.{Game}, .{});
 }
 
 const Game = struct {
+    pub const Requires = .{Shapes2DPlugin};
+
     pub const Components = .{};
     pub const Resources = .{};
     pub const Events = .{};

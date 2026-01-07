@@ -66,10 +66,8 @@ const Resource = zenithor.Resource;
 const ResourceMut = zenithor.ResourceMut;
 const Query = zenithor.Query;
 const SingleQuery = zenithor.SingleQuery;
-const EventWriter = zenithor.EventWriter;
 const EventReader = zenithor.EventReader;
 const BuiltinPlugin = zenithor.BuiltinPlugin;
-const Stage = zenithor.Stage;
 const Shapes3DPlugin = @import("shapes3d_plugin");
 const Renderer = @import("renderer_plugin");
 const TimePlugin = @import("time_plugin");
@@ -79,16 +77,8 @@ const SerializationPlugin = @import("serialization_plugin");
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
-    // All plugins included - dependencies auto-expanded
-    zenithor.run(.{
-        Shapes3DPlugin,
-        TimePlugin,
-        InputPlugin,
-        ImGuiPlugin,
-        SerializationPlugin,
-        PhysicsPlugin, // Custom plugin demonstrating plugin authoring
-        GamePlugin, // Main game plugin
-    }, .{});
+    // Only include GamePlugin - all dependencies auto-included via Requires
+    zenithor.run(.{GamePlugin}, .{});
 }
 
 // =============================================================================
@@ -230,7 +220,9 @@ const PhysicsPlugin = struct {
 // MAIN GAME PLUGIN
 // =============================================================================
 const GamePlugin = struct {
-    pub const Requires = .{PhysicsPlugin};
+    // Declare all direct dependencies (PhysicsPlugin already includes TimePlugin transitively)
+    // Best practice: explicitly declare every plugin whose types you use
+    pub const Requires = .{ PhysicsPlugin, Renderer, Shapes3DPlugin, InputPlugin, ImGuiPlugin, SerializationPlugin };
 
     // Tag components for entity identification
     pub const Interactable = struct {};

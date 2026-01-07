@@ -12,7 +12,6 @@
 ///   Space - Toggle camera orbit
 ///
 /// See: plugins/shapes3d/CLAUDE.md
-const std = @import("std");
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Rotation = zenithor.Rotation;
@@ -26,7 +25,7 @@ const InputPlugin = @import("input_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ Shapes3DPlugin, TimePlugin, InputPlugin, ImGuiPlugin, Game }, .{});
+    zenithor.run(.{Game}, .{});
 }
 
 // Demo state resource
@@ -36,6 +35,8 @@ const DemoState = struct {
 };
 
 const Game = struct {
+    pub const Requires = .{ Shapes3DPlugin, TimePlugin, InputPlugin, ImGuiPlugin };
+
     pub const Components = .{};
     pub const Resources = .{DemoState};
     pub const Events = .{};

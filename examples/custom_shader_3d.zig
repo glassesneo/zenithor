@@ -13,7 +13,6 @@
 /// Controls:
 ///   1/2/3/4 - Switch shader (Unlit/Blinn-Phong/PBR/Rim)
 ///   Space - Toggle camera orbit
-const std = @import("std");
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Rotation = zenithor.Rotation;
@@ -30,7 +29,7 @@ const ImGuiPlugin = @import("imgui_plugin");
 const RimShader = @import("rim_spec");
 
 pub fn main() !void {
-    zenithor.run(.{ Shapes3DPlugin, TimePlugin, InputPlugin, ImGuiPlugin, Game }, .{});
+    zenithor.run(.{Game}, .{});
 }
 
 // Demo state resource
@@ -40,6 +39,8 @@ const DemoState = struct {
 };
 
 const Game = struct {
+    pub const Requires = .{ Shapes3DPlugin, TimePlugin, InputPlugin, ImGuiPlugin };
+
     pub const Components = .{};
     pub const Resources = .{DemoState};
     pub const Events = .{};

@@ -333,7 +333,9 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .root_source_file = b.path("plugins/asset/src/root.zig"),
         .target = target,
         .optimize = optimize,
-        .imports = exported_imports[0..],
+        .imports = exported_imports[0..] ++ &[_]Build.Module.Import{
+            .{ .name = "renderer_plugin", .module = renderer_mod },
+        },
     });
     const sprite_mod = b.addModule("sprite_plugin", .{
         .root_source_file = b.path("plugins/sprite/src/root.zig"),

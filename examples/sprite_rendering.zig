@@ -16,7 +16,6 @@ const AssetPlugin = @import("asset_plugin");
 const SpritePlugin = @import("sprite_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 const Renderer = @import("renderer_plugin");
-const TimePlugin = @import("time_plugin");
 
 const Transform = zenithor.Transform;
 const Scale = zenithor.Scale;
@@ -27,7 +26,7 @@ const demo_texture_png = @embedFile("assets/demo_texture.png");
 
 pub fn main() !void {
     // SpritePlugin works standalone - RendererPlugin handles sokol.gl.draw()
-    zenithor.run(.{ TimePlugin, AssetPlugin, SpritePlugin, ImGuiPlugin, Game }, .{});
+    zenithor.run(.{Game}, .{});
 }
 
 const Game = struct {
@@ -35,7 +34,7 @@ const Game = struct {
     pub const Resources = .{};
     pub const Events = .{};
 
-    pub const Requires = .{ SpritePlugin, ImGuiPlugin };
+    pub const Requires = .{ AssetPlugin, SpritePlugin, ImGuiPlugin };
 
     pub const systems = .{
         .startup = &.{
