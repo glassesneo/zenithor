@@ -348,6 +348,7 @@ fn prepareBuildSetup(b: *Build) !BuildSetup {
         .optimize = optimize,
         .imports = exported_imports[0..] ++ &[_]Build.Module.Import{
             .{ .name = "renderer_plugin", .module = renderer_mod },
+            .{ .name = "time_plugin", .module = time_mod },
         },
     });
     const sprite_mod = b.addModule("sprite_plugin", .{

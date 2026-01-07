@@ -1,5 +1,6 @@
 const std = @import("std");
 const RendererPlugin = @import("renderer_plugin");
+const TimePlugin = @import("time_plugin");
 
 // Re-export public API
 pub const registry = @import("registry.zig");
@@ -68,8 +69,7 @@ pub const Events = .{
 pub const Groups = .{};
 
 // Requires RendererPlugin for sokol.gfx (texture creation)
-// Note: sokol.time is used for optional performance metrics but doesn't require TimePlugin
-pub const Requires = .{RendererPlugin};
+pub const Requires = .{ RendererPlugin, TimePlugin };
 
 // System declarations
 pub const systems = .{
