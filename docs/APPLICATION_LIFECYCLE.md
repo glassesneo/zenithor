@@ -176,7 +176,7 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
    // If multiple plugins export the same type, include once
    All Components: { Transform, Rotation, Scale, Color, Circle, Rectangle }
    All Resources: { Time, PassAction }
-   All Events: { GameLoopError, EventLoopError }
+   All Events: { GameLoopError }
    All Groups: {}
    ```
 
@@ -195,7 +195,7 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
    const World = sparze.World(
        .{ Transform, Rotation, Scale, Color, Circle, Rectangle },  // Components
        .{ Time, PassAction },                                       // Resources
-       .{ GameLoopError, EventLoopError },                          // Events
+       .{ GameLoopError },                                          // Events
        .{},                                                         // Groups
    );
    ```
@@ -283,19 +283,7 @@ This is necessary because Sparze expects tuple **values** (`.{ T1, T2 }`), not `
    }
    ```
 
-3. **Register Event Handlers**
-   ```zig
-   // Standard plugin event handler signature:
-   //   fn(event: sokol.app.Event, world: anytype) void|!void
-   if (@hasField(@TypeOf(systems_decl), "event_handlers")) {
-       inline for (systems_decl.event_handlers) |handler_fn| {
-           event_handlers[handler_count] = WrapperFor(handler_fn);
-           handler_count += 1;
-       }
-   }
-   ```
-
-4. **Finalize Schedulers**
+3. **Finalize Schedulers**
    ```zig
    startup_scheduler.finalize();
    main_scheduler.finalize();
@@ -379,12 +367,8 @@ Each frame:
    ```zig
    fn appEvent(ev: [*c]const sokol.app.Event, state: ?*anyopaque) callconv(.c) void {
        const app_state = @as(*AppState, @ptrCast(@alignCast(state)));
-       for (0..app_state.event_handler_count) |i| {
-           app_state.event_handlers[i](ev, &app_state.world) catch |err| {
-               var queue = app_state.world.getEventStoragePtrMut(BuiltinPlugin.EventLoopError);
-               queue.enqueue(.{ .err = err }) catch {};
-           };
-       }
+       var queue = app_state.world.getResourcePtrMut(BuiltinPlugin.SokolEventQueue);
+       queue.enqueue(ev.*);
    }
    ```
 
@@ -499,10 +483,9 @@ Plugins can hook into specific lifecycle points:
 | Hook | When | Purpose | Example |
 |------|------|---------|---------|
 | `startup` | After Sokol init, before first frame | Initialize resources, spawn entities | Load save file |
-| `main.first` | Start of each frame | Early frame setup | Update delta time |
+| `main.first` | Start of each frame | Early frame setup | Process Sokol events, update delta time |
 | `main.last` | End of each frame | Late frame cleanup | Reset input state |
 | `terminate` | Before Sokol shutdown | Clean up, save state | Write save file |
-| `event_handlers` | On Sokol events (async) | Process input, window events | Handle mouse clicks |
 
 ## Error Propagation
 
@@ -519,22 +502,10 @@ System Error
         └─ Implement error recovery, logging, etc.
 
 
-Event Handler Error
-     │
-     ├─ Caught by appEvent()
-     │
-     ├─ Enqueued as EventLoopError event
-     │
-     ├─ Application continues
-     │
-     └─ User systems can read EventLoopError events
 ```
-
-Fallback: If event allocation fails, error is printed to debug output.
 
 ### Code Reference
 
-`src/core/application.zig` (search for `EventLoopError`)
 `src/core/system.zig` (search for `GameLoopError`)
 
 ## Debug vs Release Builds
@@ -567,9 +538,9 @@ T=0ms    | appInit()
          |       └─ MyPlugin.init() spawns entities
          |
 T=16ms   | Frame 1: appFrame()
-         |   ├─ Event processing (appEvent callbacks)
+         |   ├─ Drain SokolEventQueue to frame snapshot
          |   ├─ Run main systems:
-         |   │   ├─ .first: TimePlugin.updateTime()
+         |   │   ├─ .first: InputPlugin.applySokolInput(), TimePlugin.updateTime()
          |   │   ├─ .update: MyPlugin.updateGame()
          |   │   ├─ .render: MyRenderPlugin.renderShapes()
          |   │   └─ .post_render: Renderer.commit()

@@ -151,73 +151,77 @@ pub const Resources = .{
 
 pub const Events = .{};
 
-/// Sokol event mapping to input state.
+/// Sokol event processing system.
 ///
-/// Updates Mouse/Keyboard resources from browser/native input events.
+/// Processes buffered Sokol events and updates Mouse/Keyboard resources.
+/// Runs in `.first` stage before game logic.
 /// Frame counters (held frames) incremented in `.last` stage cleanup system.
-fn handleEvent(event: sokol.app.Event, world: anytype) void {
-    const mouse: *Mouse = world.getResourcePtrMut(Mouse);
-    const keyboard: *Keyboard = world.getResourcePtrMut(Keyboard);
-
-    switch (event.type) {
-        .MOUSE_MOVE => {
-            mouse.x = event.mouse_x;
-            mouse.y = event.mouse_y;
-            mouse.dx = event.mouse_dx;
-            mouse.dy = event.mouse_dy;
-        },
-        .MOUSE_DOWN => {
-            switch (event.mouse_button) {
-                .LEFT => {
-                    mouse.left_button = true;
-                    mouse.held_frame_map.set(.LEFT, 1);
-                },
-                .RIGHT => {
-                    mouse.right_button = true;
-                    mouse.held_frame_map.set(.RIGHT, 1);
-                },
-                .MIDDLE => {
-                    mouse.middle_button = true;
-                    mouse.held_frame_map.set(.MIDDLE, 1);
-                },
-                else => {},
-            }
-        },
-        .MOUSE_UP => {
-            switch (event.mouse_button) {
-                .LEFT => mouse.left_button = false,
-                .RIGHT => mouse.right_button = false,
-                .MIDDLE => mouse.middle_button = false,
-                else => {},
-            }
-        },
-        .MOUSE_SCROLL => {
-            mouse.scroll_x = event.scroll_x;
-            mouse.scroll_y = event.scroll_y;
-        },
-        .KEY_DOWN => {
-            const key_code: i32 = @intFromEnum(event.key_code);
-            if (key_code >= 0 and key_code < 512) {
-                keyboard.keys.set(@intCast(key_code));
-                // Set to 1 on first press (updateFrameCounts will increment)
-                keyboard.held_frame_map.set(event.key_code, 1);
-            }
-            keyboard.modifiers = event.modifiers;
-        },
-        .KEY_UP => {
-            const key_code: i32 = @intFromEnum(event.key_code);
-            if (key_code >= 0 and key_code < 512) {
-                keyboard.keys.unset(@intCast(key_code));
-            }
-            keyboard.modifiers = event.modifiers;
-        },
-        .CHAR => {
-            if (keyboard.char_count < keyboard.char_buffer.len) {
-                keyboard.char_buffer[keyboard.char_count] = event.char_code;
-                keyboard.char_count += 1;
-            }
-        },
-        else => {},
+fn applySokolInput(
+    events: zenithor.SokolEvents,
+    mouse: sparze.ResourceMut(Mouse),
+    keyboard: sparze.ResourceMut(Keyboard),
+) void {
+    for (events.read()) |event| {
+        switch (event.type) {
+            .MOUSE_MOVE => {
+                mouse.x = event.mouse_x;
+                mouse.y = event.mouse_y;
+                mouse.dx = event.mouse_dx;
+                mouse.dy = event.mouse_dy;
+            },
+            .MOUSE_DOWN => {
+                switch (event.mouse_button) {
+                    .LEFT => {
+                        mouse.left_button = true;
+                        mouse.held_frame_map.set(.LEFT, 1);
+                    },
+                    .RIGHT => {
+                        mouse.right_button = true;
+                        mouse.held_frame_map.set(.RIGHT, 1);
+                    },
+                    .MIDDLE => {
+                        mouse.middle_button = true;
+                        mouse.held_frame_map.set(.MIDDLE, 1);
+                    },
+                    else => {},
+                }
+            },
+            .MOUSE_UP => {
+                switch (event.mouse_button) {
+                    .LEFT => mouse.left_button = false,
+                    .RIGHT => mouse.right_button = false,
+                    .MIDDLE => mouse.middle_button = false,
+                    else => {},
+                }
+            },
+            .MOUSE_SCROLL => {
+                mouse.scroll_x = event.scroll_x;
+                mouse.scroll_y = event.scroll_y;
+            },
+            .KEY_DOWN => {
+                const key_code: i32 = @intFromEnum(event.key_code);
+                if (key_code >= 0 and key_code < 512) {
+                    keyboard.keys.set(@intCast(key_code));
+                    // Set to 1 on first press (updateFrameCounts will increment)
+                    keyboard.held_frame_map.set(event.key_code, 1);
+                }
+                keyboard.modifiers = event.modifiers;
+            },
+            .KEY_UP => {
+                const key_code: i32 = @intFromEnum(event.key_code);
+                if (key_code >= 0 and key_code < 512) {
+                    keyboard.keys.unset(@intCast(key_code));
+                }
+                keyboard.modifiers = event.modifiers;
+            },
+            .CHAR => {
+                if (keyboard.char_count < keyboard.char_buffer.len) {
+                    keyboard.char_buffer[keyboard.char_count] = event.char_code;
+                    keyboard.char_count += 1;
+                }
+            },
+            else => {},
+        }
     }
 }
 
@@ -267,10 +271,10 @@ pub const systems = .{
         .{ .system = init, .stage = .first },
     },
     .main = &.{
+        .{ .system = applySokolInput, .stage = .first, .config = .{ .priority = -100 } },
         .{ .system = updateFrameCounts, .stage = .last }, // Increment after systems check
         .{ .system = resetPerFrameState, .stage = .last },
     },
-    .event_handlers = &.{handleEvent},
 };
 
 // Tests

@@ -394,15 +394,14 @@ const ZenithorOptions = struct {
 
 /// Entry point for Zenithor applications.
 ///
-/// Ubiquitous language: **plugin dependency expansion**, **system scheduling**, **stages**, **event handlers**.
+/// Ubiquitous language: **plugin dependency expansion**, **system scheduling**, **stages**.
 ///
 /// Plugins are compile-time types (usually `struct`s). Zenithor will:
 /// - Expand `pub const Requires = .{ ... }` dependencies (topological order, compile-time cycle check).
 /// - Build the `World` from optional plugin declarations: `Components`, `Resources`, `Events`, `Groups`.
-/// - Register systems from `pub const systems = .{ ... }` (startup/main/terminate/event_handlers).
+/// - Register systems from `pub const systems = .{ ... }` (startup/main/terminate).
 ///
-/// Event handlers are called from Sokol callbacks and must have signature:
-/// `fn(event: sokol.app.Event, world: anytype) void|!void`.
+/// Sokol events are automatically buffered in `SokolEventQueue` and processed by systems via `SokolEvents` parameter.
 pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
     // Expand user plugins to include all dependencies (auto-include)
     const Expanded = expandPluginDependencies(user_plugins);
@@ -415,7 +414,6 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
 
     const AppState = struct {
         const Self = @This();
-        const max_event_handlers = 32;
 
         arena: std.heap.ArenaAllocator,
         allocator: std.mem.Allocator,
@@ -423,8 +421,6 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
         system_scheduler: SystemScheduler,
         startup_system_scheduler: SystemScheduler,
         terminate_system_scheduler: SystemScheduler,
-        event_handlers: [max_event_handlers]*const fn ([*c]const sokol.app.Event, *World) anyerror!void,
-        event_handler_count: usize = 0,
 
         /// Creates an uninitialized AppState with arena allocator.
         /// IMPORTANT: Call `finishInit()` on the result after it's in its final memory location
@@ -438,8 +434,6 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
                 .system_scheduler = .init(),
                 .startup_system_scheduler = .init(),
                 .terminate_system_scheduler = .init(),
-                .event_handlers = undefined,
-                .event_handler_count = 0,
             };
         }
 
@@ -464,7 +458,7 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
             inline for (allPlugins, 0..) |Plugin, plugin_idx| {
                 const plugin_name = @typeName(Plugin);
 
-                // NEW: Declarative system registration via pub const systems
+                // Declarative system registration via pub const systems
                 if (@hasDecl(Plugin, "systems")) {
                     const systems_decl = Plugin.systems;
 
@@ -488,33 +482,6 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
                             app_state.terminate_system_scheduler.registerDecl(decl, plugin_name, @intCast(plugin_idx));
                         }
                     }
-
-                    // Register event handlers (standardized signature: fn(event, world) !void)
-                    if (@hasDecl(Plugin, "systems") and @hasField(@TypeOf(Plugin.systems), "event_handlers")) {
-                        inline for (Plugin.systems.event_handlers) |handler_fn| {
-                            if (builtin.mode == .Debug and app_state.event_handler_count >= AppState.max_event_handlers) {
-                                std.debug.panic(
-                                    "Event handler overflow: reached max capacity of {} handlers. " ++
-                                        "Consider increasing max_event_handlers.",
-                                    .{AppState.max_event_handlers},
-                                );
-                            }
-                            // Create compile-time wrapper that captures handler_fn
-                            const HandlerWrapper = struct {
-                                fn call(ev: [*c]const sokol.app.Event, w: *World) !void {
-                                    const handler_type_info = @typeInfo(@TypeOf(handler_fn));
-                                    if (handler_type_info.@"fn".return_type.? == void) {
-                                        handler_fn(ev.*, w);
-                                    } else {
-                                        try handler_fn(ev.*, w);
-                                    }
-                                }
-                            };
-                            // Store compile-time generated wrapper function
-                            app_state.event_handlers[app_state.event_handler_count] = HandlerWrapper.call;
-                            app_state.event_handler_count += 1;
-                        }
-                    }
                 }
             }
 
@@ -536,6 +503,7 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
         export fn appFrame(state: ?*anyopaque) callconv(.c) void {
             var app_state = @as(*AppState, @ptrCast(@alignCast(state)));
             app_state.world.beginFrame();
+            app_state.world.getResourcePtrMut(BuiltinPlugin.SokolEventQueue).drainToFrame();
             app_state.system_scheduler.run(&app_state.world);
             app_state.world.endFrame() catch unreachable;
         }
@@ -554,14 +522,8 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
 
         export fn appEvent(ev: [*c]const sokol.app.Event, state: ?*anyopaque) callconv(.c) void {
             var app_state = @as(*AppState, @ptrCast(@alignCast(state)));
-            for (0..app_state.event_handler_count) |i| {
-                app_state.event_handlers[i](ev, &app_state.world) catch |err| {
-                    var queue = app_state.world.getEventStoragePtrMut(BuiltinPlugin.EventLoopError);
-                    queue.enqueue(.{ .err = err }) catch |alloc_err| {
-                        log.err("Failed to allocate memory: {any}", .{alloc_err});
-                    };
-                };
-            }
+            var queue = app_state.world.getResourcePtrMut(BuiltinPlugin.SokolEventQueue);
+            queue.enqueue(ev.*);
         }
     };
 

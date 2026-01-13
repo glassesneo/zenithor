@@ -159,9 +159,14 @@ fn renderUi() void {
     sokol.imgui.render();
 }
 
-fn handleEvent(event: sokol.app.Event, world: anytype) void {
-    _ = world; // Unused but required for standardized signature
-    _ = sokol.imgui.handleEvent(event);
+/// Sokol event processing system for ImGui.
+///
+/// Forwards buffered Sokol events to ImGui for input handling.
+/// Runs in `.first` stage with priority -50 (after input_plugin at -100).
+fn handleSokolEvents(events: zenithor.SokolEvents) void {
+    for (events.read()) |event| {
+        _ = sokol.imgui.handleEvent(event);
+    }
 }
 
 // Declarative system registration
@@ -170,6 +175,7 @@ pub const systems = .{
         .{ .system = init, .stage = .first },
     },
     .main = &.{
+        .{ .system = handleSokolEvents, .stage = .first, .config = .{ .priority = -50 } },
         .{ .system = setupFrame, .stage = .first },
         .{
             .system = renderUi,
@@ -182,7 +188,6 @@ pub const systems = .{
     .terminate = &.{
         .{ .system = shutdown, .stage = .first },
     },
-    .event_handlers = &.{handleEvent},
 };
 
 fn init() void {

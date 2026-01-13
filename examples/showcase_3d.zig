@@ -6,7 +6,7 @@
 /// - zenithor.run() with plugin tuple and automatic dependency expansion
 /// - BuiltinPlugin components (Transform, Color, Rotation, Scale)
 /// - System scheduling with stages, priority, tags, before/after constraints
-/// - Error handling with GameLoopError/EventLoopError events
+/// - Error handling with GameLoopError events
 ///
 /// GRAPHICS PLUGIN:
 /// - All 3D shapes: Plane3D, Box3D, Sphere3D, Cylinder3D, Torus3D
@@ -273,7 +273,7 @@ const GamePlugin = struct {
 
     pub const Components = .{ Interactable, Orbiting, Bouncing, Pulsing };
     pub const Resources = .{ GameState, SceneStats };
-    pub const Events = .{ BuiltinPlugin.GameLoopError, BuiltinPlugin.EventLoopError };
+    pub const Events = .{ BuiltinPlugin.GameLoopError };
 
     pub const systems = .{
         .startup = &.{
@@ -897,14 +897,10 @@ const GamePlugin = struct {
 
     fn monitorErrors(
         game_errors: EventReader(BuiltinPlugin.GameLoopError),
-        event_errors: EventReader(BuiltinPlugin.EventLoopError),
     ) void {
         // Log any errors that occurred
         for (game_errors.read()) |err| {
             log.err("GameLoopError: {any}", .{err.err});
-        }
-        for (event_errors.read()) |err| {
-            log.err("EventLoopError: {any}", .{err.err});
         }
     }
 

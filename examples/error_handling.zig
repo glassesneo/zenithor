@@ -4,7 +4,6 @@
 /// - Systems can return errors with !void signature
 /// - Errors are caught and converted to events (not crashes)
 /// - GameLoopError: captures system failures during frame execution
-/// - EventLoopError: captures event handler failures
 /// - Use EventReader to monitor and handle errors
 ///
 /// Click the button to trigger a system error and see it captured.
@@ -68,7 +67,6 @@ const ErrorDemo = struct {
     // Declare the error events we want to read
     pub const Events = .{
         BuiltinPlugin.GameLoopError,
-        BuiltinPlugin.EventLoopError,
     };
 
     pub const systems = .{
@@ -106,7 +104,6 @@ fn errorProneSystem(config: ResourceMut(ErrorConfig)) !void {
 // Monitor system that reads error events
 fn errorMonitor(
     game_errors: EventReader(BuiltinPlugin.GameLoopError),
-    event_errors: EventReader(BuiltinPlugin.EventLoopError),
     log: ResourceMut(ErrorLog),
     config: ResourceMut(ErrorConfig),
     time: Resource(TimePlugin.Time),
@@ -115,12 +112,6 @@ fn errorMonitor(
 
     // Check for game loop errors (from systems)
     for (game_errors.read()) |err_event| {
-        log.add(err_event.err, timestamp);
-        config.error_count += 1;
-    }
-
-    // Check for event loop errors (from event handlers)
-    for (event_errors.read()) |err_event| {
         log.add(err_event.err, timestamp);
         config.error_count += 1;
     }

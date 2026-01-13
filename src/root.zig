@@ -20,7 +20,7 @@ const application_module = @import("core/application.zig");
 
 /// Main entry point for Zenithor applications.
 ///
-/// **Ubiquitous Language**: Application Lifecycle, Plugin Expansion, Event Handlers, World Construction
+/// **Ubiquitous Language**: Application Lifecycle, Plugin Expansion, World Construction
 ///
 /// Initializes the engine, expands plugin dependencies, constructs the ECS World,
 /// and runs the main loop (startup → frames → terminate).
@@ -28,8 +28,7 @@ const application_module = @import("core/application.zig");
 /// **Critical constraints**:
 /// - Core manages app loop and plugin orchestration only
 /// - Plugins initialize their own subsystems (`renderer` → `sokol.gfx/gl`, `time_plugin` → `sokol.time`, `imgui_plugin` → `sokol.imgui`)
-/// - Event handlers must have signature `fn(sokol.app.Event, world: anytype) void|!void`
-/// - Errors in event handlers are caught and enqueued as `BuiltinPlugin.EventLoopError`
+/// - Sokol events are automatically buffered and processed by systems via `SokolEvents` parameter
 /// - Errors in systems are caught and enqueued as `BuiltinPlugin.GameLoopError`
 ///
 /// **Allocator/lifetime model**:
@@ -41,7 +40,6 @@ const application_module = @import("core/application.zig");
 /// - `.startup = &.{...}` - Systems run once on initialization
 /// - `.main = &.{...}` - Systems run every frame
 /// - `.terminate = &.{...}` - Systems run once on shutdown
-/// - `.event_handlers = &.{...}` - Sokol event handlers
 ///
 /// **See Also**: docs/APPLICATION_LIFECYCLE.md
 pub const run = application_module.run;
@@ -100,6 +98,36 @@ pub const Transform = BuiltinPlugin.Transform;
 pub const Rotation = BuiltinPlugin.Rotation;
 pub const Scale = BuiltinPlugin.Scale;
 pub const Color = BuiltinPlugin.Color;
+
+/// Sokol event parameter for systems.
+///
+/// **Ubiquitous Language**: Event Processing, Sokol Events, Event Buffer
+///
+/// Systems that need to process Sokol events (input, window events) should
+/// request this parameter via dependency injection:
+///
+/// ```zig
+/// fn handleInput(
+///     events: zenithor.SokolEvents,
+///     mouse: ResourceMut(Mouse),
+///     keyboard: ResourceMut(Keyboard),
+/// ) void {
+///     for (events.read()) |event| {
+///         switch (event.type) {
+///             .MOUSE_MOVE => { /* ... */ },
+///             .KEY_DOWN => { /* ... */ },
+///             else => {},
+///         }
+///     }
+/// }
+/// ```
+///
+/// Events are buffered from Sokol callbacks and made available at the start
+/// of each frame. Systems typically run in `.first` stage to process events
+/// before game logic.
+///
+/// **See Also**: docs/PLUGIN_DEVELOPMENT.md, docs/APPLICATION_LIFECYCLE.md
+pub const SokolEvents = sparze.Resource(BuiltinPlugin.SokolEventQueue);
 
 // =============================================================================
 // PLATFORM ABSTRACTION LAYER

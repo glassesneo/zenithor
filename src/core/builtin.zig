@@ -110,26 +110,101 @@ pub const GameLoopError = struct {
     err: anyerror,
 };
 
-/// Event capturing errors from event handlers (input, window events).
+/// Sokol event queue resource for buffering events between frame boundaries.
 ///
-/// When an event handler returns an error, the application automatically catches it
-/// and enqueues it as an EventLoopError event. This prevents event processing failures
-/// from crashing the application.
+/// **Ubiquitous Language**: Event Buffer, Double Buffer, Frame Snapshot
 ///
-/// Use `EventReader(EventLoopError)` to monitor event handler errors:
-/// ```zig
-/// fn eventErrorMonitor(errors: EventReader(EventLoopError)) !void {
-///     for (errors.read()) |err_event| {
-///         std.debug.print("Event handler error: {any}\n", .{err_event.err});
-///     }
-/// }
-/// ```
+/// Events from Sokol callbacks are enqueued into a write buffer, then swapped
+/// to become the read buffer at the start of each frame. Systems read from
+/// the stable snapshot via `SokolEvents` parameter.
 ///
-/// This event is marked as non-serializable to prevent save/load systems
-/// from persisting transient error states.
-pub const EventLoopError = struct {
-    pub const serialized = false;
-    err: anyerror,
+/// **Critical specifications**:
+/// - Capacity: 1024 events per buffer
+/// - Overflow policy: Drop events when write buffer is full
+/// - `enqueue()`: Called from Sokol callback (no allocations, zero-copy)
+/// - `drainToFrame()`: Swaps buffers (zero-copy operation)
+/// - `read()`: Returns const slice of events for this frame
+///
+/// **Performance optimizations**:
+/// - Double-buffering: Zero-copy buffer swap (eliminates N event copies per frame)
+/// - Heap-allocated buffers: Avoids stack overflow on WASM (large inline arrays cause stack temps)
+/// - Linear write buffer: Simple append-only during event capture, then swap and reset
+///
+/// **Latency**: 1 frame delay from Sokol callback to system processing
+///
+/// **See Also**: docs/APPLICATION_LIFECYCLE.md
+pub const SokolEventQueue = struct {
+    pub const capacity: usize = 1024;
+
+    // Heap-allocated double-buffer slices (avoids WASM stack overflow)
+    buffer0: []sokol.app.Event,
+    buffer1: []sokol.app.Event,
+    write_idx: u1 = 0, // Which buffer is currently being written to (0 or 1)
+
+    write_head: usize = 0, // Write position in current write buffer
+    read_count: usize = 0, // Number of events in the read buffer
+    dropped_total: u64 = 0,
+
+    /// Initialize the event queue with heap-allocated buffers.
+    /// Sparze calls this automatically during World.init().
+    pub fn init(allocator: std.mem.Allocator) @This() {
+        const buffer0 = allocator.alloc(sokol.app.Event, capacity) catch @panic("Failed to allocate SokolEventQueue buffer0");
+        const buffer1 = allocator.alloc(sokol.app.Event, capacity) catch @panic("Failed to allocate SokolEventQueue buffer1");
+
+        return .{
+            .buffer0 = buffer0,
+            .buffer1 = buffer1,
+        };
+    }
+
+    /// Clean up heap-allocated buffers.
+    /// Sparze calls this automatically during World.deinit().
+    pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
+        allocator.free(self.buffer0);
+        allocator.free(self.buffer1);
+    }
+
+    fn getWriteBuffer(self: *@This()) []sokol.app.Event {
+        return if (self.write_idx == 0) self.buffer0 else self.buffer1;
+    }
+
+    fn getReadBuffer(self: *const @This()) []sokol.app.Event {
+        const read_idx = self.write_idx ^ 1;
+        return if (read_idx == 0) self.buffer0 else self.buffer1;
+    }
+
+    /// Enqueues an event from Sokol callback.
+    /// Drops event if write buffer is full.
+    pub fn enqueue(self: *@This(), ev: sokol.app.Event) void {
+        if (self.write_head >= capacity) {
+            // Write buffer full - drop event
+            self.dropped_total += 1;
+            return;
+        }
+        self.getWriteBuffer()[self.write_head] = ev;
+        self.write_head += 1;
+    }
+
+    /// Swaps write/read buffers (zero-copy operation).
+    /// Called once per frame before systems run.
+    pub fn drainToFrame(self: *@This()) void {
+        // Swap buffers: flip write_idx (0→1, 1→0)
+        self.write_idx ^= 1;
+
+        // The OLD write buffer is now the read buffer
+        self.read_count = self.write_head;
+
+        // Reset write position for the NEW write buffer
+        self.write_head = 0;
+    }
+
+    /// Returns events for this frame.
+    /// Systems iterate this slice to process events.
+    pub fn read(self: *const @This()) []const sokol.app.Event {
+        return self.getReadBuffer()[0..self.read_count];
+    }
+
+    pub const serialized = false; // Don't persist event queue
 };
 
 /// Builtin components always included via BuiltinPlugin.
@@ -150,11 +225,20 @@ pub const Components = .{
     Color,
 };
 
+/// Builtin resources always included via BuiltinPlugin.
+///
+/// These resources provide core functionality:
+/// - `SokolEventQueue` - Buffered Sokol events for system processing
+///
+/// **See Also**: @src/core/CLAUDE.md
+pub const Resources = .{
+    SokolEventQueue,
+};
+
 /// Builtin error events always included via BuiltinPlugin.
 ///
 /// These events enable error recovery and monitoring:
 /// - `GameLoopError` - System errors during frame execution
-/// - `EventLoopError` - Event handler errors (input, window events)
 ///
 /// Systems and event handlers can return `!void`. Errors are caught and enqueued as these events,
 /// allowing the application to continue execution.
@@ -162,7 +246,6 @@ pub const Components = .{
 /// **See Also**: docs/APPLICATION_LIFECYCLE.md, docs/SYSTEM_ORDERING.md
 pub const Events = .{
     GameLoopError,
-    EventLoopError,
 };
 
 const std = @import("std");

@@ -454,7 +454,6 @@ const TestResources = .{
 };
 const TestEvents = .{
     BuiltinPlugin.GameLoopError,
-    BuiltinPlugin.EventLoopError,
 };
 const TestGroups = .{
     TestMovementGroup,

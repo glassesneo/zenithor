@@ -5,7 +5,7 @@ Application lifecycle, builtin components (Transform, Rotation, Scale, Color), s
 ## Key Files
 
 - **application.zig** - zenithor.run(), plugin expansion, World construction, Sokol init, main loop
-- **builtin.zig** - Transform, Rotation, Scale, Color components (always included)
+- **builtin.zig** - Transform, Rotation, Scale, Color components; SokolEventQueue resource (always included)
 - **system.zig** - SystemScheduler (registration, sorting, constraint validation)
 
 ## Critical Rules
@@ -29,14 +29,25 @@ Color { r: f32, g: f32, b: f32, a: f32 = 1.0 }       // Always available - RGBA
 
 Color constants: `.red`, `.green`, `.blue`, `.yellow`, `.cyan`, `.magenta`, `.white`, `.black`, `.orange`, `.purple`
 
+## Builtin Resources
+
+```zig
+SokolEventQueue {                      // Always available - Sokol event buffer
+    enqueue(event)                     // Called by appEvent callback
+    drainToFrame()                     // Called once per frame in appFrame
+    read() []const sokol.app.Event     // Systems iterate events
+}
+```
+
+Systems access events via `SokolEvents` parameter (alias for `Resource(SokolEventQueue)`). Events are buffered from Sokol callbacks and processed in `.first` stage.
+
 ## Builtin Events
 
 ```zig
 GameLoopError { err: anyerror }    // System errors (non-serializable)
-EventLoopError { err: anyerror }   // Event handler errors (non-serializable)
 ```
 
-Systems can return `!void` - errors are caught and enqueued as events. Application continues execution.
+Systems can return `!void` - errors are caught and enqueued as `GameLoopError` events. Application continues execution.
 
 ## System Stages (execution order)
 

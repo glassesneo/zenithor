@@ -36,7 +36,6 @@ pub const systems = .{
     .startup = &.{ /* startup systems */ },
     .main = &.{ /* regular systems */ },
     .terminate = &.{ /* cleanup systems */ },
-    .event_handlers = &.{ /* Sokol event handlers */ },
 };
 ```
 
@@ -231,16 +230,7 @@ pub const systems = .{
     .terminate = &.{
         .{ .system = cleanup, .stage = .last },
     },
-
-    // Event handlers process Sokol input/window events
-    .event_handlers = &.{handleInput},
 };
-
-// Event handler signature: (sokol.app.Event, world) !void
-fn handleInput(event: sokol.app.Event, world: anytype) void {
-    const kb = world.getResourcePtrMut(@import("input_plugin").Keyboard);
-    // Process input...
-}
 ```
 
 ### System Descriptor Fields
@@ -266,6 +256,50 @@ pub const Requires = .{ TimePlugin, InputPlugin };
 ```
 
 The engine automatically includes dependencies (transitively) and detects circular dependencies at compile time.
+
+## Processing Sokol Events
+
+If your plugin needs to process Sokol events (input, window events), use the `SokolEvents` parameter:
+
+```zig
+const zenithor = @import("zenithor");
+const sparze = @import("sparze");
+
+fn handleInput(
+    events: zenithor.SokolEvents,
+    mouse: sparze.ResourceMut(Mouse),
+    keyboard: sparze.ResourceMut(Keyboard),
+) void {
+    for (events.read()) |event| {
+        switch (event.type) {
+            .MOUSE_MOVE => {
+                mouse.x = event.mouse_x;
+                mouse.y = event.mouse_y;
+            },
+            .KEY_DOWN => {
+                // Handle key press
+            },
+            else => {},
+        }
+    }
+}
+
+pub const systems = .{
+    .main = &.{
+        // Run in .first stage with high priority (negative = early)
+        .{ .system = handleInput, .stage = .first, .config = .{ .priority = -100 } },
+    },
+};
+```
+
+**Event flow**:
+1. Sokol calls `appEvent` callback (outside frame boundaries)
+2. Events are buffered in `SokolEventQueue` resource
+3. At start of frame, events are drained to frame snapshot
+4. Systems in `.first` stage read events via `SokolEvents` parameter
+5. Events are processed inside frame boundaries
+
+**Latency**: 1 frame delay from Sokol callback to system processing (~16ms at 60fps).
 
 ## Integrating with Render Pass
 
