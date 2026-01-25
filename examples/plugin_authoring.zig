@@ -28,7 +28,15 @@ const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {
     // Only include GamePlugin - all dependencies auto-included via Requires
-    zenithor.run(.{GamePlugin}, .{});
+    zenithor.run(.{GamePlugin}, .{
+        .window_config = .{
+            .width = 960,
+            .height = 600,
+            .title = "Plugin Authoring",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 // =============================================================================

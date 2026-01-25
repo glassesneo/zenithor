@@ -12,6 +12,24 @@ Internal flow chart and detailed explanation of `zenithor.run()`.
 5. Runs the main loop (startup → frames → terminate)
 6. Handles cleanup on exit
 
+### Run Options (WindowConfig)
+
+You can configure the initial window via `options.window_config`:
+
+```zig
+zenithor.run(.{ MyPlugin }, .{
+    .window_config = .{
+        .width = 1280,
+        .height = 800,
+        .title = "My Game",
+        .fullscreen = false,
+        .high_dpi = true,
+    },
+});
+```
+
+Defaults are `1280x800`, title `"Zenithor"`, `fullscreen = false`, `high_dpi = true`.
+
 ## High-Level Flow
 
 ```

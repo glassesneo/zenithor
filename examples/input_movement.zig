@@ -25,7 +25,15 @@ const TimePlugin = @import("time_plugin");
 const InputPlugin = @import("input_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{Game}, .{});
+    zenithor.run(.{Game}, .{
+        .window_config = .{
+            .width = 1280,
+            .height = 720,
+            .title = "Input Movement",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 // Tag component to identify the player entity

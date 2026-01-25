@@ -382,14 +382,25 @@ pub fn buildWorld(comptime plugins: anytype) type {
     return sparze.World(Components, Resources, Events, Groups);
 }
 
+/// Configuration options for the application window.
+/// Ubiquitous language: **window dimensions**, **fullscreen**, **high-DPI**
+pub const WindowConfig = struct {
+    width: i32 = 1280,
+    height: i32 = 800,
+    title: [:0]const u8 = "Zenithor",
+    fullscreen: bool = false,
+    high_dpi: bool = true,
+};
+
 /// Options for `zenithor.run(...)`.
 ///
 /// Ubiquitous language: **base allocator**, **AppState arena**, **WASM lifecycle**.
-const ZenithorOptions = struct {
+pub const ZenithorOptions = struct {
     /// Base allocator used to create the application's arena on native targets.
     ///
     /// On WASM targets, Zenithor uses `std.heap.c_allocator` regardless of this option.
     allocator: std.mem.Allocator = std.heap.page_allocator,
+    window_config: WindowConfig = .{},
 };
 
 /// Entry point for Zenithor applications.
@@ -551,10 +562,12 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
                 .frame_userdata_cb = Callbacks.appFrame,
                 .cleanup_userdata_cb = Callbacks.appCleanup,
                 .event_userdata_cb = Callbacks.appEvent,
-                .width = 1280,
-                .height = 800,
+                .width = options.window_config.width,
+                .height = options.window_config.height,
+                .window_title = options.window_config.title,
+                .fullscreen = options.window_config.fullscreen,
+                .high_dpi = options.window_config.high_dpi,
                 .icon = .{ .sokol_default = true },
-                .window_title = "window",
                 .logger = .{ .func = sokol.log.func },
                 .win32 = .{ .console_attach = true },
             };
@@ -571,10 +584,12 @@ pub fn run(comptime user_plugins: anytype, options: ZenithorOptions) void {
                 .frame_userdata_cb = Callbacks.appFrame,
                 .cleanup_userdata_cb = Callbacks.appCleanup,
                 .event_userdata_cb = Callbacks.appEvent,
-                .width = 1280,
-                .height = 800,
+                .width = options.window_config.width,
+                .height = options.window_config.height,
+                .window_title = options.window_config.title,
+                .fullscreen = options.window_config.fullscreen,
+                .high_dpi = options.window_config.high_dpi,
                 .icon = .{ .sokol_default = true },
-                .window_title = "window",
                 .logger = .{ .func = sokol.log.func },
                 .win32 = .{ .console_attach = true },
             };

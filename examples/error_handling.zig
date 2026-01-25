@@ -19,7 +19,15 @@ const TimePlugin = @import("time_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{ErrorDemo}, .{});
+    zenithor.run(.{ErrorDemo}, .{
+        .window_config = .{
+            .width = 900,
+            .height = 600,
+            .title = "Error Handling",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 // Configuration resource

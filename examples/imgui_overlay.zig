@@ -21,7 +21,15 @@ const ImGuiPlugin = @import("imgui_plugin");
 const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
-    zenithor.run(.{Game}, .{});
+    zenithor.run(.{Game}, .{
+        .window_config = .{
+            .width = 1280,
+            .height = 800,
+            .title = "ImGui Overlay",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 // Tag component for animated objects

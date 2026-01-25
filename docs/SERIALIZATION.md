@@ -46,7 +46,15 @@ pub fn main() !void {
         TimePlugin,
         SerializationPlugin, 
         YourGamePlugin 
-    }, .{});
+    }, .{
+        .window_config = .{
+            .width = 1280,
+            .height = 800,
+            .title = "Serialization Demo",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 ```
 

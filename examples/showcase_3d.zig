@@ -79,7 +79,15 @@ const ig = ImGuiPlugin.ig;
 
 pub fn main() !void {
     // Only include GamePlugin - all dependencies auto-included via Requires
-    zenithor.run(.{GamePlugin}, .{});
+    zenithor.run(.{GamePlugin}, .{
+        .window_config = .{
+            .width = 1600,
+            .height = 900,
+            .title = "Showcase 3D",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 // =============================================================================

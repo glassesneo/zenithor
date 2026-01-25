@@ -29,7 +29,15 @@ const ImGuiPlugin = @import("imgui_plugin");
 const RimShader = @import("rim_spec");
 
 pub fn main() !void {
-    zenithor.run(.{Game}, .{});
+    zenithor.run(.{Game}, .{
+        .window_config = .{
+            .width = 1440,
+            .height = 900,
+            .title = "Custom Shader 3D",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 // Demo state resource

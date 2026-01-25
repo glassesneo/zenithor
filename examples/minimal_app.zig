@@ -13,7 +13,15 @@ const Shapes2DPlugin = @import("shapes2d_plugin");
 pub fn main() !void {
     // Entry point: pass plugin tuple and options placeholder
     // BuiltinPlugin is added automatically, dependencies via Requires
-    zenithor.run(.{Game}, .{});
+    zenithor.run(.{Game}, .{
+        .window_config = .{
+            .width = 960,
+            .height = 540,
+            .title = "Zenithor Minimal",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 // Game plugin definition

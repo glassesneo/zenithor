@@ -17,7 +17,15 @@ const Stage = zenithor.Stage;
 const SystemConfig = zenithor.SystemConfig;
 
 pub fn main() void {
-    zenithor.run(.{SystemOrderingDemo}, .{});
+    zenithor.run(.{SystemOrderingDemo}, .{
+        .window_config = .{
+            .width = 1000,
+            .height = 700,
+            .title = "System Ordering",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 // Resource to track execution order

@@ -14,7 +14,15 @@ const Shapes2DPlugin = @import("shapes2d_plugin");
 const Renderer = @import("renderer_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{Game}, .{});
+    zenithor.run(.{Game}, .{
+        .window_config = .{
+            .width = 1024,
+            .height = 640,
+            .title = "Rendering 2D",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 const Game = struct {

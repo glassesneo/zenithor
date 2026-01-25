@@ -39,7 +39,15 @@ const Time = @import("time_plugin");
 const Input = @import("input_plugin");
 
 pub fn main() void {
-    zenithor.run(.{ Shapes2DPlugin, Time, Input }, .{});
+    zenithor.run(.{ Shapes2DPlugin, Time, Input }, .{
+        .window_config = .{
+            .width = 1280,
+            .height = 800,
+            .title = "Zenithor",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 ```
 

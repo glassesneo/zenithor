@@ -25,7 +25,15 @@ const InputPlugin = @import("input_plugin");
 const ImGuiPlugin = @import("imgui_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{Game}, .{});
+    zenithor.run(.{Game}, .{
+        .window_config = .{
+            .width = 1440,
+            .height = 900,
+            .title = "Scene 3D",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 // Demo state resource

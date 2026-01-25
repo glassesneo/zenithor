@@ -30,7 +30,15 @@ const ImGuiPlugin = @import("imgui_plugin");
 const SerializationPlugin = @import("serialization_plugin");
 
 pub fn main() !void {
-    zenithor.run(.{Game}, .{});
+    zenithor.run(.{Game}, .{
+        .window_config = .{
+            .width = 1100,
+            .height = 700,
+            .title = "Serialization",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 // Tag component for player

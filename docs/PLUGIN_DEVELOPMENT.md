@@ -381,7 +381,15 @@ const zenithor = @import("zenithor");
 const MyPlugin = @import("my_plugin");
 
 pub fn main() void {
-    zenithor.run(.{ MyPlugin }, .{});
+    zenithor.run(.{ MyPlugin }, .{
+        .window_config = .{
+            .width = 1280,
+            .height = 800,
+            .title = "My Game",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 ```
 

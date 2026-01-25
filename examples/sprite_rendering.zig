@@ -27,7 +27,15 @@ const demo_texture_png = @embedFile("assets/demo_texture.png");
 
 pub fn main() !void {
     // SpritePlugin works standalone - RendererPlugin handles sokol.gl.draw()
-    zenithor.run(.{Game}, .{});
+    zenithor.run(.{Game}, .{
+        .window_config = .{
+            .width = 1280,
+            .height = 720,
+            .title = "Sprite Rendering",
+            .fullscreen = false,
+            .high_dpi = true,
+        },
+    });
 }
 
 const Game = struct {
