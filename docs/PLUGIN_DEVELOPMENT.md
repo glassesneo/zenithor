@@ -356,6 +356,24 @@ const my_plugin_mod = b.addModule("my_plugin", .{
 exe.root_module.addImport("my_plugin", my_plugin_mod);
 ```
 
+For external projects (using zenithor as a dependency), add plugins via the type-safe API:
+
+```zig
+const zenithor_build = @import("zenithor");
+
+const zenithor_dep = b.dependency("zenithor", .{ .target = target, .optimize = optimize });
+
+zenithor_build.buildNative(b, zenithor_dep, exe, .{
+    .target = target,
+    .optimize = optimize,
+    .plugins = &.{
+        zenithor_build.plugins.shapes2d,
+        zenithor_build.plugins.time,
+        zenithor_build.plugins.custom("my_plugin", my_plugin_mod),
+    },
+});
+```
+
 ## Step 9: Use Plugin in Application
 
 ```zig

@@ -4,43 +4,59 @@ const log = std.log.scoped(.build);
 const sokol = @import("sokol");
 const cimgui = @import("cimgui");
 
-const examples = [_]Example{
-    // Minimal app + plugin wiring
-    .{ .name = "minimal_app", .plugins = &.{ "shapes2d_plugin", "time_plugin", "input_plugin" } },
-    // Input + time driven movement
-    .{ .name = "input_movement", .plugins = &.{ "renderer_plugin", "shapes2d_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
-    // 2D rendering + layering
-    .{ .name = "rendering_2d", .plugins = &.{ "renderer_plugin", "shapes2d_plugin", "imgui_plugin" } },
-    // 3D scene basics
-    .{ .name = "scene_3d", .plugins = &.{ "shapes3d_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
-    // System staging and ordering
-    .{ .name = "system_ordering", .plugins = &.{} },
-    // Event flow and error handling
-    .{ .name = "error_handling", .plugins = &.{ "renderer_plugin", "shapes2d_plugin", "time_plugin", "imgui_plugin" } },
-    // Serialization round-trip
-    .{ .name = "serialization", .plugins = &.{ "renderer_plugin", "shapes2d_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
-    // ImGui debug overlay
-    .{ .name = "imgui_overlay", .plugins = &.{ "renderer_plugin", "shapes3d_plugin", "time_plugin", "imgui_plugin" } },
-    // Plugin authoring + Requires
-    .{ .name = "plugin_authoring", .plugins = &.{ "renderer_plugin", "shapes2d_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
-    // Sprite rendering (replaces asset_loading)
-    .{ .name = "sprite_rendering", .plugins = &.{ "renderer_plugin", "time_plugin", "asset_plugin", "sprite_plugin", "imgui_plugin" } },
-    // Comprehensive 3D showcase - demonstrates ALL features
-    .{ .name = "showcase_3d", .plugins = &.{ "renderer_plugin", "shapes3d_plugin", "time_plugin", "input_plugin", "imgui_plugin", "serialization_plugin" } },
-    // Custom shader demonstration - rim/Fresnel lighting effect
-    .{ .name = "custom_shader_3d", .plugins = &.{ "shapes3d_plugin", "time_plugin", "input_plugin", "imgui_plugin" } },
-    // Test shader
+// =============================================================================
+// PUBLIC API - Plugin Types
+// =============================================================================
+
+/// Standard plugins bundled with zenithor.
+pub const StandardPlugin = enum {
+    renderer,
+    gl2d,
+    shapes2d,
+    shapes3d,
+    time,
+    imgui,
+    input,
+    serialization,
+    asset,
+    sprite,
 };
 
-const Example = struct {
-    name: []const u8,
-    plugins: []const []const u8,
-};
-
+/// Custom plugin module (for user-defined plugins).
 pub const PluginModule = struct {
     name: []const u8,
     module: *Build.Module,
 };
+
+/// Unified plugin type - either a standard zenithor plugin or a custom module.
+pub const Plugin = union(enum) {
+    standard: StandardPlugin,
+    custom: PluginModule,
+};
+
+/// Discoverable namespace for standard plugins.
+/// Use with autocomplete: `zenithor.plugins.shapes2d`, `zenithor.plugins.time`, etc.
+pub const plugins = struct {
+    pub const renderer: Plugin = .{ .standard = .renderer };
+    pub const gl2d: Plugin = .{ .standard = .gl2d };
+    pub const shapes2d: Plugin = .{ .standard = .shapes2d };
+    pub const shapes3d: Plugin = .{ .standard = .shapes3d };
+    pub const time: Plugin = .{ .standard = .time };
+    pub const imgui: Plugin = .{ .standard = .imgui };
+    pub const input: Plugin = .{ .standard = .input };
+    pub const serialization: Plugin = .{ .standard = .serialization };
+    pub const asset: Plugin = .{ .standard = .asset };
+    pub const sprite: Plugin = .{ .standard = .sprite };
+
+    /// Create a custom plugin from a user-defined module.
+    pub fn custom(name: []const u8, module: *Build.Module) Plugin {
+        return .{ .custom = .{ .name = name, .module = module } };
+    }
+};
+
+// =============================================================================
+// PUBLIC API - Build Options
+// =============================================================================
 
 pub const AppOptions = struct {
     target: Build.ResolvedTarget,
@@ -51,8 +67,45 @@ pub const AppOptions = struct {
     imgui_docking: bool = false,
     filesystem: bool = false,
     stack_size_mb: u32 = 5,
-    standard_plugins: []const []const u8 = &.{},
-    plugins: []const PluginModule = &.{},
+    /// Plugins to include (standard + custom).
+    /// Use `zenithor.plugins.*` for standard plugins.
+    plugins: []const Plugin = &.{},
+};
+
+// =============================================================================
+// INTERNAL - Example Definitions
+// =============================================================================
+
+const examples = [_]Example{
+    // Minimal app + plugin wiring
+    .{ .name = "minimal_app", .plugins = &.{ plugins.shapes2d, plugins.time, plugins.input } },
+    // Input + time driven movement
+    .{ .name = "input_movement", .plugins = &.{ plugins.renderer, plugins.shapes2d, plugins.time, plugins.input, plugins.imgui } },
+    // 2D rendering + layering
+    .{ .name = "rendering_2d", .plugins = &.{ plugins.renderer, plugins.shapes2d, plugins.imgui } },
+    // 3D scene basics
+    .{ .name = "scene_3d", .plugins = &.{ plugins.shapes3d, plugins.time, plugins.input, plugins.imgui } },
+    // System staging and ordering
+    .{ .name = "system_ordering", .plugins = &.{} },
+    // Event flow and error handling
+    .{ .name = "error_handling", .plugins = &.{ plugins.renderer, plugins.shapes2d, plugins.time, plugins.imgui } },
+    // Serialization round-trip
+    .{ .name = "serialization", .plugins = &.{ plugins.renderer, plugins.shapes2d, plugins.time, plugins.input, plugins.imgui, plugins.serialization } },
+    // ImGui debug overlay
+    .{ .name = "imgui_overlay", .plugins = &.{ plugins.renderer, plugins.shapes3d, plugins.time, plugins.imgui } },
+    // Plugin authoring + Requires
+    .{ .name = "plugin_authoring", .plugins = &.{ plugins.renderer, plugins.shapes2d, plugins.time, plugins.input, plugins.imgui } },
+    // Sprite rendering (replaces asset_loading)
+    .{ .name = "sprite_rendering", .plugins = &.{ plugins.renderer, plugins.time, plugins.asset, plugins.sprite, plugins.imgui } },
+    // Comprehensive 3D showcase - demonstrates ALL features
+    .{ .name = "showcase_3d", .plugins = &.{ plugins.renderer, plugins.shapes3d, plugins.time, plugins.input, plugins.imgui, plugins.serialization } },
+    // Custom shader demonstration - rim/Fresnel lighting effect
+    .{ .name = "custom_shader_3d", .plugins = &.{ plugins.shapes3d, plugins.time, plugins.input, plugins.imgui } },
+};
+
+const Example = struct {
+    name: []const u8,
+    plugins: []const Plugin,
 };
 
 const ExampleOptions = struct {
@@ -64,7 +117,6 @@ const ExampleOptions = struct {
     imgui_docking: bool,
     filesystem: bool,
     stack_size_mb: u32,
-    standard_plugins: []const []const u8,
     mod_zenithor: *Build.Module,
 };
 
@@ -415,28 +467,53 @@ fn addDarwinIncludePaths(target: Build.ResolvedTarget, dep_sokol: *Build.Depende
     }
 }
 
-fn resolvePluginModule(lookup: PluginLookup, name: []const u8) *Build.Module {
+/// Returns the module name for a standard plugin (e.g., .shapes2d -> "shapes2d_plugin").
+fn standardPluginName(plugin: StandardPlugin) []const u8 {
+    return switch (plugin) {
+        .renderer => "renderer_plugin",
+        .gl2d => "gl2d_plugin",
+        .shapes2d => "shapes2d_plugin",
+        .shapes3d => "shapes3d_plugin",
+        .time => "time_plugin",
+        .imgui => "imgui_plugin",
+        .input => "input_plugin",
+        .serialization => "serialization_plugin",
+        .asset => "asset_plugin",
+        .sprite => "sprite_plugin",
+    };
+}
+
+/// Resolves a standard plugin to its build module.
+fn resolveStandardPlugin(lookup: PluginLookup, plugin: StandardPlugin) *Build.Module {
     return switch (lookup) {
-        .dependency => |dep| dep.module(name),
-        .modules => |mods| blk: {
-            if (std.mem.eql(u8, name, "renderer_plugin")) break :blk mods.renderer;
-            if (std.mem.eql(u8, name, "gl2d_plugin")) break :blk mods.gl2d;
-            if (std.mem.eql(u8, name, "shapes2d_plugin")) break :blk mods.shapes2d;
-            if (std.mem.eql(u8, name, "shapes3d_plugin")) break :blk mods.shapes3d;
-            if (std.mem.eql(u8, name, "time_plugin")) break :blk mods.time;
-            if (std.mem.eql(u8, name, "imgui_plugin")) break :blk mods.imgui;
-            if (std.mem.eql(u8, name, "input_plugin")) break :blk mods.input;
-            if (std.mem.eql(u8, name, "serialization_plugin")) break :blk mods.serialization;
-            if (std.mem.eql(u8, name, "asset_plugin")) break :blk mods.asset;
-            if (std.mem.eql(u8, name, "sprite_plugin")) break :blk mods.sprite;
-            std.debug.panic("Unknown plugin name: {s}", .{name});
+        .dependency => |dep| dep.module(standardPluginName(plugin)),
+        .modules => |mods| switch (plugin) {
+            .renderer => mods.renderer,
+            .gl2d => mods.gl2d,
+            .shapes2d => mods.shapes2d,
+            .shapes3d => mods.shapes3d,
+            .time => mods.time,
+            .imgui => mods.imgui,
+            .input => mods.input,
+            .serialization => mods.serialization,
+            .asset => mods.asset,
+            .sprite => mods.sprite,
         },
     };
 }
 
-fn addStandardPlugins(root_module: *Build.Module, ctx: AppBuildContext, plugin_names: []const []const u8) void {
-    for (plugin_names) |plugin_name| {
-        root_module.addImport(plugin_name, resolvePluginModule(ctx.plugin_lookup, plugin_name));
+/// Adds all plugins (standard + custom) to the root module.
+fn addPlugins(root_module: *Build.Module, ctx: AppBuildContext, plugins_list: []const Plugin) void {
+    for (plugins_list) |plugin| {
+        switch (plugin) {
+            .standard => |std_plugin| {
+                const name = standardPluginName(std_plugin);
+                root_module.addImport(name, resolveStandardPlugin(ctx.plugin_lookup, std_plugin));
+            },
+            .custom => |custom| {
+                root_module.addImport(custom.name, custom.module);
+            },
+        }
     }
 }
 
@@ -489,18 +566,14 @@ fn buildExamples(b: *Build, options: ExampleOptions, deps: DependencySet) !void 
         });
 
         for (examples) |example| {
-            var example_options = options;
-            example_options.standard_plugins = if (example.plugins.len != 0) example.plugins else options.standard_plugins;
-            const out = try buildWebExample(b, example, example_options, deps);
+            const out = try buildWebExample(b, example, options, deps);
             attachExampleSteps(b, example, out, examples_step, &.{ serve_step, &serve_deno.step });
         }
 
         serve_step.dependOn(&serve_deno.step);
     } else {
         for (examples) |example| {
-            var example_options = options;
-            example_options.standard_plugins = if (example.plugins.len != 0) example.plugins else options.standard_plugins;
-            const out = buildNativeExample(b, example, example_options, deps);
+            const out = buildNativeExample(b, example, options, deps);
             attachExampleSteps(b, example, out, examples_step, &.{});
         }
     }
@@ -515,7 +588,7 @@ pub fn buildNative(
     _ = b;
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
     const ctx = initAppContextFromDependency(dep_zenithor, options, cimgui_config);
-    buildNativeWithContext(ctx, exe, options, cimgui_config);
+    buildNativeWithContext(ctx, exe, options.plugins, cimgui_config);
 }
 
 pub fn buildWeb(
@@ -526,7 +599,7 @@ pub fn buildWeb(
 ) !*Build.Step {
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
     const ctx = initAppContextFromDependency(dep_zenithor, options, cimgui_config);
-    return try buildWebWithContext(b, ctx, lib, options, cimgui_config);
+    return try buildWebWithContext(b, ctx, lib, options, options.plugins, cimgui_config);
 }
 
 fn buildNativeExample(b: *Build, example: Example, options: ExampleOptions, deps: DependencySet) ExampleResult {
@@ -547,9 +620,8 @@ fn buildNativeExample(b: *Build, example: Example, options: ExampleOptions, deps
     });
 
     const ctx = exampleContext(options, deps);
-    const app_options = exampleAppOptions(options);
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
-    buildNativeWithContext(ctx, exe, app_options, cimgui_config);
+    buildNativeWithContext(ctx, exe, example.plugins, cimgui_config);
 
     if (options.target.result.os.tag == .ios) {
         const allocator = b.allocator;
@@ -599,7 +671,7 @@ fn buildWebExample(b: *Build, example: Example, options: ExampleOptions, deps: D
     const ctx = exampleContext(options, deps);
     const app_options = exampleAppOptions(options);
     const cimgui_config = cimgui.getConfig(options.imgui_docking);
-    const link_step = try buildWebWithContext(b, ctx, lib, app_options, cimgui_config);
+    const link_step = try buildWebWithContext(b, ctx, lib, app_options, example.plugins, cimgui_config);
 
     b.getInstallStep().dependOn(link_step);
 
@@ -648,30 +720,22 @@ fn initAppContextFromDependency(dep_zenithor: *Build.Dependency, options: AppOpt
     };
 }
 
-fn buildNativeWithContext(ctx: AppBuildContext, exe: *Build.Step.Compile, options: AppOptions, cimgui_config: cimgui.Config) void {
+fn buildNativeWithContext(ctx: AppBuildContext, exe: *Build.Step.Compile, plugins_list: []const Plugin, cimgui_config: cimgui.Config) void {
     exe.root_module.addImport("sokol", ctx.dep_sokol.module("sokol"));
     exe.root_module.addImport(cimgui_config.module_name, ctx.dep_cimgui.module(cimgui_config.module_name));
     exe.root_module.addImport("zenithor", ctx.zenithor_mod);
     exe.root_module.addImport("sparze", ctx.dep_sparze.module("sparze"));
 
-    addStandardPlugins(exe.root_module, ctx, options.standard_plugins);
-
-    for (options.plugins) |plugin| {
-        exe.root_module.addImport(plugin.name, plugin.module);
-    }
+    addPlugins(exe.root_module, ctx, plugins_list);
 }
 
-fn buildWebWithContext(b: *Build, ctx: AppBuildContext, lib: *Build.Step.Compile, options: AppOptions, cimgui_config: cimgui.Config) !*Build.Step {
+fn buildWebWithContext(b: *Build, ctx: AppBuildContext, lib: *Build.Step.Compile, options: AppOptions, plugins_list: []const Plugin, cimgui_config: cimgui.Config) !*Build.Step {
     lib.root_module.addImport("sokol", ctx.dep_sokol.module("sokol"));
     lib.root_module.addImport(cimgui_config.module_name, ctx.dep_cimgui.module(cimgui_config.module_name));
     lib.root_module.addImport("zenithor", ctx.zenithor_mod);
     lib.root_module.addImport("sparze", ctx.dep_sparze.module("sparze"));
 
-    addStandardPlugins(lib.root_module, ctx, options.standard_plugins);
-
-    for (options.plugins) |plugin| {
-        lib.root_module.addImport(plugin.name, plugin.module);
-    }
+    addPlugins(lib.root_module, ctx, plugins_list);
 
     setupEmscriptenCimgui(ctx.dep_cimgui, ctx.dep_sokol, cimgui_config.clib_name);
 
@@ -745,7 +809,6 @@ fn exampleAppOptions(options: ExampleOptions) AppOptions {
         .imgui_docking = options.imgui_docking,
         .filesystem = options.filesystem,
         .stack_size_mb = options.stack_size_mb,
-        .standard_plugins = options.standard_plugins,
         .plugins = &.{},
     };
 }
@@ -769,7 +832,6 @@ pub fn build(b: *Build) !void {
         .imgui_docking = setup.flags.imgui_docking,
         .filesystem = setup.flags.filesystem,
         .stack_size_mb = setup.flags.stack_size_mb,
-        .standard_plugins = &.{},
         .mod_zenithor = setup.lib_module,
     }, setup.deps);
 
