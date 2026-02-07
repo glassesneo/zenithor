@@ -59,6 +59,7 @@ All examples are in `examples/` and can be built with `zig build <name>` or run 
 - **input_movement**: Input + time driven movement
 - **rendering_2d**: 2D rendering + layering
 - **scene_3d**: 3D scene basics
+- **custom_shader_3d**: Custom rim/Fresnel shader flow
 - **system_ordering**: System staging and ordering
 - **error_handling**: Event flow and error handling
 - **serialization**: Serialization round-trip

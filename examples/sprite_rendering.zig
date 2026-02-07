@@ -21,6 +21,10 @@ const Renderer = @import("renderer_plugin");
 const Transform = zenithor.Transform;
 const Scale = zenithor.Scale;
 const Color = zenithor.Color;
+const Resource = zenithor.Resource;
+const ResourceMut = zenithor.ResourceMut;
+const EventWriter = zenithor.EventWriter;
+const Query = zenithor.Query;
 
 /// Embed the demo texture at compile time
 const demo_texture_png = @embedFile("assets/demo_texture.png");
@@ -51,7 +55,7 @@ const Game = struct {
         },
         .main = &.{
             .{
-                .system = showUI,
+                .system = drawUI,
                 .stage = .render,
                 .config = .{ .priority = 199 }, // After sprite rendering (115), before flushGL (200)
             },
@@ -62,10 +66,10 @@ const Game = struct {
 fn setup(
     commands: anytype,
     allocator: std.mem.Allocator,
-    pass_action: zenithor.ResourceMut(Renderer.PassAction),
-    embedded: zenithor.ResourceMut(AssetPlugin.EmbeddedAssets),
-    registry: zenithor.ResourceMut(AssetPlugin.AssetRegistry),
-    writer: zenithor.EventWriter(AssetPlugin.AssetRequest),
+    pass_action: ResourceMut(Renderer.PassAction),
+    embedded: ResourceMut(AssetPlugin.EmbeddedAssets),
+    registry: ResourceMut(AssetPlugin.AssetRegistry),
+    writer: EventWriter(AssetPlugin.AssetRequest),
 ) !void {
     // Set background color
     pass_action.colors[0].clear_value = .{ .r = 0.15, .g = 0.15, .b = 0.2, .a = 1.0 };
@@ -108,10 +112,10 @@ fn setup(
     log.info("Created sprite entity with asset handle", .{});
 }
 
-fn showUI(
-    registry: zenithor.Resource(AssetPlugin.AssetRegistry),
-    stats: zenithor.Resource(AssetPlugin.AssetStats),
-    sprites: zenithor.Query(struct { SpritePlugin.Sprite, SpritePlugin.TextureRef }),
+fn drawUI(
+    registry: Resource(AssetPlugin.AssetRegistry),
+    stats: Resource(AssetPlugin.AssetStats),
+    sprites: Query(struct { SpritePlugin.Sprite, SpritePlugin.TextureRef }),
 ) !void {
     // Position the window at the bottom
     ImGuiPlugin.setNextWindowPos(.{ .x = 10, .y = zenithor.windowHeightF() - 200 }, .Once);

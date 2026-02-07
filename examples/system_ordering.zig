@@ -61,7 +61,7 @@ const SystemOrderingDemo = struct {
 
     pub const systems = .{
         .startup = &.{
-            .{ .system = init, .stage = .first },
+            .{ .system = setup, .stage = .first },
         },
         .main = &.{
             // Clear log at start of frame
@@ -109,7 +109,7 @@ const SystemOrderingDemo = struct {
     };
 };
 
-fn init(commands: anytype) void {
+fn setup(commands: anytype) void {
     commands.setResource(ExecutionLog, .{});
 }
 

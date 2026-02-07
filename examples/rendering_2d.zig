@@ -10,6 +10,7 @@
 const zenithor = @import("zenithor");
 const Transform = zenithor.Transform;
 const Color = zenithor.Color;
+const ResourceMut = zenithor.ResourceMut;
 const Shapes2DPlugin = @import("shapes2d_plugin");
 const Renderer = @import("renderer_plugin");
 
@@ -39,7 +40,7 @@ const Game = struct {
     };
 };
 
-fn setup(commands: anytype, pass_action: zenithor.ResourceMut(Renderer.PassAction)) !void {
+fn setup(commands: anytype, pass_action: ResourceMut(Renderer.PassAction)) !void {
     pass_action.colors[0].clear_value = .{ .r = 0.15, .g = 0.15, .b = 0.2, .a = 1.0 };
 
     // === Z-Index Demonstration ===

@@ -143,15 +143,15 @@ const GamePlugin = struct {
 
     pub const systems = .{
         .startup = &.{
-            .{ .system = setupGame, .stage = .first },
+            .{ .system = setup, .stage = .first },
         },
         .main = &.{
-            .{ .system = handleGameInput, .stage = .update },
-            .{ .system = drawGameUI, .stage = .render },
+            .{ .system = handleInput, .stage = .update },
+            .{ .system = drawUI, .stage = .render },
         },
     };
 
-    fn setupGame(commands: anytype, pass_action: ResourceMut(Renderer.PassAction)) !void {
+    fn setup(commands: anytype, pass_action: ResourceMut(Renderer.PassAction)) !void {
         pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.15, .b = 0.2, .a = 1.0 };
 
         // Create player entity with Health component from HealthPlugin
@@ -166,7 +166,7 @@ const GamePlugin = struct {
         log.info("GamePlugin -> HealthPlugin -> TimePlugin (transitive)", .{});
     }
 
-    fn handleGameInput(
+    fn handleInput(
         keyboard: Resource(InputPlugin.Keyboard),
         damage_writer: EventWriter(HealthPlugin.DamageEvent),
         heal_writer: EventWriter(HealthPlugin.HealEvent),
@@ -188,7 +188,7 @@ const GamePlugin = struct {
         }
     }
 
-    fn drawGameUI(
+    fn drawUI(
         health_query: SingleQuery(HealthPlugin.Health),
         config: ResourceMut(HealthPlugin.HealthConfig),
         time: Resource(TimePlugin.Time),

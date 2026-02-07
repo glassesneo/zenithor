@@ -281,11 +281,11 @@ const GamePlugin = struct {
 
     pub const Components = .{ Interactable, Orbiting, Bouncing, Pulsing };
     pub const Resources = .{ GameState, SceneStats };
-    pub const Events = .{ BuiltinPlugin.GameLoopError };
+    pub const Events = .{BuiltinPlugin.GameLoopError};
 
     pub const systems = .{
         .startup = &.{
-            .{ .system = setupScene, .stage = .first },
+            .{ .system = setup, .stage = .first },
         },
         .main = &.{
             // Input handling - runs first
@@ -308,7 +308,7 @@ const GamePlugin = struct {
         },
     };
 
-    fn setupScene(
+    fn setup(
         commands: anytype,
         pass_action: ResourceMut(Renderer.PassAction),
     ) !void {
@@ -517,6 +517,9 @@ const GamePlugin = struct {
         log.info("Press F5/F9 to save/load", .{});
     }
 
+    // =========================================================================
+    // INPUT HANDLING
+    // =========================================================================
     fn handleInput(
         keyboard: Resource(InputPlugin.Keyboard),
         mouse: Resource(InputPlugin.Mouse),
@@ -691,6 +694,9 @@ const GamePlugin = struct {
         }
     }
 
+    // =========================================================================
+    // ANIMATION SYSTEMS
+    // =========================================================================
     fn updateAnimationTime(
         time: Resource(TimePlugin.Time),
         game: ResourceMut(GameState),
@@ -753,6 +759,9 @@ const GamePlugin = struct {
         }
     }
 
+    // =========================================================================
+    // CAMERA SYSTEM
+    // =========================================================================
     fn updateCamera(
         keyboard: Resource(InputPlugin.Keyboard),
         mouse: Resource(InputPlugin.Mouse),
@@ -903,6 +912,9 @@ const GamePlugin = struct {
         }
     }
 
+    // =========================================================================
+    // ERROR MONITORING
+    // =========================================================================
     fn monitorErrors(
         game_errors: EventReader(BuiltinPlugin.GameLoopError),
     ) void {
@@ -912,6 +924,9 @@ const GamePlugin = struct {
         }
     }
 
+    // =========================================================================
+    // UI WINDOWS
+    // =========================================================================
     fn drawHelpWindow(game: Resource(GameState)) void {
         if (!game.show_help) return;
 

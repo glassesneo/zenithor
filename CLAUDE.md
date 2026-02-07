@@ -10,7 +10,7 @@ zig build run-minimal_app             # Run native example
 zig build serve-examples -Dtarget=wasm32-emscripten  # WASM examples
 ```
 
-**Examples**: minimal_app, input_movement, rendering_2d, scene_3d, system_ordering, error_handling, serialization, imgui_overlay, sprite_rendering, plugin_authoring, showcase_3d
+**Examples**: minimal_app, input_movement, rendering_2d, scene_3d, custom_shader_3d, system_ordering, error_handling, serialization, imgui_overlay, sprite_rendering, plugin_authoring, showcase_3d
 
 ## Critical Constraints
 

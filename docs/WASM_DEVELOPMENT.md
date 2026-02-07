@@ -90,6 +90,7 @@ All examples support WASM builds:
 | input_movement | Keyboard/mouse input | `zig build input_movement -Dtarget=wasm32-emscripten` |
 | rendering_2d | 2D shapes | `zig build rendering_2d -Dtarget=wasm32-emscripten` |
 | scene_3d | 3D rendering | `zig build scene_3d -Dtarget=wasm32-emscripten` |
+| custom_shader_3d | Custom shader flow | `zig build custom_shader_3d -Dtarget=wasm32-emscripten` |
 | system_ordering | System execution order | `zig build system_ordering -Dtarget=wasm32-emscripten` |
 | error_handling | Error recovery | `zig build error_handling -Dtarget=wasm32-emscripten` |
 | serialization | Save/load state | `zig build serialization -Dtarget=wasm32-emscripten -Dfilesystem` |

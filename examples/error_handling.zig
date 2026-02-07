@@ -8,6 +8,9 @@
 ///
 /// Click the button to trigger a system error and see it captured.
 ///
+/// Note: Most other examples intentionally omit GameLoopError handling
+/// for simplicity. In production, add error monitoring as shown here.
+///
 /// See: src/core/CLAUDE.md (Error Handling section)
 const zenithor = @import("zenithor");
 const BuiltinPlugin = zenithor.BuiltinPlugin;
@@ -79,7 +82,7 @@ const ErrorDemo = struct {
 
     pub const systems = .{
         .startup = &.{
-            .{ .system = init, .stage = .first },
+            .{ .system = setup, .stage = .first },
         },
         .main = &.{
             // This system can fail intentionally
@@ -92,7 +95,7 @@ const ErrorDemo = struct {
     };
 };
 
-fn init(commands: anytype, pass_action: ResourceMut(Renderer.PassAction)) void {
+fn setup(commands: anytype, pass_action: ResourceMut(Renderer.PassAction)) void {
     pass_action.colors[0].clear_value = .{ .r = 0.1, .g = 0.1, .b = 0.15, .a = 1.0 };
     commands.setResource(ErrorConfig, .{});
     commands.setResource(ErrorLog, .{});
