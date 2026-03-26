@@ -39,6 +39,7 @@
             ]
             ++ (with pkgs; [
               deno
+              python3
             ]);
 
           buildInputs = [
